@@ -64,6 +64,7 @@ namespace MathLib
       n = Vector2.Zero;
 
       Vector2 vp = Vector2.Subtract( p1, p0 );
+      if ( vp == Vector2.Zero ) return false;
         
       Vector2 vpc = Vector2.Subtract( c, p0 );
       

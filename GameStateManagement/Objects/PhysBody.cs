@@ -236,7 +236,7 @@ namespace Physics
     public override void ApplyResponseFrom( CollisResult result )
     {
       float bounceThresh = 1f;
-      float bouncePct = 1f;// .275f;
+      float bouncePct = .275f;
 
       Vector2 nNormal = new Vector2( result.Normal.Y, -result.Normal.X );
 

@@ -12,7 +12,6 @@ namespace Physics
     static readonly PhysicsManager instance = new PhysicsManager();
 
     Vector2 m_gravity = new Vector2( 0.0f, -10.0f );
-    int frames = 0;
 
     // initialization
     private PhysicsManager()
@@ -49,7 +48,7 @@ namespace Physics
           Vector2 fg = Vector2.Multiply( nNormal, dirScale * body.Mass );
           body.Force += fg;
         }
-          
+
         // factor in forces for final velocity before testing collision
         Vector2 accel = Vector2.Multiply( body.Force, 1.0f / body.Mass );
         body.Velocity += ( accel * (float)elapsed );
@@ -58,8 +57,6 @@ namespace Physics
         UpdateBodyToT( body, elapsed );
         body.UpdateTouching();
       }
-
-      ++frames;
     }
 
 

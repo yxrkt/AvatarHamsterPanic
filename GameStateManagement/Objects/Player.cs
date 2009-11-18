@@ -36,7 +36,7 @@ namespace GameObjects
         avatar = AvatarDescription.CreateRandom();
 
       CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", this.content );
-      Avatar = new Avatar( avatar, data, .55f * Scale, Vector2.UnitX, pos );
+      Avatar = new Avatar( avatar, data, .45f * Scale, Vector2.UnitX, pos );
       Avatar.Content = this.content;
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
     }
@@ -64,18 +64,18 @@ namespace GameObjects
     public void Update( GameTime gameTime )
     {
       // update the avatar's position and orientation
-      Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - Scale / 2f, 0f );
-      Avatar.Direction = new Vector3( BoundingCircle.Velocity.X > 0f ? 1f : -1f, 0f, 0f );
+      Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - Scale / 2.5f, 0f );
+      Avatar.Direction = new Vector3( BoundingCircle.AngularVelocity < 0f ? 1f : -1f, 0f, 0f );
 
-      double absVelX = Math.Abs( (double)BoundingCircle.Velocity.X );
+      double absVelX = Math.Abs( (double)BoundingCircle.AngularVelocity );
 
       // update avatar's animation
       double walkThresh = 4.0;
-      double animScaleFactor = .20;
+      double animScaleFactor = .10;
 
       if ( absVelX <= walkThresh )
       {
-        animScaleFactor = 1.0;
+        animScaleFactor = .8;
         CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", content );
         Avatar.SetAnimation( data );
       }
