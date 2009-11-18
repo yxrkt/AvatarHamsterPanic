@@ -41,7 +41,6 @@ namespace GameStateManagement
     float camScrollSpeed = 0f;
     float lastRowY = 0f;
     float rowSpacing = 5f * FloorBlock.Scale / 2f;
-    List<Player> players = new List<Player>();
     List<FloorBlock> floorBlocks = new List<FloorBlock>();
     float stageWidth = FloorBlock.Scale * 8f;
     Boundary leftBoundary  = null;
@@ -77,17 +76,19 @@ namespace GameStateManagement
       content.Load<CustomAvatarAnimationData>( "Animations/Run" );
       content.Load<Model>( "wheel" );
       content.Load<Model>( "block" );
-      content.Load<Model>( "hingedBlock" );
+      content.Load<Model>( "basket" );
 
+      // init game stuff
       InitCamera();
       InitStage();
 
       // create players
-      Player player1 = new Player( new Vector2( 0f, 3f ), content );
-      players.Add( player1 );
+      new Player( new Vector2( 0f, 3f ), content );
 
       // test SpawnRow
       SpawnRow( 0f, 50, 70 );
+      lastRowY = 0f;
+      UpdateStage(); // spawn additional rows before loading screen is over
 
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -4.5f );
@@ -104,7 +105,7 @@ namespace GameStateManagement
     public override void UnloadContent()
     {
       floorBlocks.Clear();
-      players.Clear();
+      Player.AllPlayers.Clear();
       content.Unload();
     }
 
@@ -138,6 +139,7 @@ namespace GameStateManagement
         floorBlocks.RemoveAll( block => block.Released );
 
         // Update each player
+        List<AutoContain> players = Player.AllPlayers;
         foreach ( Player player in players )
           player.Update( gameTime );
       }
@@ -172,7 +174,8 @@ namespace GameStateManagement
       }
       else
       {
-        PhysCircle circle = players[0].BoundingCircle;
+        List<AutoContain> players = Player.AllPlayers;
+        PhysCircle circle = ( (Player)players[0] ).BoundingCircle;
 
         float maxVelX = 8f;
         float forceScale = ( circle.Touching != null ) ? 300f : 150f;
@@ -202,6 +205,7 @@ namespace GameStateManagement
       Matrix proj = Matrix.CreatePerspectiveFieldOfView( camera.Fov, camera.Aspect, camera.Near, camera.Far );
 
       // Draw players
+      List<AutoContain> players = Player.AllPlayers;
       foreach ( Player player in players )
       {
         // Draw hamster wheels
@@ -266,7 +270,7 @@ namespace GameStateManagement
       //                        new Vector2( 100f, 100f ), Color.Black );
       //string debugString = "Bodies: " + PhysBody.AllBodies.Count.ToString();
       //string debugString = players[0].BoundingCircle.Position.ToString();
-      string debugString = players[0].BoundingCircle.Velocity.X.ToString();
+      string debugString = ( (Player)players[0] ).BoundingCircle.Velocity.ToString() + '\n' + ( (Player)players[0] ).BoundingCircle.Position.ToString();
       spriteBatch.DrawString( gameFont, debugString, new Vector2( 100f, 100f ), Color.BlanchedAlmond );
 
       spriteBatch.End();

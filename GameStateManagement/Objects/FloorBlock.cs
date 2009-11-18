@@ -11,34 +11,24 @@ namespace GameObjects
 {
   class FloorBlock
   {
-    private static float m_scale = 1.6f;
-    private ContentManager m_content = null;
-    private PhysPolygon m_physPoly = null;
-    private Model m_model = null;
+    private ContentManager content = null;
 
     public FloorBlock( Vector2 pos, ContentManager content )
-      : this( pos, content, true )
-    {
-    }
-
-    public FloorBlock( Vector2 pos, ContentManager content, bool phys )
     {
       Released = false;
 
-      m_content = content;
-      m_model   = m_content.Load<Model>( "block" );
+      this.content = content;
 
-      if ( phys )
-      {
-        m_physPoly = new PhysPolygon( m_scale, m_scale / 4f, pos, 10 );
-        m_physPoly.Flags = PhysBodyFlags.ANCHORED;
-      }
+      Model = this.content.Load<Model>( "block" );
+
+      BoundingPolygon = new PhysPolygon( Scale, Scale / 4f, pos, 10 );
+      BoundingPolygon.Flags = PhysBodyFlags.Anchored;
     }
 
     ~FloorBlock()
     {
-      if ( m_physPoly != null )
-        m_physPoly.Release();
+      if ( BoundingPolygon != null )
+        BoundingPolygon.Release();
     }
 
     public void Release()
@@ -46,19 +36,24 @@ namespace GameObjects
       Released = true;
     }
 
+    static FloorBlock()
+    {
+      Scale = 1.6f;
+    }
+
     public bool Released { get; private set; }
 
-    public static float Scale { get { return m_scale; } }
+    public static float Scale { get; private set; }
 
-    public Model Model { get { return m_model; } }
-    public PhysPolygon BoundingPolygon { get { return m_physPoly; } set { m_physPoly = value; } }
+    public Model Model { get; private set; }
+    public PhysPolygon BoundingPolygon { get; set; }
 
     public void GetTransform( out Matrix transform )
     {
       Matrix matTrans, matRot;
-      Matrix.CreateScale( m_scale, out transform );
-      Matrix.CreateRotationZ( m_physPoly.Angle, out matRot );
-      Matrix.CreateTranslation( m_physPoly.Position.X, m_physPoly.Position.Y, 0f, out matTrans );
+      Matrix.CreateScale( Scale, out transform );
+      Matrix.CreateRotationZ( BoundingPolygon.Angle, out matRot );
+      Matrix.CreateTranslation( BoundingPolygon.Position.X, BoundingPolygon.Position.Y, 0f, out matTrans );
       Matrix.Multiply( ref transform, ref matRot, out transform );
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }

@@ -11,33 +11,29 @@ namespace Physics
   [Flags]
   enum PhysBodyFlags
   {
-    NONE,
-    ANCHORED
+    None,
+    Anchored,
   }
 
   class CollisResult
   {
-    private bool m_collision = false;
-    private float m_time = float.MaxValue;
-    private PhysBody m_obj = null;
-    private Vector2 m_normal = Vector2.Zero;
-
     public CollisResult()
+      : this( false, float.MaxValue, null, Vector2.Zero )
     {
     }
 
     public CollisResult( bool collision, float time, PhysBody obj, Vector2 normal )
     {
-      m_collision = collision;
-      m_time = time;
-      m_obj = obj;
-      m_normal = normal;
+      Collision = collision;
+      Time      = time;
+      Object    = obj;
+      Normal    = normal;
     }
 
-    public bool Collision { get { return m_collision; } set { m_collision = value; } }
-    public float Time { get { return m_time; } set { m_time = value; } }
-    public PhysBody Object { get { return m_obj; } set { m_obj = value; } }
-    public Vector2 Normal { get { return m_normal; } set { m_normal = value; } }
+    public bool Collision { get; set; }
+    public float Time { get; set; }
+    public PhysBody Object { get; set; }
+    public Vector2 Normal { get; set; }
   }
 
   /// <summary>
@@ -57,7 +53,7 @@ namespace Physics
     protected PhysBody m_touching = null;
     protected float m_angle = 0.0f, m_angVel = 0.0f;
     protected Vector2 m_force = Vector2.Zero;
-    protected PhysBodyFlags m_flags = PhysBodyFlags.NONE;
+    protected PhysBodyFlags m_flags = PhysBodyFlags.None;
     protected event EventHandler OnCollision = null;
 
     private bool released = false;

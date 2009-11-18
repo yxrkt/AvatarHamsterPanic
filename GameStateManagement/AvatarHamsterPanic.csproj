@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
+    <Compile Include="Objects\AutoContain.cs" />
     <Compile Include="Objects\Avatar.cs" />
     <Compile Include="Objects\Basket.cs" />
     <Compile Include="Objects\Boundary.cs" />

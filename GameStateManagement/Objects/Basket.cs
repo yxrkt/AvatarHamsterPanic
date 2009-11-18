@@ -44,7 +44,7 @@ namespace GameObjects
       verts[12].X = 0.77f;  verts[12].Y = -0.25f;
       verts[13].X = 1.0f;   verts[13].Y = -0.02f;
       BoundingPolygon = new PhysPolygon( verts, pos, 1f );
-      BoundingPolygon.Flags = PhysBodyFlags.ANCHORED;
+      BoundingPolygon.Flags = PhysBodyFlags.Anchored;
 
       // load the mesh
       this.content = content;

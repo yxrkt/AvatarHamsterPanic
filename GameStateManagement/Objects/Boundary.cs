@@ -9,30 +9,23 @@ namespace GameObjects
 {
   class Boundary
   {
-    PhysPolygon m_poly = null;
+    PhysPolygon poly = null;
 
     public float X
     {
-      get { return m_poly.Position.X; }
-      set { m_poly.Position = new Vector2( value, 0f ); }
+      get { return poly.Position.X; }
+      set { poly.Position = new Vector2( value, 0f ); }
     }
 
     public Boundary( float xPos )
     {
-      //Vector2[] line = new Vector2[2];
-      //line[0].X = xPos;
-      //line[0].Y = -10000f;
-      //line[1].X = xPos;
-      //line[1].Y = 10000f;
-      //m_line = new PhysLine( line[0], line[1], new Vector2( xPos, 0f ), 1f );
-      //m_line.Flags = PhysBodyFlags.ANCHORED;
-      m_poly = new PhysPolygon( .01f, 10000f, new Vector2( xPos, 0f ), 1f );
-      m_poly.Flags = PhysBodyFlags.ANCHORED;
+      poly = new PhysPolygon( .01f, 10000f, new Vector2( xPos, 0f ), 1f );
+      poly.Flags = PhysBodyFlags.Anchored;
     }
 
     ~Boundary()
     {
-      m_poly.Release();
+      poly.Release();
     }
   }
 }

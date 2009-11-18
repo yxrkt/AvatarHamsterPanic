@@ -35,7 +35,7 @@ namespace Physics
       {
         PhysBody body = bodies[i];
         
-        if ( ( body.Flags & PhysBodyFlags.ANCHORED ) == PhysBodyFlags.ANCHORED ) continue;
+        if ( ( body.Flags & PhysBodyFlags.Anchored ) == PhysBodyFlags.Anchored ) continue;
         
         if ( body.Touching == null || Vector2.Dot( body.TouchNormal, m_gravity ) >= 0.0f )
         {
