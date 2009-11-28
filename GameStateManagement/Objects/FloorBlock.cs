@@ -6,20 +6,21 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Physics;
+using GameStateManagement;
 
 namespace GameObjects
 {
-  class FloorBlock
+  class FloorBlock : GameObject
   {
-    private ContentManager content = null;
+    public static float Scale { get; private set; }
 
-    public FloorBlock( Vector2 pos, ContentManager content )
+    public Model Model { get; private set; }
+    public PhysPolygon BoundingPolygon { get; set; }
+
+    public FloorBlock( GameplayScreen screen, Vector2 pos )
+      : base( screen )
     {
-      Released = false;
-
-      this.content = content;
-
-      Model = this.content.Load<Model>( "block" );
+      Model = screen.Content.Load<Model>( "block" );
 
       BoundingPolygon = new PhysPolygon( Scale, Scale / 4f, pos, 10 );
       BoundingPolygon.Flags = PhysBodyFlags.Anchored;
@@ -31,22 +32,10 @@ namespace GameObjects
         BoundingPolygon.Release();
     }
 
-    public void Release()
-    {
-      Released = true;
-    }
-
     static FloorBlock()
     {
       Scale = 1.6f;
     }
-
-    public bool Released { get; private set; }
-
-    public static float Scale { get; private set; }
-
-    public Model Model { get; private set; }
-    public PhysPolygon BoundingPolygon { get; set; }
 
     public void GetTransform( out Matrix transform )
     {
@@ -56,6 +45,31 @@ namespace GameObjects
       Matrix.CreateTranslation( BoundingPolygon.Position.X, BoundingPolygon.Position.Y, 0f, out matTrans );
       Matrix.Multiply( ref transform, ref matRot, out transform );
       Matrix.Multiply( ref transform, ref matTrans, out transform );
+    }
+
+    public override void Update( GameTime gameTime )
+    {
+      float clearLine = Screen.CameraInfo.DeathLine + Screen.Camera.Position.Y;
+      if ( BoundingPolygon.Position.Y > clearLine )
+        Screen.ObjectTable.MoveToTrash( this );
+    }
+
+    public override void Draw()
+    {
+      foreach ( ModelMesh mesh in Model.Meshes )
+      {
+        foreach ( BasicEffect effect in mesh.Effects )
+        {
+          Matrix world;
+          GetTransform( out world );
+
+          effect.World = world;
+          effect.View = Screen.View;
+          effect.Projection = Screen.Projection;
+        }
+
+        mesh.Draw();
+      }
     }
   }
 }

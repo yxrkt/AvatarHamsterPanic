@@ -30,19 +30,21 @@ namespace GameStateManagement
   /// placeholder to get the idea across: you'll probably want to
   /// put some more interesting gameplay in here!
   /// </summary>
-  class GameplayScreen : GameScreen
+  public class GameplayScreen : GameScreen
   {
     #region Fields
 
-    ContentManager content;
+    public ContentManager Content { get; private set; }
+    public Camera Camera { get; private set; }
+    public CameraInfo CameraInfo { get; private set; }
+    public Matrix View { get; private set; }
+    public Matrix Projection { get; private set; }
+    public ObjectTable ObjectTable { get; private set; }
+
     SpriteFont gameFont;
-    Camera camera;
-    float cameraSpawnLine = 0f, cameraKillLine = 0f;
-    float camScrollSpeed = 0f;
     float lastRowY = 0f;
     float rowSpacing = 5f * FloorBlock.Scale / 2f;
-    List<FloorBlock> floorBlocks = new List<FloorBlock>();
-    float stageWidth = FloorBlock.Scale * 8f;
+    float stageWidth = FloorBlock.Scale * 6f;
     Boundary leftBoundary  = null;
     Boundary rightBoundary = null;
 
@@ -68,22 +70,27 @@ namespace GameStateManagement
     /// </summary>
     public override void LoadContent()
     {
-      if ( content == null )
-        content = new ContentManager( ScreenManager.Game.Services, "Content" );
+      if ( Content == null )
+        Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
-      gameFont = content.Load<SpriteFont>( "gamefont" );
-      content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
-      content.Load<CustomAvatarAnimationData>( "Animations/Run" );
-      content.Load<Model>( "wheel" );
-      content.Load<Model>( "block" );
-      content.Load<Model>( "basket" );
+      gameFont = Content.Load<SpriteFont>( "gamefont" );
+
+      // pre-load
+      Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
+      Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
+      Content.Load<CustomAvatarAnimationData>( "Animations/Crawl" );
+      Content.Load<Model>( "wheel" );
+      Content.Load<Model>( "block" );
+      Content.Load<Model>( "basket" );
 
       // init game stuff
+      ObjectTable = new ObjectTable();
       InitCamera();
       InitStage();
 
       // create players
-      new Player( new Vector2( 0f, 3f ), content );
+      Player player = new Player( this, new Vector2( 0f, 3f ), Content );
+      ObjectTable.Add( player );
 
       // test SpawnRow
       SpawnRow( 0f, 50, 70 );
@@ -104,9 +111,8 @@ namespace GameStateManagement
     /// </summary>
     public override void UnloadContent()
     {
-      floorBlocks.Clear();
-      Player.AllPlayers.Clear();
-      content.Unload();
+      ObjectTable.Clear();
+      Content.Unload();
     }
 
 
@@ -135,13 +141,12 @@ namespace GameStateManagement
         // Update physics
         PhysicsManager.Instance.Update( elapsed );
 
-        // Remove all released floor blocks
-        floorBlocks.RemoveAll( block => block.Released );
+        // Delete objects
+        ObjectTable.EmptyTrash();
 
-        // Update each player
-        List<AutoContain> players = Player.AllPlayers;
-        foreach ( Player player in players )
-          player.Update( gameTime );
+        // Update objects
+        foreach ( GameObject obj in ObjectTable.AllObjects )
+          obj.Update( gameTime );
       }
     }
 
@@ -174,8 +179,7 @@ namespace GameStateManagement
       }
       else
       {
-        List<AutoContain> players = Player.AllPlayers;
-        PhysCircle circle = ( (Player)players[0] ).BoundingCircle;
+        PhysCircle circle = ObjectTable.GetObjects<Player>()[0].BoundingCircle;
 
         float maxVelX = 8f;
         float forceScale = ( circle.Touching != null ) ? 300f : 150f;
@@ -187,6 +191,12 @@ namespace GameStateManagement
           if ( leftStick.X * circle.Velocity.X < 0f || Math.Abs( circle.Velocity.X ) < maxVelX )
             circle.Force += new Vector2( forceScale * leftStick.X, 0f );
         }
+        if ( leftStick.Y != 0f )
+        {
+          // ignore input if moving at or faster than max velocity
+          if ( leftStick.Y * circle.Velocity.Y < 0f || Math.Abs( circle.Velocity.Y ) < maxVelX )
+            circle.Force += new Vector2( 0f, forceScale * leftStick.Y );
+        }
       }
     }
 
@@ -196,69 +206,15 @@ namespace GameStateManagement
     /// </summary>
     public override void Draw( GameTime gameTime )
     {
-      // This game has a blue background. Why? Because!
       ScreenManager.GraphicsDevice.Clear( ClearOptions.Target,
                                           Color.CornflowerBlue, 0, 0 );
 
-      // Camera stuff here
-      Matrix view = Matrix.CreateLookAt( camera.Position, camera.Target, camera.Up );
-      Matrix proj = Matrix.CreatePerspectiveFieldOfView( camera.Fov, camera.Aspect, camera.Near, camera.Far );
+      Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
+                                                  Camera.Near, Camera.Far );
+      View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
 
-      // Draw players
-      List<AutoContain> players = Player.AllPlayers;
-      foreach ( Player player in players )
-      {
-        // Draw hamster wheels
-        foreach ( ModelMesh mesh in player.WheelModel.Meshes )
-        {
-          foreach ( BasicEffect effect in mesh.Effects )
-          {
-            effect.EnableDefaultLighting();
-            effect.DiffuseColor = Color.White.ToVector3();
-
-            Matrix matWorld;
-            player.GetWheelTransform( out matWorld );
-
-            effect.World = matWorld;
-            effect.View = view;
-            effect.Projection = proj;
-          }
-
-          mesh.Draw();
-        }
-
-        // Draw avatars
-        Avatar avatar = player.Avatar;
-        avatar.Renderer.View = view;
-        avatar.Renderer.Projection = proj;
-
-        Matrix matRot   = Matrix.CreateWorld( Vector3.Zero, avatar.Direction, camera.Up );
-        Matrix matTrans = Matrix.CreateTranslation( avatar.Position );
-        avatar.Renderer.World = Matrix.CreateScale( avatar.Scale ) * matRot * matTrans;
-        avatar.Renderer.Draw( avatar.BoneTransforms, avatar.Expression );
-      }
-
-      // Draw floor blocks
-      foreach ( FloorBlock block in floorBlocks )
-      {
-        foreach ( ModelMesh mesh in block.Model.Meshes )
-        {
-          foreach ( BasicEffect effect in mesh.Effects )
-          {
-            effect.EnableDefaultLighting();
-            effect.DiffuseColor = Color.White.ToVector3();
-
-            Matrix matWorld;
-            block.GetTransform( out matWorld );
-
-            effect.World = matWorld;
-            effect.View = view;
-            effect.Projection = proj;
-          }
-
-          mesh.Draw();
-        }
-      }
+      foreach ( GameObject obj in ObjectTable.AllObjects )
+        obj.Draw();
 
       // Our player and enemy are both actually just text strings.
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
@@ -270,7 +226,8 @@ namespace GameStateManagement
       //                        new Vector2( 100f, 100f ), Color.Black );
       //string debugString = "Bodies: " + PhysBody.AllBodies.Count.ToString();
       //string debugString = players[0].BoundingCircle.Position.ToString();
-      string debugString = ( (Player)players[0] ).BoundingCircle.Velocity.ToString() + '\n' + ( (Player)players[0] ).BoundingCircle.Position.ToString();
+      //string debugString = players[0].BoundingCircle.Velocity.ToString() + '\n' + players[0].BoundingCircle.Position.ToString();
+      string debugString = "Floor Blocks: " + ObjectTable.GetObjects<FloorBlock>().Count.ToString();
       spriteBatch.DrawString( gameFont, debugString, new Vector2( 100f, 100f ), Color.BlanchedAlmond );
 
       spriteBatch.End();
@@ -291,20 +248,18 @@ namespace GameStateManagement
       leftBoundary = new Boundary( -.5f * stageWidth );
       rightBoundary = new Boundary( -leftBoundary.X );
 
-      // make boxen for all the players
-      // platform!
-
-      float doorPosY = cameraKillLine - Player.Scale / 2f;
-      float doorPosX = leftBoundary.X;// +FloorBlock.Scale / 2f;
+      float doorPosY = CameraInfo.DeathLine - 2f * Player.Scale;
+      float doorPosX = leftBoundary.X + FloorBlock.Scale / 2f;
       float doorPosXStep = stageWidth / 3f - FloorBlock.Scale / 3f;
 
-      camScrollSpeed = 0f;
+      CameraInfo.ScrollSpeed = 0f;
       Vector2 doorPos = new Vector2( doorPosX, doorPosY );
       for ( int i = 0; i < 4; ++i )
       {
         // trap door
-        FloorBlock door = new FloorBlock( doorPos, content );
-        floorBlocks.Add( door );
+        //FloorBlock door = new FloorBlock( this, doorPos );
+        Basket door = new Basket( this, doorPos );
+        ObjectTable.Add( door );
 
         doorPos.X += doorPosXStep;
       }
@@ -312,12 +267,9 @@ namespace GameStateManagement
 
     private void InitCamera()
     {
-      // create the camers
-      camera = new Camera( MathHelper.ToRadians( 30f ), 16f / 9f, 10f, 1000f,
-                           new Vector3( 0f, 0f, 16f ), Vector3.Zero );
-
-      // set initial camera scroll speed
-      camScrollSpeed = -.2f;
+      float fov = MathHelper.ToRadians( 30f );
+      float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
+      Camera = new Camera( fov, aspect, 5f, 100f, new Vector3( 0f, 0f, 16f ), Vector3.Zero );
 
       // set relative spawn and kill lines for spawning and killing rows of blocks
       Viewport viewport = this.ScreenManager.Game.GraphicsDevice.Viewport;
@@ -325,8 +277,8 @@ namespace GameStateManagement
       Vector3 farScreen = new Vector3( viewport.Width / 2f, viewport.Height, 1f );
 
       // unproject lower screen point on near plane and far plan
-      Matrix proj = Matrix.CreatePerspectiveFieldOfView( camera.Fov, camera.Aspect, camera.Near, camera.Far );
-      Matrix view = Matrix.CreateLookAt( camera.Position, camera.Target, camera.Up );
+      Matrix proj = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect, Camera.Near, Camera.Far );
+      Matrix view = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
       Matrix world = Matrix.Identity;
       Vector3 nearWorld = viewport.Unproject( nearScreen, proj, view, world );
       Vector3 farWorld = viewport.Unproject( farScreen, proj, view, world );
@@ -339,9 +291,10 @@ namespace GameStateManagement
       if ( dist == null )
         throw new NullReferenceException( "Ray does not intersect with plane." );
 
-      cameraSpawnLine = ( dist.Value * ray.Direction + ray.Position ).Y - FloorBlock.Scale / 8f;
-      cameraKillLine  = -cameraSpawnLine;
+      float birthLine = ( dist.Value * ray.Direction + ray.Position ).Y - FloorBlock.Scale / 8f;
+      float deathLine = -birthLine;
 
+      CameraInfo = new CameraInfo( birthLine, deathLine, -.2f );
     }
 
     private void SpawnRow( float yPos, int lowPct, int hiPct )
@@ -368,7 +321,7 @@ namespace GameStateManagement
       for ( int i = 0; i < nSpaces; ++i )
       {
         if ( RandomBag.PullNext() < nBlocks )
-          floorBlocks.Add( new FloorBlock( blockPos, content ) );
+          ObjectTable.Add( new FloorBlock( this, blockPos ) );
 
         blockPos.X += xStep;
       }
@@ -377,7 +330,7 @@ namespace GameStateManagement
     private void UpdateStage()
     {
 
-      float screenLine = cameraSpawnLine + camera.Position.Y;
+      float screenLine = CameraInfo.BirthLine + Camera.Position.Y;
 
       // spawn rows
       while ( lastRowY > screenLine )
@@ -385,21 +338,28 @@ namespace GameStateManagement
         SpawnRow( lastRowY, 50, 70 );
         lastRowY -= rowSpacing;
       }
-
-      float clearLine = cameraKillLine + camera.Position.Y;
-      foreach ( FloorBlock block in floorBlocks )
-      {
-        if ( block.BoundingPolygon.Position.Y > clearLine )
-          block.Release();
-      }
     }
 
     private void UpdateCamera( float elapsed )
     {
       // Camera scroll
-      camera.Translate( new Vector3( 0f, camScrollSpeed * (float)elapsed, 0f ) );
+      Camera.Translate( new Vector3( 0f, CameraInfo.ScrollSpeed * (float)elapsed, 0f ) );
     }
 
     #endregion
+  }
+
+  public class CameraInfo
+  {
+    public float BirthLine { get; set; }
+    public float DeathLine { get; set; }
+    public float ScrollSpeed { get; set; }
+
+    public CameraInfo( float birthLine, float deathLine, float scrollSpeed )
+    {
+      BirthLine = birthLine;
+      DeathLine = deathLine;
+      ScrollSpeed = scrollSpeed;
+    }
   }
 }

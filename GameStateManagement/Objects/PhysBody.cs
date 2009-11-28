@@ -254,8 +254,8 @@ namespace Physics
       {
         float mag = Vector2.Dot( m_vel, nNormal );
         Vector2.Multiply( ref nNormal, mag, out m_vel );
-        m_touching = result.Object;
-        m_touchN = result.Normal;
+        //m_touching = result.Object;
+        //m_touchN = result.Normal;
       }
 
       // update "angular velocity"

@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 
 namespace GameObjects
 {
-  class Camera
+  public class Camera
   {
     private Camera() { }
 

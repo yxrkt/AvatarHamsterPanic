@@ -68,12 +68,13 @@
   <ItemGroup>
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
-    <Compile Include="Objects\AutoContain.cs" />
     <Compile Include="Objects\Avatar.cs" />
     <Compile Include="Objects\Basket.cs" />
     <Compile Include="Objects\Boundary.cs" />
     <Compile Include="Objects\Camera.cs" />
     <Compile Include="Objects\FloorBlock.cs" />
+    <Compile Include="Objects\GameObject.cs" />
+    <Compile Include="Objects\ObjectTable.cs" />
     <Compile Include="Objects\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />
     <Compile Include="PhysicsManager.cs" />

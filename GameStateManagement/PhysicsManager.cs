@@ -36,17 +36,14 @@ namespace Physics
         
         if ( ( body.Flags & PhysBodyFlags.Anchored ) == PhysBodyFlags.Anchored ) continue;
         
-        if ( body.Touching == null || Vector2.Dot( body.TouchNormal, m_gravity ) >= 0.0f )
+        Vector2 fg = Vector2.Multiply( m_gravity, body.Mass );
+        body.Force += fg;
+
+        if ( body.Touching != null && Vector2.Dot( body.TouchNormal, body.Force ) < 0f )
         {
-          Vector2 fg = Vector2.Multiply( m_gravity, body.Mass );
-          body.Force += fg;
-        }
-        else
-        {
-          Vector2 nNormal = new Vector2( body.TouchNormal.Y, -body.TouchNormal.X );
-          float dirScale = Vector2.Dot( m_gravity, nNormal );
-          Vector2 fg = Vector2.Multiply( nNormal, dirScale * body.Mass );
-          body.Force += fg;
+          Vector2 edge = new Vector2( body.TouchNormal.Y, -body.TouchNormal.X );
+          float scale = Vector2.Dot( body.Force, edge );
+          body.Force = Vector2.Multiply( edge, scale );
         }
 
         // factor in forces for final velocity before testing collision

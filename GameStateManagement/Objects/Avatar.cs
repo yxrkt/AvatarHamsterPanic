@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using CustomAvatarAnimationFramework;
+using GameStateManagement;
 
 namespace GameObjects
 {
@@ -20,7 +21,6 @@ namespace GameObjects
     public float BlendTime { get; set; }
     public ReadOnlyCollection<Matrix> BoneTransforms { get; private set; }
     public AvatarExpression Expression { get { return currentAnimation.Expression; } }
-    public ContentManager Content { get; set; }
 
     private AvatarAnimationWrapper currentAnimation = null;
     private AvatarAnimationWrapper targetAnimation = null;

@@ -8,13 +8,13 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.GamerServices;
 using CustomAvatarAnimationFramework;
+using GameStateManagement;
 
 namespace GameObjects
 {
-  class Player : AutoContain
+  class Player : GameObject
   {
     public static float Scale { get; private set; }
-    public static List<AutoContain> AllPlayers { get { return AutoContain.AllObjects[typeof( Player )]; } }
 
     private ContentManager content = null;
 
@@ -23,7 +23,8 @@ namespace GameObjects
       Scale = 1.3f;
     }
 
-    public Player( Vector2 pos, ContentManager content )
+    public Player( GameplayScreen screen, Vector2 pos, ContentManager content )
+      : base( screen )
     {
       AvatarDescription.CreateRandom();
       this.content = content;
@@ -37,7 +38,6 @@ namespace GameObjects
 
       CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", this.content );
       Avatar = new Avatar( avatar, data, .45f * Scale, Vector2.UnitX, pos );
-      Avatar.Content = this.content;
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
     }
 
@@ -61,7 +61,7 @@ namespace GameObjects
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
-    public void Update( GameTime gameTime )
+    public override void Update( GameTime gameTime )
     {
       // update the avatar's position and orientation
       Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - Scale / 2.5f, 0f );
@@ -87,6 +87,43 @@ namespace GameObjects
 
       double animScale = animScaleFactor * absVelX;
       Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );
+
+      // update transforms for wheel
+      Matrix transform;
+
+      foreach ( ModelMesh mesh in WheelModel.Meshes )
+      {
+        foreach ( BasicEffect effect in mesh.Effects )
+        {
+          GetWheelTransform( out transform );
+          effect.World = transform;
+        }
+      }
+    }
+
+    public override void Draw()
+    {
+      // draw wheel
+      foreach ( ModelMesh mesh in WheelModel.Meshes )
+      {
+        foreach ( BasicEffect effect in mesh.Effects )
+        {
+          effect.EnableDefaultLighting();
+          effect.View = Screen.View;
+          effect.Projection = Screen.Projection;
+        }
+
+        mesh.Draw();
+      }
+
+      // draw avatar
+      Avatar.Renderer.View = Screen.View;
+      Avatar.Renderer.Projection = Screen.Projection;
+
+      Matrix matRot = Matrix.CreateWorld( Vector3.Zero, Avatar.Direction, Screen.Camera.Up );
+      Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
+      Avatar.Renderer.World = Matrix.CreateScale( Avatar.Scale ) * matRot * matTrans;
+      Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
     }
   }
 }
