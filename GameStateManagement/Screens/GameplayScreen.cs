@@ -32,7 +32,7 @@ namespace GameStateManagement
   /// </summary>
   public class GameplayScreen : GameScreen
   {
-    #region Fields
+    #region Fields and Properties
 
     public ContentManager Content { get; private set; }
     public Camera Camera { get; private set; }
@@ -47,6 +47,8 @@ namespace GameStateManagement
     float stageWidth = FloorBlock.Scale * 6f;
     Boundary leftBoundary  = null;
     Boundary rightBoundary = null;
+
+    int frameCount = 0;
 
     Random random = new Random();
 
@@ -88,11 +90,6 @@ namespace GameStateManagement
       InitCamera();
       InitStage();
 
-      // create players
-      Player player = new Player( this, new Vector2( 0f, 3f ), Content );
-      ObjectTable.Add( player );
-
-      // test SpawnRow
       SpawnRow( 0f, 50, 70 );
       lastRowY = 0f;
       UpdateStage(); // spawn additional rows before loading screen is over
@@ -100,7 +97,7 @@ namespace GameStateManagement
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -4.5f );
 
-      //Thread.Sleep( 1000 ); // TODO: Remove
+      //Thread.Sleep( 1000 );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -136,7 +133,10 @@ namespace GameStateManagement
         double elapsed = /*/gameTime.ElapsedGameTime.TotalSeconds/*/1.0 / 60.0/**/;
 
         UpdateCamera( (float)elapsed );
-        UpdateStage();
+        //UpdateStage();
+
+        if ( frameCount == 97 )
+          frameCount--;
 
         // Update physics
         PhysicsManager.Instance.Update( elapsed );
@@ -147,6 +147,13 @@ namespace GameStateManagement
         // Update objects
         foreach ( GameObject obj in ObjectTable.AllObjects )
           obj.Update( gameTime );
+
+        //Geometry.Player  = ObjectTable.GetObjects<Player>()[0];
+        //Geometry.TestObj = ObjectTable.GetObjects<TestObject>()[0];
+        //if ( Geometry.PolyContains( Geometry.TestObj.Bound.Vertices.ToArray(), Geometry.Player.BoundingCircle.Position ) )
+        //  frameCount--;
+
+        frameCount++;
       }
     }
 
@@ -160,42 +167,46 @@ namespace GameStateManagement
       if ( input == null )
         throw new ArgumentNullException( "input" );
 
-      // Look up inputs for the active player profile.
-      int playerIndex = (int)ControllingPlayer.Value;
+      //// Look up inputs for the active player profile.
+      //int playerIndex = (int)ControllingPlayer.Value;
 
-      KeyboardState keyboardState = input.CurrentKeyboardStates[playerIndex];
-      GamePadState gamePadState = input.CurrentGamePadStates[playerIndex];
-
-      // The game pauses either if the user presses the pause button, or if
-      // they unplug the active gamepad. This requires us to keep track of
-      // whether a gamepad was ever plugged in, because we don't want to pause
-      // on PC if they are playing with a keyboard and have no gamepad at all!
-      bool gamePadDisconnected = !gamePadState.IsConnected &&
-                                 input.GamePadWasConnected[playerIndex];
-
-      if ( input.IsPauseGame( ControllingPlayer ) || gamePadDisconnected )
+      for ( int i = 0; i < Gamer.SignedInGamers.Count; ++i )
       {
-        ScreenManager.AddScreen( new PauseMenuScreen(), ControllingPlayer );
-      }
-      else
-      {
-        PhysCircle circle = ObjectTable.GetObjects<Player>()[0].BoundingCircle;
 
-        float maxVelX = 8f;
-        float forceScale = ( circle.Touching != null ) ? 300f : 150f;
+        KeyboardState keyboardState = input.CurrentKeyboardStates[i];
+        GamePadState gamePadState = input.CurrentGamePadStates[i];
 
-        Vector2 leftStick = gamePadState.ThumbSticks.Left;
-        if ( leftStick.X != 0f )
+        // The game pauses either if the user presses the pause button, or if
+        // they unplug the active gamepad. This requires us to keep track of
+        // whether a gamepad was ever plugged in, because we don't want to pause
+        // on PC if they are playing with a keyboard and have no gamepad at all!
+        bool gamePadDisconnected = !gamePadState.IsConnected &&
+                                   input.GamePadWasConnected[i];
+
+        if ( input.IsPauseGame( (PlayerIndex)i ) || gamePadDisconnected )
         {
-          // ignore input if moving at or faster than max velocity
-          if ( leftStick.X * circle.Velocity.X < 0f || Math.Abs( circle.Velocity.X ) < maxVelX )
-            circle.Force += new Vector2( forceScale * leftStick.X, 0f );
+          ScreenManager.AddScreen( new PauseMenuScreen(), (PlayerIndex)i );
         }
-        if ( leftStick.Y != 0f )
+        else
         {
-          // ignore input if moving at or faster than max velocity
-          if ( leftStick.Y * circle.Velocity.Y < 0f || Math.Abs( circle.Velocity.Y ) < maxVelX )
-            circle.Force += new Vector2( 0f, forceScale * leftStick.Y );
+          PhysCircle circle = ObjectTable.GetObjects<Player>()[i].BoundingCircle;
+
+          float maxVelX = 8f;
+          float forceScale = ( circle.Touching != null ) ? 300f : 150f;
+
+          Vector2 leftStick = gamePadState.ThumbSticks.Left;
+          if ( leftStick.X != 0f )
+          {
+            // ignore input if moving at or faster than max velocity
+            if ( leftStick.X * circle.Velocity.X < 0f || Math.Abs( circle.Velocity.X ) < maxVelX )
+              circle.Force += new Vector2( forceScale * leftStick.X, 0f );
+          }
+          if ( leftStick.Y != 0f )
+          {
+            // ignore input if moving at or faster than max velocity
+            if ( leftStick.Y * circle.Velocity.Y < 0f || Math.Abs( circle.Velocity.Y ) < maxVelX )
+              circle.Force += new Vector2( 0f, forceScale * leftStick.Y );
+          }
         }
       }
     }
@@ -227,8 +238,8 @@ namespace GameStateManagement
       //string debugString = "Bodies: " + PhysBody.AllBodies.Count.ToString();
       //string debugString = players[0].BoundingCircle.Position.ToString();
       //string debugString = players[0].BoundingCircle.Velocity.ToString() + '\n' + players[0].BoundingCircle.Position.ToString();
-      string debugString = "Floor Blocks: " + ObjectTable.GetObjects<FloorBlock>().Count.ToString();
-      spriteBatch.DrawString( gameFont, debugString, new Vector2( 100f, 100f ), Color.BlanchedAlmond );
+      //string debugString = "Floor Blocks: " + ObjectTable.GetObjects<FloorBlock>().Count.ToString();
+      //spriteBatch.DrawString( gameFont, debugString, new Vector2( 100f, 100f ), Color.BlanchedAlmond );
 
       spriteBatch.End();
 
@@ -248,21 +259,30 @@ namespace GameStateManagement
       leftBoundary = new Boundary( -.5f * stageWidth );
       rightBoundary = new Boundary( -leftBoundary.X );
 
+      // trap doors and players
       float doorPosY = CameraInfo.DeathLine - 2f * Player.Scale;
-      float doorPosX = leftBoundary.X + FloorBlock.Scale / 2f;
+      float doorPosX = leftBoundary.X;
       float doorPosXStep = stageWidth / 3f - FloorBlock.Scale / 3f;
 
-      CameraInfo.ScrollSpeed = 0f;
       Vector2 doorPos = new Vector2( doorPosX, doorPosY );
       for ( int i = 0; i < 4; ++i )
       {
-        // trap door
-        //FloorBlock door = new FloorBlock( this, doorPos );
         Basket door = new Basket( this, doorPos );
         ObjectTable.Add( door );
 
+        if ( i < Gamer.SignedInGamers.Count )
+        {
+          Vector2 playerPos = doorPos;
+          playerPos.Y += Player.Scale;
+          Player player = new Player( this, (PlayerIndex)i, playerPos );
+          ObjectTable.Add( player );
+        }
+
         doorPos.X += doorPosXStep;
       }
+
+      // other
+      CameraInfo.ScrollSpeed = 0f;
     }
 
     private void InitCamera()

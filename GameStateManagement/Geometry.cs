@@ -3,14 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
+using GameObjects;
 
 namespace MathLib
 {
   /// <summary>
-  /// Geometry library
+  /// Geometry tools
   /// </summary>
   class Geometry
   {
+    public static Player Player { get; set; }
+    public static TestObject TestObj { get; set; }
+
     private Geometry() { }
 
     public static bool SegmentVsSegment( out float tp, Vector2 p0, Vector2 p1, Vector2 q0, Vector2 q1 )
@@ -23,9 +27,9 @@ namespace MathLib
       Vector2 vq = Vector2.Subtract( q1, q0 );
       
       // edge normals
-      Vector2 vpn = new Vector2( -vp.Y, vp.X );
+      Vector2 vpn = new Vector2( vp.Y, -vp.X );
       vpn.Normalize();
-      Vector2 vqn = new Vector2( -vq.Y, vq.X );
+      Vector2 vqn = new Vector2( vq.Y, -vq.X );
       vqn.Normalize();
       
       // signed distances from q's end points to p
@@ -107,6 +111,58 @@ namespace MathLib
       n = Vector2.Subtract( isect, c );
       n.Normalize();
       
+      return true;
+    }
+
+    /// <summary>
+    /// Determines if a point is inside a convex CCW defined polygon.
+    /// </summary>
+    /// <param name="verts">The vertices of the polygon.</param>
+    /// <param name="p">The point to be tested.</param>
+    /// <returns>True if point is inside the polygon.</returns>
+    public static bool PolyContains( Vector2[] verts, Vector2 p )
+    {
+      Vector2 u, v;
+
+      int nVerts = verts.Length;
+      Vector2 lastVert = verts[nVerts - 1];
+      for ( int i = 0; i < nVerts; ++i )
+      {
+        Vector2 vert = verts[i];
+
+        u = p - lastVert;
+        v = vert - p;
+
+        if ( u.X * v.Y - u.Y * v.X >= 0f )
+          return false;
+
+        lastVert = vert;
+      }
+
+      return true;
+    }
+
+    /// <summary>
+    /// Determines if a CCW defined polygon is convex.
+    /// </summary>
+    /// <param name="verts">The vertices of the polygon.</param>
+    /// <returns>True if polygon is convex.</returns>
+    public static bool PolyIsConvex( Vector2[] verts )
+    {
+      int nVerts = verts.Length;
+      Vector2 last = verts.Last();
+      for ( int i = 0; i <= nVerts; ++i )
+      {
+        Vector2 vert = verts[( i + 1 ) % nVerts];
+        Vector2 next = verts[( i + 2 ) % nVerts];
+
+        Vector2 u = vert - last;
+        Vector2 v = next - vert;
+
+        if ( u.X * v.Y - u.Y * v.X < 0f )
+          return false;
+      }
+
       return true;
     }
   }

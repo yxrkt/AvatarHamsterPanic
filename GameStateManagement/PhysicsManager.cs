@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
+using MathLib;
 
 
 namespace Physics
@@ -87,6 +88,8 @@ namespace Physics
       if ( best.Collision )
       {
         disp = Vector2.Multiply( body.Velocity, best.Time );
+        float len = disp.Length();
+        disp = Vector2.Multiply( disp, ( len - .0001f ) / len );
         body.Position += disp;
         body.Angle += body.AngularVelocity * best.Time;
 

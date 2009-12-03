@@ -64,6 +64,7 @@ namespace Physics
       m_pos  = new Vector2( pos.X, pos.Y );
       m_vel  = new Vector2( vel.X, vel.Y );
       m_mass = mass;
+      Skip   = false;
 
       s_bodies.Add( this );
     }
@@ -86,6 +87,7 @@ namespace Physics
     public PhysBodyFlags Flags { get { return m_flags; } set { m_flags = value; } }
     public float Mass { get { return m_mass; } set { m_mass = value; } }
     public bool Released { get { return released; } }
+    public bool Skip { get; set; }
 
     public void Release()
     {
@@ -297,6 +299,8 @@ namespace Physics
       Vector2 lastVert = verts.Last();
       lastVert = Vector2.Transform( lastVert, transform );
 
+      CollisResult bestResult = new CollisResult();
+
       int nVerts = verts.Count;
       for ( int i = 0; i < nVerts; ++i )
       {
@@ -313,9 +317,14 @@ namespace Physics
           n.Normalize();
           Vector2 offset = Vector2.Multiply( n, m_radius );
 
-          // if collision with segment, we're done
           if ( Geometry.SegmentVsSegment( out time, m_pos, posAtT, lastVert + offset, transfVert + offset ) )
-            return new CollisResult( true, time * t, poly, n );
+          {
+            // if collision with segment (and polygon is convex), we're done
+            if ( poly.Convex )
+              return new CollisResult( true, time * t, poly, n );
+            else if ( time * t < bestResult.Time )
+              bestResult = new CollisResult( true, time * t, poly, n );
+          }
         }
 
         // check corner
@@ -329,14 +338,19 @@ namespace Physics
             Vector2.Transform( ref nextVert, ref transform, out nextVert );
             Vector2 edge2 = Vector2.Subtract( nextVert, transfVert );
             if ( Vector2.Dot( normal, edge2 ) < 0.0f )
-              return new CollisResult( true, time * t, poly, normal );
+            {
+              if ( poly.Convex )
+                return new CollisResult( true, time * t, poly, normal );
+              else if ( time * t < bestResult.Time )
+                bestResult = new CollisResult( true, time * t, poly, normal );
+            }
           }
         }
 
         lastVert = transfVert;
       }
 
-      return new CollisResult();
+      return bestResult;
     }
 
     protected override CollisResult TestVsLine( PhysLine line, float t )
@@ -379,6 +393,8 @@ namespace Physics
     {
       foreach ( Vector2 vert in verts )
         m_verts.Add( vert );
+
+      Convex = Geometry.PolyIsConvex( m_verts.ToArray() );
     }
 
     public PhysPolygon( float width, float height, Vector2 pos, float mass )
@@ -391,9 +407,12 @@ namespace Physics
       m_verts.Add( new Vector2( -widthByTwo,  heightByTwo ) );
       m_verts.Add( new Vector2( -widthByTwo, -heightByTwo ) );
       m_verts.Add( new Vector2(  widthByTwo, -heightByTwo ) );
+
+      Convex = Geometry.PolyIsConvex( m_verts.ToArray() );
     }
 
     public List<Vector2> Vertices { get { return m_verts; } }
+    public bool Convex { get; private set; }
 
     public override void ApplyResponseFrom( CollisResult result )
     {

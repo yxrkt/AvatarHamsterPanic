@@ -16,29 +16,27 @@ namespace GameObjects
   {
     public static float Scale { get; private set; }
 
-    private ContentManager content = null;
-
     static Player()
     {
       Scale = 1.3f;
     }
 
-    public Player( GameplayScreen screen, Vector2 pos, ContentManager content )
+    public Player( GameplayScreen screen, PlayerIndex player, Vector2 pos )
       : base( screen )
     {
       AvatarDescription.CreateRandom();
-      this.content = content;
-      WheelModel = this.content.Load<Model>( "wheel" );
+      WheelModel = Screen.Content.Load<Model>( "wheel" );
 
       AvatarDescription avatar = null;
       if ( Gamer.SignedInGamers[PlayerIndex.One] != null )
-        avatar = Gamer.SignedInGamers[PlayerIndex.One].Avatar;
+        avatar = Gamer.SignedInGamers[player].Avatar;
       else
         avatar = AvatarDescription.CreateRandom();
 
-      CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", this.content );
+      CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
       Avatar = new Avatar( avatar, data, .45f * Scale, Vector2.UnitX, pos );
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
+      //BoundingCircle = new PhysCircle( 0f, pos, 10f );
     }
 
     ~Player()
@@ -76,39 +74,32 @@ namespace GameObjects
       if ( absVelX <= walkThresh )
       {
         animScaleFactor = .8;
-        CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", content );
+        CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
         Avatar.SetAnimation( data );
       }
       else
       {
-        CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", content );
+        CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );
         Avatar.SetAnimation( data );
       }
 
       double animScale = animScaleFactor * absVelX;
       Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );
-
-      // update transforms for wheel
-      Matrix transform;
-
-      foreach ( ModelMesh mesh in WheelModel.Meshes )
-      {
-        foreach ( BasicEffect effect in mesh.Effects )
-        {
-          GetWheelTransform( out transform );
-          effect.World = transform;
-        }
-      }
     }
 
     public override void Draw()
     {
+      Matrix transform;
+
       // draw wheel
       foreach ( ModelMesh mesh in WheelModel.Meshes )
       {
         foreach ( BasicEffect effect in mesh.Effects )
         {
           effect.EnableDefaultLighting();
+
+          GetWheelTransform( out transform );
+          effect.World = transform;
           effect.View = Screen.View;
           effect.Projection = Screen.Projection;
         }
