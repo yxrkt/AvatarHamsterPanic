@@ -312,6 +312,26 @@ namespace CustomAvatarAnimationFramework
       }
 
       /// <summary>
+      /// Checks if the animation matches a preset.
+      /// </summary>
+      /// <param name="preset">The animation preset.</param>
+      /// <returns>True if the preset matches the type of the animation.</returns>
+      public bool IsOfType( AvatarAnimationPreset preset )
+      {
+        return ( preset == standardID );
+      }
+
+      /// <summary>
+      /// Checks if the animation matches a cusom animation.
+      /// </summary>
+      /// <param name="customAnimation">The name of the custom animation.</param>
+      /// <returns>True if the name matches the animation.</returns>
+      public bool IsOfType( string customAnimation )
+      {
+        return ( customAnimation == customID );
+      }
+
+      /// <summary>
       /// Determines whether the specified System.Object is equal to the current System.Object.
       /// </summary>
       /// <param name="obj">The System.Object to compare with the current System.Object.</param>
