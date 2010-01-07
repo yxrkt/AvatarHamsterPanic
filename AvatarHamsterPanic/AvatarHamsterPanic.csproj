@@ -78,6 +78,7 @@
     <Compile Include="Objects\FloorBlock.cs" />
     <Compile Include="Objects\GameObject.cs" />
     <Compile Include="Objects\ObjectTable.cs" />
+    <Compile Include="Objects\ParticleSystem.cs" />
     <Compile Include="Objects\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />
     <Compile Include="Objects\TestObject.cs" />

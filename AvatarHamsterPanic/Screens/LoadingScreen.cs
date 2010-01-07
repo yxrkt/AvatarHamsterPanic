@@ -140,12 +140,14 @@ namespace GameStateManagement
         SpriteFont font = ScreenManager.Font;
 
         const string message = "Loading...";
+        //System.Diagnostics.Debug.Write( "WHAT THE FUCK\n" );
 
         // Center the text in the viewport.
         Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
         Vector2 viewportSize = new Vector2( viewport.Width, viewport.Height );
         Vector2 textSize = font.MeasureString( message );
-        Vector2 textPosition = ( viewportSize - textSize ) / 2;
+        //Vector2 textPosition = ( viewportSize - textSize ) / 2;
+        Vector2 textPosition = (float)( gameTime.TotalRealTime.TotalSeconds % 1d ) * ( viewportSize - textSize );
 
         Color color = new Color( 255, 255, 255, TransitionAlpha );
 

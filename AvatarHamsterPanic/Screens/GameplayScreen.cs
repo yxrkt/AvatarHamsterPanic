@@ -104,7 +104,7 @@ namespace GameStateManagement
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
-      //Thread.Sleep( 1000 );
+      //Thread.Sleep( 5000 );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -345,8 +345,6 @@ namespace GameStateManagement
       int nBlocks = (int)( (float)nSpaces * pct );
       Vector2 blockPos = new Vector2( xStart, yPos );
       int curPattern = 0;
-
-      System.Diagnostics.Debug.WriteLine( "Spawning row at " + yPos.ToString() + " with " + nBlocks + " blocks." );
 
       // cover as many holes as possible
       int nBits = nSpaces;
