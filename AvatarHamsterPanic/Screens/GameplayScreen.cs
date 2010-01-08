@@ -104,7 +104,7 @@ namespace GameStateManagement
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
-      //Thread.Sleep( 5000 );
+      Thread.Sleep( 5000 );
 
       ScreenManager.Game.ResetElapsedTime();
     }

@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
+    <Compile Include="IMessageDisplay.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />
     <Compile Include="MenuItems\MenuText.cs" />
