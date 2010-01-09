@@ -15,6 +15,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Net;
 using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Input;
 #endregion
 
 namespace GameStateManagement
@@ -39,6 +40,7 @@ namespace GameStateManagement
 
     bool loadingIsSlow;
     bool otherScreensAreGone;
+    bool doneLoading;
 
     GameScreen[] screensToLoad;
 
@@ -64,6 +66,7 @@ namespace GameStateManagement
     {
       this.loadingIsSlow = loadingIsSlow;
       this.screensToLoad = screensToLoad;
+      doneLoading = false;
 
       TransitionOnTime = TimeSpan.FromSeconds( 0.5 );
 
@@ -117,8 +120,8 @@ namespace GameStateManagement
       // off, it is time to actually perform the load.
       if ( otherScreensAreGone )
       {
-        // Start up the background thread, which will update the network
-        // session and draw the animation while we are loading.
+        // Start up the background thread, which will draw the 
+        // animation while we are loading.
         if ( backgroundThread != null )
         {
           loadStartTime = gameTime;
@@ -139,6 +142,15 @@ namespace GameStateManagement
         // Signal the background thread to exit, then wait for it to do so.
         if ( backgroundThread != null )
         {
+          doneLoading = true;
+          InputState input = new InputState();
+          PlayerIndex actingPlayer;
+
+          // Hang until someone presses start.
+          do {
+            input.Update();
+          } while ( !input.IsNewButtonPress( Buttons.Start, null, out actingPlayer ) );
+
           backgroundThreadExit.Set();
           backgroundThread.Join();
         }
@@ -149,7 +161,6 @@ namespace GameStateManagement
         ScreenManager.Game.ResetElapsedTime();
       }
     }
-
 
     /// <summary>
     /// Draws the loading screen.
@@ -178,8 +189,25 @@ namespace GameStateManagement
         SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
         SpriteFont font = ScreenManager.Font;
 
-        //string message = Resources.Loading;
-        string message = "Loading";
+        loadAnimationTimer += gameTime.ElapsedGameTime;
+
+        string message;
+        Color color;
+
+        if ( !doneLoading )
+        {
+          message = "Loading";
+          int dotCount = (int)( loadAnimationTimer.TotalSeconds * 5 ) % 10;
+          message += new string( '.', dotCount );
+          color = new Color( 255, 255, 255, TransitionAlpha );
+        }
+        else
+        {
+          message = "Press Start";
+          float seconds = (float)Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency;
+          byte alpha = (byte)( 255f * ( .5f + .5f * Math.Sin( .5f * seconds * MathHelper.TwoPi ) ) );
+          color = new Color( 255, 255, 255, alpha );
+        }
 
         // Center the text in the viewport.
         Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
@@ -187,15 +215,6 @@ namespace GameStateManagement
         Vector2 textSize = font.MeasureString( message );
         Vector2 textPosition = ( viewportSize - textSize ) / 2;
         textPosition.Y = .8f * viewportSize.Y;
-
-        Color color = new Color( 255, 255, 255, TransitionAlpha );
-
-        // Animate the number of dots after our "Loading..." message.
-        loadAnimationTimer += gameTime.ElapsedGameTime;
-
-        int dotCount = (int)( loadAnimationTimer.TotalSeconds * 5 ) % 10;
-
-        message += new string( '.', dotCount );
 
         //Texture2D image = content.Load<Texture2D>( "controls" );
         Texture2D image = ScreenManager.Game.Content.Load<Texture2D>( "controls" );
@@ -218,8 +237,7 @@ namespace GameStateManagement
 
 
     /// <summary>
-    /// Worker thread draws the loading animation and updates the network
-    /// session while the load is taking place.
+    /// Worker thread draws the loading animation while the load is taking place.
     /// </summary>
     void BackgroundWorkerThread()
     {

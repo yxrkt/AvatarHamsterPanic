@@ -53,6 +53,7 @@ namespace GameStateManagement
     Boundary rightBoundary = null;
     int lastRowPattern = int.MaxValue;
     SlotState[] initSlotInfo;
+    bool firstFrame;
 
     Random random = new Random();
 
@@ -80,6 +81,7 @@ namespace GameStateManagement
       if ( Content == null )
         Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
+      firstFrame = true;
       gameFont = Content.Load<SpriteFont>( "gamefont" );
 
       // pre-load
@@ -87,6 +89,7 @@ namespace GameStateManagement
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
       Content.Load<Model>( "wheel" );
       Content.Load<Model>( "block" );
+      Content.Load<Model>( "block_broken" );
       Content.Load<Model>( "basket" );
       Content.Load<Effect>( "warp" );
 
@@ -101,10 +104,13 @@ namespace GameStateManagement
       lastCamY = Camera.Position.Y;
       UpdateStage(); // spawn additional rows before loading screen is over
 
+      ModelMeshCollection meshes = Content.Load<Model>( "block_broken" ).Meshes;
+      ObjectTable.Add( new MeshClusterExplosion( this, Vector3.Zero, Vector3.Zero, meshes ) );
+
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
-      Thread.Sleep( 5000 );
+      //Thread.Sleep( 5000 );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -182,6 +188,12 @@ namespace GameStateManagement
     {
       if ( input == null )
         throw new ArgumentNullException( "input" );
+
+      if ( firstFrame )
+      {
+        firstFrame = false;
+        return;
+      }
 
       // The game pauses either if the user presses the pause button, or if
       // they unplug the active gamepad. This requires us to keep track of

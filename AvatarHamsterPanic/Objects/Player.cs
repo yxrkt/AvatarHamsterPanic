@@ -67,10 +67,18 @@ namespace GameObjects
       {
         if ( data.Object.Parent is FloorBlock )
         {
+          // remove the block
           FloorBlock block = (FloorBlock)data.Object.Parent;
           block.BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
           block.BoundingPolygon.Release();
           Screen.ObjectTable.MoveToTrash( block );
+
+          // add the exploding block particle system
+          Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
+          Vector3 contact = new Vector3( data.Intersection, 0f );
+          ModelMeshCollection meshes = Screen.Content.Load<Model>( "block_broken" ).Meshes;
+          Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, contact, meshes ) );
+
           return false;
         }
       }

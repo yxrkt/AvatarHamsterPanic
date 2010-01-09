@@ -103,6 +103,7 @@
     <Compile Include="Screens\OptionsMenuScreen.cs" />
     <Compile Include="Screens\PauseMenuScreen.cs" />
     <Compile Include="Screens\SignInMenuScreen.cs" />
+    <Compile Include="XFileUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameStateSample.PNG" />
