@@ -104,9 +104,6 @@ namespace GameStateManagement
       lastCamY = Camera.Position.Y;
       UpdateStage(); // spawn additional rows before loading screen is over
 
-      ModelMeshCollection meshes = Content.Load<Model>( "block_broken" ).Meshes;
-      ObjectTable.Add( new MeshClusterExplosion( this, Vector3.Zero, Vector3.Zero, meshes ) );
-
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
@@ -236,7 +233,8 @@ namespace GameStateManagement
 
       // need to set vertex declaration every frame for shaders
       GraphicsDevice graphics = ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
+      graphics.VertexDeclaration = new VertexDeclaration( graphics, elements );
 
       foreach ( GameObject obj in ObjectTable.AllObjects )
         obj.Draw();

@@ -67,19 +67,24 @@ namespace GameObjects
       {
         if ( data.Object.Parent is FloorBlock )
         {
-          // remove the block
           FloorBlock block = (FloorBlock)data.Object.Parent;
-          block.BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
-          block.BoundingPolygon.Release();
-          Screen.ObjectTable.MoveToTrash( block );
 
-          // add the exploding block particle system
-          Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
-          Vector3 contact = new Vector3( data.Intersection, 0f );
-          ModelMeshCollection meshes = Screen.Content.Load<Model>( "block_broken" ).Meshes;
-          Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, contact, meshes ) );
+          // make sure this only happens once
+          if ( ( block.BoundingPolygon.Flags & PhysBodyFlags.Ghost ) == 0 )
+          {
+            // remove the block
+            block.BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
+            block.BoundingPolygon.Release();
+            Screen.ObjectTable.MoveToTrash( block );
 
-          return false;
+            // add the exploding block particle system
+            Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
+            Vector3 contact = new Vector3( data.Intersection, 0f );
+            ModelMeshCollection meshes = Screen.Content.Load<Model>( "block_broken" ).Meshes;
+            Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, contact, meshes ) );
+
+            return false;
+          }
         }
       }
       return true;

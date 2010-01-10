@@ -66,6 +66,7 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CustomVertex.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="IMessageDisplay.cs" />
