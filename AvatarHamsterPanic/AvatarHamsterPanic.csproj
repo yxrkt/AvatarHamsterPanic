@@ -83,7 +83,6 @@
     <Compile Include="Objects\ParticleSystem.cs" />
     <Compile Include="Objects\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />
-    <Compile Include="Objects\TestObject.cs" />
     <Compile Include="PhysicsManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RandomBag.cs" />

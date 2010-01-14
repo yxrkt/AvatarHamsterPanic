@@ -79,9 +79,8 @@ namespace GameObjects
 
             // add the exploding block particle system
             Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
-            Vector3 contact = new Vector3( data.Intersection, 0f );
             ModelMeshCollection meshes = Screen.Content.Load<Model>( "block_broken" ).Meshes;
-            Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, contact, meshes ) );
+            Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, meshes ) );
 
             return false;
           }
@@ -177,6 +176,10 @@ namespace GameObjects
       if ( Respawning && ( (int)Math.Floor( RespawnTime * 16f ) % 2 ) == 0 )
         return;
 
+      GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
+      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      SetRenderState( graphics.RenderState );
+
       Matrix transform;
 
       // draw wheel
@@ -203,6 +206,16 @@ namespace GameObjects
       Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
       Avatar.Renderer.World = Matrix.CreateScale( Avatar.Scale ) * matRot * matTrans;
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
+    }
+
+    private void SetRenderState( RenderState renderState )
+    {
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+
+      renderState.AlphaBlendEnable = false;
+
+      renderState.DepthBufferEnable = true;
+      renderState.DepthBufferWriteEnable = true;
     }
 
     private void UpdateAvatar( GameTime gameTime )

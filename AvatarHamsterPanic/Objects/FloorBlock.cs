@@ -12,6 +12,12 @@ namespace GameObjects
 {
   class FloorBlock : GameObject
   {
+    Effect effect;
+    EffectParameter effectParameterWorld;
+    EffectParameter effectParameterView;
+    EffectParameter effectParameterProjection;
+    EffectParameter effectParameterEye;
+
     public static float Size { get; private set; }
     public static float Height { get; private set; }
 
@@ -23,9 +29,20 @@ namespace GameObjects
     public FloorBlock( GameplayScreen screen, Vector2 pos )
       : base( screen )
     {
-      Model = screen.Content.Load<Model>( "block" );
-      DiffuseMap = screen.Content.Load<Texture2D>( "glassDiffuse" );
-      NormalMap  = screen.Content.Load<Texture2D>( "glassNormal" );
+      ContentManager content = screen.Content;
+      Model = content.Load<Model>( "block" );
+      DiffuseMap = content.Load<Texture2D>( "glassDiffuse" );
+      NormalMap  = content.Load<Texture2D>( "glassNormal" );
+
+      effect = content.Load<Effect>( "basic" ).Clone( screen.ScreenManager.GraphicsDevice );
+      effect.CurrentTechnique = effect.Techniques["Basic"];
+      effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
+      effect.Parameters["NormalMap"].SetValue( NormalMap );
+
+      effectParameterWorld = effect.Parameters["World"];
+      effectParameterView = effect.Parameters["View"];
+      effectParameterProjection = effect.Parameters["Projection"];
+      effectParameterEye = effect.Parameters["Eye"];
 
       BoundingPolygon = new PhysPolygon( Size, Height, pos, 10 );
       BoundingPolygon.Elasticity = 1f;
@@ -62,44 +79,18 @@ namespace GameObjects
 
     public override void Draw()
     {
-      /**/
-      foreach ( ModelMesh mesh in Model.Meshes )
-      {
-        foreach ( BasicEffect effect in mesh.Effects )
-        {
-          Matrix world;
-          GetTransform( out world );
-
-          effect.Alpha = .5f;
-          effect.DiffuseColor = new Color( 0xB1, 0xBF, 0xD0, 0xFF ).ToVector3();
-
-          effect.EnableDefaultLighting();
-          effect.World = world;
-          effect.View = Screen.View;
-          effect.Projection = Screen.Projection;
-        }
-
-        mesh.Draw();
-      }
-      /*/
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      CullMode lastCullMode = graphics.RenderState.CullMode;
-      graphics.RenderState.CullMode = CullMode.None;
-      graphics.RenderState.AlphaBlendEnable = true;
+      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      SetRenderState( graphics.RenderState );
 
-
-      Effect effect = Screen.Content.Load<Effect>( "basic" );
-      effect.CurrentTechnique = effect.Techniques["NormalMap"];
       effect.Begin();
 
       Matrix world;
       GetTransform( out world );
-      effect.Parameters["World"].SetValue( world );
-      effect.Parameters["View"].SetValue( Screen.View );
-      effect.Parameters["Projection"].SetValue( Screen.Projection );
-      effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
-      effect.Parameters["NormalMap"].SetValue( NormalMap );
-      effect.Parameters["Eye"].SetValue( Screen.Camera.Position );
+      effectParameterWorld.SetValue( world );
+      effectParameterView.SetValue( Screen.View );
+      effectParameterProjection.SetValue( Screen.Projection );
+      effectParameterEye.SetValue( Screen.Camera.Position );
 
       foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
       {
@@ -118,9 +109,18 @@ namespace GameObjects
       }
 
       effect.End();
+    }
 
-      graphics.RenderState.CullMode = lastCullMode;
-      /**/
+    private void SetRenderState( RenderState renderState )
+    {
+      renderState.CullMode = CullMode.None;
+
+      renderState.AlphaBlendEnable = true;
+      renderState.SourceBlend = Blend.SourceAlpha;
+      renderState.DestinationBlend = Blend.InverseSourceAlpha;
+
+      renderState.DepthBufferEnable = true;
+      renderState.DepthBufferWriteEnable = true;
     }
   }
 }

@@ -104,6 +104,8 @@ namespace GameObjects
     public override void Draw()
     {
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
+      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      SetRenderState( graphics.RenderState );
 
       if ( !WarpingOut )
       {
@@ -152,6 +154,18 @@ namespace GameObjects
 
         warpEffect.End();
       }
+    }
+
+    private void SetRenderState( RenderState renderState )
+    {
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+
+      renderState.AlphaBlendEnable = true;
+      renderState.SourceBlend = Blend.SourceAlpha;
+      renderState.DestinationBlend = Blend.InverseSourceAlpha;
+
+      renderState.DepthBufferEnable = true;
+      renderState.DepthBufferWriteEnable = true;
     }
   }
 }

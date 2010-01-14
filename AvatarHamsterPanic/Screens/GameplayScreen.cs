@@ -107,6 +107,15 @@ namespace GameStateManagement
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
+      // make a test particle system
+      Texture2D particleTex = Content.Load<Texture2D>( "particleRound" );
+      ParticleConeParams pars = new ParticleConeParams( 3f, 5f, .5f, .75f, .07f, .07f, 1.5f, Color.White, 3 );
+      ParticleCone cone = new ParticleCone( this, Vector3.Zero, particleTex, Vector3.Up, 
+                                            MathHelper.ToRadians( 30f ), 300f, 100f, pars );
+      ObjectTable.Add( cone );
+
+      Matrix ident = Matrix.CreateBillboard( Vector3.Zero, -Vector3.UnitZ, Vector3.Up, null );
+
       //Thread.Sleep( 5000 );
 
       ScreenManager.Game.ResetElapsedTime();
@@ -335,7 +344,7 @@ namespace GameStateManagement
       float birthLine = ( dist.Value * ray.Direction + ray.Position ).Y - FloorBlock.Size / 8f;
       float deathLine = -birthLine;
 
-      CameraInfo = new CameraInfo( birthLine, deathLine, /*/0f/*/-1.25f/**/ );
+      CameraInfo = new CameraInfo( birthLine, deathLine, /**/0f/*/-1.25f/**/ );
     }
 
     private void SpawnRow( float yPos, int lowPct, int hiPct )
