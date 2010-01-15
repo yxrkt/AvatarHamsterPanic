@@ -107,14 +107,12 @@ namespace GameStateManagement
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
-      // make a test particle system
-      Texture2D particleTex = Content.Load<Texture2D>( "particleRound" );
-      ParticleConeParams pars = new ParticleConeParams( 3f, 5f, .5f, .75f, .07f, .07f, 1.5f, Color.White, 3 );
-      ParticleCone cone = new ParticleCone( this, Vector3.Zero, particleTex, Vector3.Up, 
-                                            MathHelper.ToRadians( 30f ), 300f, 100f, pars );
-      ObjectTable.Add( cone );
-
-      Matrix ident = Matrix.CreateBillboard( Vector3.Zero, -Vector3.UnitZ, Vector3.Up, null );
+      //// make a test particle system
+      //Texture2D particleTex = Content.Load<Texture2D>( "particleRound" );
+      //ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 
+      //                                                       3f, 5f, .5f, .75f, .07f, .07f, 1.5f, Color.White, 3 );
+      //ParticleEmitter cone = new ParticleEmitter( this, Vector3.Zero, factory, particleTex );
+      //ObjectTable.Add( cone );
 
       //Thread.Sleep( 5000 );
 
@@ -245,20 +243,25 @@ namespace GameStateManagement
       VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
       graphics.VertexDeclaration = new VertexDeclaration( graphics, elements );
 
+      // particles must be drawn last
       foreach ( GameObject obj in ObjectTable.AllObjects )
-        obj.Draw();
+      {
+        if ( !( obj is ParticleEmitter ) )
+          obj.Draw();
+      }
+
+      ReadOnlyCollection<ParticleEmitter> emitters = ObjectTable.GetObjects<ParticleEmitter>();
+      foreach ( ParticleEmitter emitter in emitters )
+        emitter.Draw();
 
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
 
       spriteBatch.Begin();
 
-      //double fps = 1f / gameTime.ElapsedGameTime.TotalSeconds;
-      string debugString = "Bodies: " + PhysBody.AllBodies.Count.ToString();
-      //string debugString = players[0].BoundingCircle.Position.ToString();
-      //string debugString = ObjectTable.GetObjects<Player>()[0].BoundingCircle.Velocity.ToString();
-      //string debugString = "Floor Blocks: " + ObjectTable.GetObjects<FloorBlock>().Count.ToString();
-      //string debugString = ObjectTable.GetObjects<Player>()[0].BoundingCircle.AngularVelocity.ToString();
-      spriteBatch.DrawString( gameFont, debugString, new Vector2( 100f, 100f ), Color.BlanchedAlmond );
+      // draw player huds
+      ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
+      foreach ( Player player in players )
+        player.DrawHUD( spriteBatch );
 
       spriteBatch.End();
 

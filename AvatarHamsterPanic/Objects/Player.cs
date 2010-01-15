@@ -15,9 +15,23 @@ namespace GameObjects
 {
   class Player : GameObject
   {
+    static float uCoord = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
+    static float vCoord = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
+
+    ParticleEmitter emitter;
+    GamerProfile gamerProfile;
+
     public static float Scale { get; private set; }
     public static float DeathLine { get; set; }
     public static double RespawnLength { get; private set; }
+
+    public PlayerIndex PlayerIndex { get; set; }
+    public PhysCircle BoundingCircle { get; private set; }
+    public Model WheelModel { get; private set; }
+    public Avatar Avatar { get; set; }
+    public double RespawnTime { get; private set; }
+    public bool Respawning { get { return RespawnTime < RespawnLength; } }
+    public SignedInGamer Gamer { get; private set; }
 
     static Player()
     {
@@ -34,6 +48,11 @@ namespace GameObjects
       RespawnTime = float.MaxValue;
 
       PlayerIndex = playerIndex;
+      if ( playerIndex >= PlayerIndex.One )
+      {
+        Gamer = SignedInGamer.SignedInGamers[playerIndex];
+        gamerProfile = Gamer.GetProfile();
+      }
 
       Avatar = avatar;
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
@@ -41,14 +60,14 @@ namespace GameObjects
       BoundingCircle.Elasticity = .4f;
       BoundingCircle.Friction = .5f;
       BoundingCircle.Collided += KillBlockIfPwnt;
-    }
+      BoundingCircle.Responded += new PhysBody.CollisionEvent( HandleCollisionResponse );
 
-    public PlayerIndex PlayerIndex { get; set; }
-    public PhysCircle BoundingCircle { get; private set; }
-    public Model WheelModel { get; private set; }
-    public Avatar Avatar { get; set; }
-    public double RespawnTime { get; private set; }
-    public bool Respawning { get { return RespawnTime < RespawnLength; } }
+      Texture2D particleTex = screen.Content.Load<Texture2D>( "particleRound" );
+      ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 2f, 4f, 
+                                                             .5f, .75f, .03f, .03f, 2.5f, Color.White, 3 );
+      emitter = new ParticleEmitter( screen, Vector3.Zero, factory, particleTex );
+      screen.ObjectTable.Add( emitter );
+    }
 
     public void GetWheelTransform( out Matrix transform )
     {
@@ -86,6 +105,43 @@ namespace GameObjects
           }
         }
       }
+      return true;
+    }
+
+    private bool HandleCollisionResponse( PhysBody collider, CollisResult data )
+    {
+      PhysCircle circle = BoundingCircle;
+
+      // set emitter direction
+      ParticleConeFactory factory = (ParticleConeFactory)emitter.Factory;
+
+      // set emitter position
+      Vector3 position = new Vector3( data.Intersection, FloorBlock.Size / 2f - .2f );
+      emitter.Position = position;
+
+      // spit some particles
+      Vector2 r = Vector2.Normalize( data.Intersection - collider.Position );
+      Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
+      Vector2 dir = circle.Velocity;
+
+      Vector2 vpn = Vector2.Normalize( vp );
+      factory.Direction = new Vector3( uCoord * vpn + vCoord * -r, 0f );
+
+      Vector2 sum = vp + dir;
+      if ( sum != Vector2.Zero )
+      {
+        float sumLength = sum.Length();
+        if ( sumLength > .05f )
+        {
+          float numToSpit = .5f * sumLength;
+          emitter.Position += new Vector3( ( vpn * .1f ), 0f );
+          emitter.Spit( numToSpit );
+          position.Z = -position.Z;
+          emitter.Position = position;
+          emitter.Spit( numToSpit );
+        }
+      }
+
       return true;
     }
 
@@ -206,6 +262,12 @@ namespace GameObjects
       Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
       Avatar.Renderer.World = Matrix.CreateScale( Avatar.Scale ) * matRot * matTrans;
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
+    }
+
+    public void DrawHUD( SpriteBatch spriteBatch )
+    {
+      Rectangle rect = new Rectangle( 100 * ( (int)PlayerIndex + 1 ), 400, 64, 64 );
+      spriteBatch.Draw( gamerProfile.GamerPicture, rect, Color.White );
     }
 
     private void SetRenderState( RenderState renderState )

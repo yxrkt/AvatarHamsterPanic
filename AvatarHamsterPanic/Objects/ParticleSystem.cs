@@ -9,6 +9,32 @@ using System.Diagnostics;
 
 namespace GameObjects
 {
+  /// <summary>
+  /// Base particle class
+  /// </summary>
+  class Particle
+  {
+    public Vector3 Position;
+    public Vector3 Velocity;
+    public float Time, Life;
+    public float Size;
+    public float Stretch;
+    public Color Color;
+    public bool Dead;
+    public int FadePower;
+  }
+
+  /// <summary>
+  /// Particle factory interface
+  /// </summary>
+  interface IParticleFactory
+  {
+    Particle CreateParticle( Random rand, Vector3 origin );
+  }
+
+  /// <summary>
+  /// Base particle class
+  /// </summary>
   abstract class ParticleSystem : GameObject
   {
     protected static Random rand = new Random();
@@ -25,6 +51,9 @@ namespace GameObjects
     public abstract override void Draw();
   }
 
+  /// <summary>
+  /// Hacky mesh explosion particle system
+  /// </summary>
   class MeshClusterExplosion : ParticleSystem
   {
     const float fadeTime = 2f;
@@ -145,16 +174,23 @@ namespace GameObjects
     }
   }
 
-  class ParticleCone : ParticleSystem
+  class ParticleEmitter : ParticleSystem
   {
-    Vector3 direction;
-    float angle;
-    float coneRadius;
-    float life, time;
-    float rate;
-    Texture2D texture;
-    int nParticlesSpawned;
-    int nParticlesAlive;
+    #region Fields
+
+    IParticleFactory factory;
+    public IParticleFactory Factory { get { return factory; } }
+
+    bool spraying;
+    bool dieAfterSpray;
+    float sprayTime;
+    float sprayDuration;
+    float sprayRate;
+    float sprayLastParticle;
+    int nParticles;
+
+    float spitRemainder;
+
     List<Particle> particles;
 
     Effect effect;
@@ -163,18 +199,24 @@ namespace GameObjects
     EffectParameter effectParameterProjection;
     EffectParameter effectParameterColor;
 
+    // quad info for drawing
     static VertexPositionTexture[] vertices;
     static int[] indices = { 0, 2, 1, 1, 2, 3 };
 
-    ParticleConeParams creationParams;
+    #endregion Fields
 
-    static ParticleCone()
+    #region Initialization
+
+    /// <summary>
+    /// Initialize quad vertices
+    /// </summary>
+    static ParticleEmitter()
     {
       vertices = new VertexPositionTexture[4];
-      vertices[0].Position = new Vector3( -.5f,  .5f,  0f );
-      vertices[1].Position = new Vector3(  .5f,  .5f,  0f );
-      vertices[2].Position = new Vector3( -.5f, -.5f,  0f );
-      vertices[3].Position = new Vector3(  .5f, -.5f,  0f );
+      vertices[0].Position = new Vector3( -.5f, .5f, 0f );
+      vertices[1].Position = new Vector3( .5f, .5f, 0f );
+      vertices[2].Position = new Vector3( -.5f, -.5f, 0f );
+      vertices[3].Position = new Vector3( .5f, -.5f, 0f );
 
       vertices[0].TextureCoordinate = new Vector2( 0f, 0f );
       vertices[1].TextureCoordinate = new Vector2( 1f, 0f );
@@ -182,26 +224,25 @@ namespace GameObjects
       vertices[3].TextureCoordinate = new Vector2( 1f, 1f );
     }
 
-    public ParticleCone( GameplayScreen screen, Vector3 position, Texture2D texture, Vector3 direction, 
-                         float angle, float life, float rate, ParticleConeParams creationParams )
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public ParticleEmitter( GameplayScreen screen, Vector3 position, IParticleFactory factory, Texture2D texture )
       : base( screen, position )
     {
-      this.texture = texture;
-      this.life = life;
-      this.rate = rate;
-      this.angle = angle;
-      this.direction = direction;
-      this.creationParams = creationParams;
+      this.factory = factory;
 
-      coneRadius = (float)Math.Tan( angle / 2f );
+      spraying = false;
+      dieAfterSpray = false;
+      sprayTime = 0f;
+      nParticles = 0;
+      spitRemainder = 0f;
 
-      time = 0f;
-      nParticlesSpawned = 0;
-      nParticlesAlive = 0;
-      particles = new List<Particle>();
+      particles = new List<Particle>( 64 );
 
-      effect = Screen.Content.Load<Effect>( "particleEffect" );
-      effect = effect.Clone( Screen.ScreenManager.GraphicsDevice );
+      GraphicsDevice device = screen.ScreenManager.GraphicsDevice;
+      effect = Screen.Content.Load<Effect>( "particleEffect" ).Clone( device );
+      effect = effect.Clone( device );
       effect.Parameters["Diffuse"].SetValue( texture );
 
       effectParameterWorld = effect.Parameters["World"];
@@ -210,50 +251,74 @@ namespace GameObjects
       effectParameterColor = effect.Parameters["Color"];
     }
 
+    #endregion
+
+    #region Update and Draw
+
     public override void Update( GameTime gameTime )
     {
       float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
-      time += elapsed;
 
-      // spawn particles if system hasn't expired
-      if ( time < life )
-      {
-        int nParticlesTotal = (int)( rate * time );
-        while ( nParticlesSpawned < nParticlesTotal )
-        {
-          SpawnParticle();
-          nParticlesSpawned++;
-          nParticlesAlive++;
-        }
-      }
-      // wait for all particles to finish before destructing
-      else if ( nParticlesAlive == 0 )
-      {
-        Screen.ObjectTable.MoveToTrash( this );
-      }
+      if ( spraying )
+        UpdateSpray( elapsed );
 
       // update particles
       foreach ( Particle particle in particles )
       {
-        if ( particle.time >= particle.life )
+        if ( particle.Time >= particle.Life )
         {
-          particle.dead = true;
-          nParticlesAlive--;
+          particle.Dead = true;
+          nParticles--;
         }
         else
         {
-          particle.Position += particle.velocity * elapsed;
-          particle.color.A = (byte)( 255.0 * ( 1.0 - Math.Pow( particle.time / particle.life, creationParams.fadePower ) ) );
-          particle.time += elapsed;
+          particle.Position += particle.Velocity * elapsed;
+          particle.Color.A = (byte)( 255.0 * ( 1.0 - Math.Pow( particle.Time / particle.Life, particle.FadePower ) ) );
+          particle.Time += elapsed;
         }
       }
     }
 
+    private void UpdateSpray( float elapsed )
+    {
+      sprayTime += elapsed;
+
+      // spawn particles if system hasn't expired
+      if ( sprayTime < sprayDuration )
+      {
+        float invSprayRate = 1f / sprayRate;
+        float sprayLimit = sprayTime - invSprayRate;
+        while ( sprayLastParticle < sprayLimit )
+        {
+          AddParticle( factory.CreateParticle( rand, Position ) );
+          sprayLastParticle += invSprayRate;
+          nParticles++;
+        }
+      }
+      // wait for all particles to finish before destructing
+      else if ( nParticles == 0 )
+      {
+        spraying = false;
+        if ( dieAfterSpray )
+          Screen.ObjectTable.MoveToTrash( this );
+      }
+    }
+
+    private void AddParticle( Particle particle )
+    {
+      // overwrite dead particle or add new particle if none are dead
+      int deadParticleIndex = particles.FindIndex( p => p.Dead );
+      if ( deadParticleIndex != -1 )
+        particles[deadParticleIndex] = particle;
+      else
+        particles.Add( particle );
+    }
+
     public override void Draw()
     {
-      GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionTexture.VertexElements );
-      SetRenderState( graphics.RenderState );
+      GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
+      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionTexture.VertexElements );
+      SetRenderState( device.RenderState );
 
       Vector3 eye = Screen.Camera.Position;
       Vector3 up = Screen.Camera.Up;
@@ -266,23 +331,23 @@ namespace GameObjects
 
       foreach ( Particle particle in particles )
       {
-        if ( particle.dead ) continue;
+        if ( particle.Dead ) continue;
 
         effect.CurrentTechnique = effect.Techniques[0];
         effect.Begin();
 
         //Matrix world = Matrix.CreateBillboard( particle.Position, eye, up, null );
-        float length = particle.velocity.Length();
-        Vector3 axis = particle.velocity / length;
+        float length = particle.Velocity.Length();
+        Vector3 axis = particle.Velocity / length;
         Matrix world = Matrix.CreateConstrainedBillboard( particle.Position, eye, axis, null, null );
-        world = Matrix.CreateScale( particle.size, ( 1f + creationParams.stretch * length ) * particle.size, particle.size ) * world;
+        world = Matrix.CreateScale( particle.Size, ( 1f + particle.Stretch * length ) * particle.Size, particle.Size ) * world;
         effectParameterWorld.SetValue( world );
-        effectParameterColor.SetValue( particle.color.ToVector4() );
+        effectParameterColor.SetValue( particle.Color.ToVector4() );
 
         foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
         {
           pass.Begin();
-          graphics.DrawUserIndexedPrimitives( PrimitiveType.TriangleList, vertices, 0, 4, indices, 0, 2 );
+          device.DrawUserIndexedPrimitives( PrimitiveType.TriangleList, vertices, 0, 4, indices, 0, 2 );
           pass.End();
         }
 
@@ -301,69 +366,64 @@ namespace GameObjects
       renderState.ReferenceAlpha = 0;
 
       renderState.DepthBufferWriteEnable = false;
+      renderState.DepthBufferEnable = true;
     }
 
-    private void SpawnParticle()
+    #endregion
+
+    #region Public Methods
+
+    /// <summary>
+    /// Sprays particles at a given rate and duration. Can optionally
+    /// cause the emitter to self-destruct when done.
+    /// </summary>
+    /// <param name="duration">The amount of time to spray particles.</param>
+    /// <param name="rate">The amount of particles to spray per second.</param>
+    /// <param name="dieWhenDone">True if the emitter should self-destruct when done spraying.</param>
+    public void Spray( float duration, float rate, bool dieWhenDone )
     {
-      Particle particle = new Particle();
-      particle.Position = Position;
-
-      // get random velocity
-      float speed = ( creationParams.speedMax - creationParams.speedMin ) * (float)rand.NextDouble() + creationParams.speedMin;
-      Vector3 randAxis = new Vector3( (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f );
-      Vector3 cross = Vector3.Cross( direction, randAxis );
-
-      if ( cross == Vector3.Zero )
-      {
-        // how unlucky can one be...
-        particle.velocity = direction * speed;
-      }
-      else
-      {
-        cross.Normalize();
-        cross *= ( (float)rand.NextDouble() * coneRadius );
-        particle.velocity = speed * ( direction + cross );
-      }
-
-      // ...and everything else
-      particle.time = 0f;
-      particle.life = ( creationParams.lifeMax - creationParams.lifeMin ) * (float)rand.NextDouble() + creationParams.lifeMin;
-      particle.size = ( creationParams.sizeMax - creationParams.sizeMin ) * (float)rand.NextDouble() + creationParams.sizeMin;
-      particle.color = creationParams.color;
-      particle.dead = false;
-
-
-      // overwrite dead particle or add new particle if none are dead
-      int deadParticleIndex = particles.FindIndex( p => p.dead );
-      if ( deadParticleIndex != -1 )
-        particles[deadParticleIndex] = particle;
-      else
-        particles.Add( particle );
+      spraying = true;
+      sprayDuration = duration;
+      sprayRate = rate;
+      sprayLastParticle = 0f;
+      sprayTime = 0f;
     }
 
-    class Particle
+    /// <summary>
+    /// Instantly creates a desired amount of particles.
+    /// </summary>
+    /// <param name="nParticles">The number of particles to create.</param>
+    public void Spit( float nParticles )
     {
-      public Vector3 Position;
-      public Vector3 velocity;
-      public float time, life;
-      public float size;
-      public Color color;
-      public bool dead;
+      nParticles += spitRemainder;
+      int floor = (int)nParticles;
+      spitRemainder = nParticles - (float)floor; 
+      for ( int i = 0; i < floor; ++i )
+        AddParticle( factory.CreateParticle( rand, Position ) );
     }
+
+    #endregion
   }
 
-  struct ParticleConeParams
+  class ParticleConeFactory : IParticleFactory
   {
-    public float speedMin, speedMax;
-    public float lifeMin, lifeMax;
-    public float sizeMin, sizeMax;
-    public float stretch;
-    public Color color;
-    public int fadePower;
+    Vector3 direction;
+    float coneRadius;
+    float speedMin, speedMax;
+    float lifeMin, lifeMax;
+    float sizeMin, sizeMax;
+    float stretch;
+    Color color;
+    int fadePower;
 
-    public ParticleConeParams( float speedMin, float speedMax, float lifeMin, float lifeMax,
-                               float sizeMin, float sizeMax, float stretch, Color color, int fadePower )
+    public Vector3 Direction { get { return direction; } set { direction = value; } }
+
+    public ParticleConeFactory( Vector3 direction, float angle, float speedMin, float speedMax, float lifeMin, float lifeMax,
+                                float sizeMin, float sizeMax, float stretch, Color color, int fadePower )
     {
+      coneRadius = (float)Math.Tan( angle / 2f );
+
+      this.direction = direction;
       this.speedMin = speedMin;
       this.speedMax = speedMax;
       this.lifeMin = lifeMin;
@@ -373,6 +433,40 @@ namespace GameObjects
       this.stretch = stretch;
       this.color = color;
       this.fadePower = fadePower;
+    }
+
+    public Particle CreateParticle( Random rand, Vector3 origin )
+    {
+      Particle particle = new Particle();
+      particle.Position = origin;
+
+      // get random velocity
+      float speed = ( speedMax - speedMin ) * (float)rand.NextDouble() + speedMin;
+      Vector3 randAxis = new Vector3( (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f );
+      Vector3 cross = Vector3.Cross( direction, randAxis );
+
+      if ( cross == Vector3.Zero )
+      {
+        // how unlucky can one be...
+        particle.Velocity = direction * speed;
+      }
+      else
+      {
+        cross.Normalize();
+        cross *= ( (float)rand.NextDouble() * coneRadius );
+        particle.Velocity = speed * ( direction + cross );
+      }
+
+      // ...and everything else
+      particle.Time = 0f;
+      particle.Life = ( lifeMax - lifeMin ) * (float)rand.NextDouble() + lifeMin;
+      particle.Size = ( sizeMax - sizeMin ) * (float)rand.NextDouble() + sizeMin;
+      particle.Stretch = stretch;
+      particle.Color = color;
+      particle.Dead = false;
+      particle.FadePower = fadePower;
+
+      return particle;
     }
   }
 }
