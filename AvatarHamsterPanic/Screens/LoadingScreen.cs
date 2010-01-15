@@ -216,8 +216,7 @@ namespace GameStateManagement
         Vector2 textPosition = ( viewportSize - textSize ) / 2;
         textPosition.Y = .8f * viewportSize.Y;
 
-        //Texture2D image = content.Load<Texture2D>( "controls" );
-        Texture2D image = ScreenManager.Game.Content.Load<Texture2D>( "controls" );
+        Texture2D image = ScreenManager.Game.Content.Load<Texture2D>( "Textures/controls" );
 
         // Draw the text.
         spriteBatch.Begin();

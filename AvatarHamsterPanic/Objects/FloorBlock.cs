@@ -30,11 +30,11 @@ namespace GameObjects
       : base( screen )
     {
       ContentManager content = screen.Content;
-      Model = content.Load<Model>( "block" );
-      DiffuseMap = content.Load<Texture2D>( "glassDiffuse" );
-      NormalMap  = content.Load<Texture2D>( "glassNormal" );
+      Model = content.Load<Model>( "Models/block" );
+      DiffuseMap = content.Load<Texture2D>( "Textures/glassDiffuse" );
+      NormalMap  = content.Load<Texture2D>( "Textures/glassNormal" );
 
-      effect = content.Load<Effect>( "basic" ).Clone( screen.ScreenManager.GraphicsDevice );
+      effect = content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
       effect.CurrentTechnique = effect.Techniques["Basic"];
       effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
       effect.Parameters["NormalMap"].SetValue( NormalMap );

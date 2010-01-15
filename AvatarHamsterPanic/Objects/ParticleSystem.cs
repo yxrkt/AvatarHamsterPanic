@@ -241,7 +241,7 @@ namespace GameObjects
       particles = new List<Particle>( 64 );
 
       GraphicsDevice device = screen.ScreenManager.GraphicsDevice;
-      effect = Screen.Content.Load<Effect>( "particleEffect" ).Clone( device );
+      effect = Screen.Content.Load<Effect>( "Effects/particleEffect" ).Clone( device );
       effect = effect.Clone( device );
       effect.Parameters["Diffuse"].SetValue( texture );
 

@@ -15,9 +15,10 @@ namespace GameObjects
 {
   class Player : GameObject
   {
-    static float uCoord = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
-    static float vCoord = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
+    static float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
+    static float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
+    SpriteFont HUDNameFont;
     ParticleEmitter emitter;
     GamerProfile gamerProfile;
 
@@ -43,7 +44,9 @@ namespace GameObjects
     public Player( GameplayScreen screen, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
       : base( screen )
     {
-      WheelModel = Screen.Content.Load<Model>( "wheel" );
+      WheelModel = screen.Content.Load<Model>( "Models/wheel" );
+
+      HUDNameFont = screen.Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
       RespawnTime = float.MaxValue;
 
@@ -62,7 +65,7 @@ namespace GameObjects
       BoundingCircle.Collided += KillBlockIfPwnt;
       BoundingCircle.Responded += new PhysBody.CollisionEvent( HandleCollisionResponse );
 
-      Texture2D particleTex = screen.Content.Load<Texture2D>( "particleRound" );
+      Texture2D particleTex = screen.Content.Load<Texture2D>( "Textures/particleRound" );
       ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 2f, 4f, 
                                                              .5f, .75f, .03f, .03f, 2.5f, Color.White, 3 );
       emitter = new ParticleEmitter( screen, Vector3.Zero, factory, particleTex );
@@ -98,7 +101,7 @@ namespace GameObjects
 
             // add the exploding block particle system
             Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
-            ModelMeshCollection meshes = Screen.Content.Load<Model>( "block_broken" ).Meshes;
+            ModelMeshCollection meshes = Screen.Content.Load<Model>( "Models/block_broken" ).Meshes;
             Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, meshes ) );
 
             return false;
@@ -125,7 +128,7 @@ namespace GameObjects
       Vector2 dir = circle.Velocity;
 
       Vector2 vpn = Vector2.Normalize( vp );
-      factory.Direction = new Vector3( uCoord * vpn + vCoord * -r, 0f );
+      factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
 
       Vector2 sum = vp + dir;
       if ( sum != Vector2.Zero )
@@ -134,7 +137,7 @@ namespace GameObjects
         if ( sumLength > .05f )
         {
           float numToSpit = .5f * sumLength;
-          emitter.Position += new Vector3( ( vpn * .1f ), 0f );
+          //emitter.Position += new Vector3( ( vpn * .1f ), 0f );
           emitter.Spit( numToSpit );
           position.Z = -position.Z;
           emitter.Position = position;
@@ -264,10 +267,33 @@ namespace GameObjects
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
     }
 
-    public void DrawHUD( SpriteBatch spriteBatch )
+    public void DrawHUD( SpriteBatch spriteBatch, int hudPosition )
     {
-      Rectangle rect = new Rectangle( 100 * ( (int)PlayerIndex + 1 ), 400, 64, 64 );
-      spriteBatch.Draw( gamerProfile.GamerPicture, rect, Color.White );
+      const int hudWidth  = 256;
+      const int hudHeight = 128;
+
+      Rectangle safeRect = Screen.SafeRect;
+
+      int x0 = safeRect.X + hudPosition * ( safeRect.Width - hudWidth ) / 3;
+      int y0 = safeRect.Y + safeRect.Height - hudHeight;
+
+      // draw the base object
+      Rectangle rect = new Rectangle( x0, y0, hudWidth, hudHeight );
+      spriteBatch.Draw( Screen.Content.Load<Texture2D>( "Textures/playerHUD" ), rect, Color.CornflowerBlue );
+
+      // if a human player, draw the profile picture
+      if ( gamerProfile != null )
+      {
+        rect = new Rectangle( x0 + 89, y0 + 14, 59, 59 );
+        spriteBatch.Draw( gamerProfile.GamerPicture, rect, Color.White );
+
+        Vector2 namePos = new Vector2( x0 + 239, y0 + 34 );
+        string name = SignedInGamer.SignedInGamers[PlayerIndex].Gamertag;
+        Vector2 nameOrigin = HUDNameFont.MeasureString( name );
+        float nameLength = nameOrigin.X;
+        float scale = Math.Min( 90f / nameLength, 1f );
+        spriteBatch.DrawString( HUDNameFont, name, namePos, Color.Black, 0f, nameOrigin, scale, SpriteEffects.None, 0f );
+      }
     }
 
     private void SetRenderState( RenderState renderState )

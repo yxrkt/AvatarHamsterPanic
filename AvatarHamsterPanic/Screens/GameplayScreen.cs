@@ -43,6 +43,7 @@ namespace GameStateManagement
     public ObjectTable<GameObject> ObjectTable { get; private set; }
     public float CountdownTime { get; set; }
     public float CountdownEnd { get; set; }
+    public Rectangle SafeRect { get; private set; }
 
     SpriteFont gameFont;
     float lastRowY = 0f;
@@ -82,21 +83,24 @@ namespace GameStateManagement
         Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
       firstFrame = true;
-      gameFont = Content.Load<SpriteFont>( "gamefont" );
+      gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
+      Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
-      Content.Load<Model>( "wheel" );
-      Content.Load<Model>( "block" );
-      Content.Load<Model>( "block_broken" );
-      Content.Load<Model>( "basket" );
-      Content.Load<Effect>( "warp" );
+      Content.Load<Model>( "Models/wheel" );
+      Content.Load<Model>( "Models/block" );
+      Content.Load<Model>( "Models/block_broken" );
+      Content.Load<Model>( "Models/basket" );
+      Content.Load<Effect>( "Effects/warp" );
 
       // init game stuff
       ObjectTable = new ObjectTable<GameObject>();
       InitCamera();
       InitStage();
+      InitSafeRectangle();
+
       CountdownTime = 0f;
       CountdownEnd = 3f;
 
@@ -106,13 +110,6 @@ namespace GameStateManagement
 
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
-
-      //// make a test particle system
-      //Texture2D particleTex = Content.Load<Texture2D>( "particleRound" );
-      //ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 
-      //                                                       3f, 5f, .5f, .75f, .07f, .07f, 1.5f, Color.White, 3 );
-      //ParticleEmitter cone = new ParticleEmitter( this, Vector3.Zero, factory, particleTex );
-      //ObjectTable.Add( cone );
 
       //Thread.Sleep( 5000 );
 
@@ -239,9 +236,9 @@ namespace GameStateManagement
       View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
 
       // need to set vertex declaration every frame for shaders
-      GraphicsDevice graphics = ScreenManager.GraphicsDevice;
+      GraphicsDevice device = ScreenManager.GraphicsDevice;
       VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, elements );
+      device.VertexDeclaration = new VertexDeclaration( device, elements );
 
       // particles must be drawn last
       foreach ( GameObject obj in ObjectTable.AllObjects )
@@ -254,14 +251,17 @@ namespace GameStateManagement
       foreach ( ParticleEmitter emitter in emitters )
         emitter.Draw();
 
+      //DrawSafeRect( device );
+
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
 
       spriteBatch.Begin();
 
       // draw player huds
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
-      foreach ( Player player in players )
-        player.DrawHUD( spriteBatch );
+      int nPlayers = players.Count;
+      for ( int i = 0; i < nPlayers; ++i )
+        players[i].DrawHUD( spriteBatch, i );
 
       spriteBatch.End();
 
@@ -274,6 +274,29 @@ namespace GameStateManagement
     #endregion
 
     #region Helpers
+
+    private void InitSafeRectangle()
+    {
+      GraphicsDevice device = ScreenManager.GraphicsDevice;
+
+      int screenWidth  = device.Viewport.Width;
+      int screenHeight = device.Viewport.Height;
+
+      float safeRectAspect = 4f / 3f;
+
+      if ( device.Viewport.AspectRatio > safeRectAspect )
+      {
+        int rectWidth = (int)( (float)screenHeight * safeRectAspect );
+        int rectX = ( screenWidth - rectWidth ) / 2;
+        SafeRect = new Rectangle( rectX, 0, rectWidth, screenHeight );
+      }
+      else
+      {
+        int rectHeight = (int)( (float)screenWidth / safeRectAspect );
+        int rectY = ( screenHeight - rectHeight ) / 2;
+        SafeRect = new Rectangle( 0, rectY, screenWidth, rectHeight );
+      }
+    }
 
     private void InitStage()
     {
@@ -471,6 +494,37 @@ namespace GameStateManagement
     private void BeginCountdown()
     {
     }
+
+#if DEBUG
+    private void DrawSafeRect( GraphicsDevice device )
+    {
+      Effect debugEffect = Content.Load<Effect>( "Effects/debugLine" );
+      debugEffect.CurrentTechnique = debugEffect.Techniques[0];
+      debugEffect.Begin();
+      debugEffect.Parameters["ScreenWidth"].SetValue( device.Viewport.Width );
+      debugEffect.Parameters["ScreenHeight"].SetValue( device.Viewport.Height );
+
+      Rectangle safeRect = SafeRect;
+
+      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
+      VertexPositionColor[] safeRectVerts = 
+      {
+        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y, 0 ), Color.Red ),
+        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y + safeRect.Height - 1, 0 ), Color.Red ),
+        new VertexPositionColor( new Vector3( safeRect.X + safeRect.Width, safeRect.Y + safeRect.Height - 1, 0 ), Color.Red ),
+        new VertexPositionColor( new Vector3( safeRect.X + safeRect.Width, safeRect.Y, 0 ), Color.Red ),
+        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y, 0 ), Color.Red ),
+      };
+
+      foreach ( EffectPass pass in debugEffect.CurrentTechnique.Passes )
+      {
+        pass.Begin();
+        device.DrawUserPrimitives( PrimitiveType.LineStrip, safeRectVerts, 0, 4 );
+        pass.End();
+      }
+      debugEffect.End();
+    }
+#endif
 
     #endregion
   }

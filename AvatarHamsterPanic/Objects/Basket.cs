@@ -29,7 +29,7 @@ namespace GameObjects
     public Basket( GameplayScreen screen, Vector2 pos )
       : base( screen )
     {
-      warpEffect = Screen.Content.Load<Effect>( "Warp" );
+      warpEffect = Screen.Content.Load<Effect>( "Effects/Warp" );
 
       // make the poly
       Vector2[] verts = new Vector2[14];
@@ -59,7 +59,7 @@ namespace GameObjects
       BoundingPolygon.Friction = 1.5f;
 
       // load the mesh
-      Model = screen.Content.Load<Model>( "basket" );
+      Model = screen.Content.Load<Model>( "Models/basket" );
     }
 
     public void WarpOut( float totalTime )

@@ -187,7 +187,7 @@ namespace GameStateManagement
 
       graphics.RenderState.DepthBufferEnable = true;
 
-      Model model = content.Load<Model>( "block" );
+      Model model = content.Load<Model>( "Models/block" );
 
       for ( int i = 0; i < 4; ++i )
       {
