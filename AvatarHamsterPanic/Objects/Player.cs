@@ -18,21 +18,20 @@ namespace GameObjects
     static float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
     static float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
-    SpriteFont HUDNameFont;
     ParticleEmitter emitter;
-    GamerProfile gamerProfile;
 
     public static float Scale { get; private set; }
     public static float DeathLine { get; set; }
     public static double RespawnLength { get; private set; }
 
-    public PlayerIndex PlayerIndex { get; set; }
+    public int PlayerNumber { get; private set; }
+    public PlayerIndex PlayerIndex { get; private set; }
     public PhysCircle BoundingCircle { get; private set; }
     public Model WheelModel { get; private set; }
     public Avatar Avatar { get; set; }
     public double RespawnTime { get; private set; }
     public bool Respawning { get { return RespawnTime < RespawnLength; } }
-    public SignedInGamer Gamer { get; private set; }
+    public PlayerHUD HUD { get; private set; }
 
     static Player()
     {
@@ -41,21 +40,15 @@ namespace GameObjects
       RespawnLength = 1f;
     }
 
-    public Player( GameplayScreen screen, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
+    public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
       : base( screen )
     {
       WheelModel = screen.Content.Load<Model>( "Models/wheel" );
 
-      HUDNameFont = screen.Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
-
       RespawnTime = float.MaxValue;
 
       PlayerIndex = playerIndex;
-      if ( playerIndex >= PlayerIndex.One )
-      {
-        Gamer = SignedInGamer.SignedInGamers[playerIndex];
-        gamerProfile = Gamer.GetProfile();
-      }
+      PlayerNumber = playerNumber;
 
       Avatar = avatar;
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
@@ -70,6 +63,11 @@ namespace GameObjects
                                                              .5f, .75f, .03f, .03f, 2.5f, Color.White, 3 );
       emitter = new ParticleEmitter( screen, Vector3.Zero, factory, particleTex );
       screen.ObjectTable.Add( emitter );
+
+      if ( playerIndex >= PlayerIndex.One )
+        HUD = new PlayerHUD( this, SignedInGamer.SignedInGamers[playerIndex] );
+      else
+        HUD = new PlayerHUD( this, null );
     }
 
     public void GetWheelTransform( out Matrix transform )
@@ -151,6 +149,7 @@ namespace GameObjects
     public override void Update( GameTime gameTime )
     {
       UpdateAvatar( gameTime );
+      HUD.Update( gameTime );
 
       Vector2 pos = BoundingCircle.Position;
 
@@ -176,6 +175,12 @@ namespace GameObjects
 
       PhysCircle circle = BoundingCircle;
       GamePadState gamePadState = input.CurrentGamePadStates[(int)PlayerIndex];
+
+      // == testing garbage ==
+      PlayerIndex trash;
+      if ( input.IsNewButtonPress( Buttons.B, null, out trash ) )
+        HUD.Place = ( HUD.Place ) % 4 + 1;
+      // == testing garbage ==
 
       float forceY = 0f;
       float forceX = 0f;
@@ -265,35 +270,6 @@ namespace GameObjects
       Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
       Avatar.Renderer.World = Matrix.CreateScale( Avatar.Scale ) * matRot * matTrans;
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
-    }
-
-    public void DrawHUD( SpriteBatch spriteBatch, int hudPosition )
-    {
-      const int hudWidth  = 256;
-      const int hudHeight = 128;
-
-      Rectangle safeRect = Screen.SafeRect;
-
-      int x0 = safeRect.X + hudPosition * ( safeRect.Width - hudWidth ) / 3;
-      int y0 = safeRect.Y + safeRect.Height - hudHeight;
-
-      // draw the base object
-      Rectangle rect = new Rectangle( x0, y0, hudWidth, hudHeight );
-      spriteBatch.Draw( Screen.Content.Load<Texture2D>( "Textures/playerHUD" ), rect, Color.CornflowerBlue );
-
-      // if a human player, draw the profile picture
-      if ( gamerProfile != null )
-      {
-        rect = new Rectangle( x0 + 89, y0 + 14, 59, 59 );
-        spriteBatch.Draw( gamerProfile.GamerPicture, rect, Color.White );
-
-        Vector2 namePos = new Vector2( x0 + 239, y0 + 34 );
-        string name = SignedInGamer.SignedInGamers[PlayerIndex].Gamertag;
-        Vector2 nameOrigin = HUDNameFont.MeasureString( name );
-        float nameLength = nameOrigin.X;
-        float scale = Math.Min( 90f / nameLength, 1f );
-        spriteBatch.DrawString( HUDNameFont, name, namePos, Color.Black, 0f, nameOrigin, scale, SpriteEffects.None, 0f );
-      }
     }
 
     private void SetRenderState( RenderState renderState )

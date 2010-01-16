@@ -97,9 +97,9 @@ namespace GameStateManagement
 
       // init game stuff
       ObjectTable = new ObjectTable<GameObject>();
+      InitSafeRectangle();
       InitCamera();
       InitStage();
-      InitSafeRectangle();
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
@@ -251,18 +251,15 @@ namespace GameStateManagement
       foreach ( ParticleEmitter emitter in emitters )
         emitter.Draw();
 
-      //DrawSafeRect( device );
+      DrawSafeRect( device );
 
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
 
       spriteBatch.Begin();
-
       // draw player huds
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
-      int nPlayers = players.Count;
-      for ( int i = 0; i < nPlayers; ++i )
-        players[i].DrawHUD( spriteBatch, i );
-
+      foreach ( Player player in players )
+        player.HUD.Draw();
       spriteBatch.End();
 
       // If the game is transitioning on or off, fade it out to black.
@@ -321,7 +318,7 @@ namespace GameStateManagement
             playerPos.Y += Player.Scale;
             Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
                                         .45f * Player.Scale, Vector3.UnitX, new Vector3( doorPos, 0f ) );
-            Player player = new Player( this, (PlayerIndex)i, avatar, playerPos );
+            Player player = new Player( this, i, (PlayerIndex)i, avatar, playerPos );
             ObjectTable.Add( player );
           }
         }
@@ -331,7 +328,7 @@ namespace GameStateManagement
           playerPos.X += Basket.Scale / 2f;
           playerPos.Y += Player.Scale;
           initSlotInfo[i].Avatar.Scale = .45f * Player.Scale;
-          Player player = new Player( this, initSlotInfo[i].Player, initSlotInfo[i].Avatar, playerPos );
+          Player player = new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar, playerPos );
           ObjectTable.Add( player );
         }
 
@@ -370,7 +367,7 @@ namespace GameStateManagement
       float birthLine = ( dist.Value * ray.Direction + ray.Position ).Y - FloorBlock.Size / 8f;
       float deathLine = -birthLine;
 
-      CameraInfo = new CameraInfo( birthLine, deathLine, /**/0f/*/-1.25f/**/ );
+      CameraInfo = new CameraInfo( birthLine, deathLine, /*/0f/*/-1.25f/**/ );
     }
 
     private void SpawnRow( float yPos, int lowPct, int hiPct )
