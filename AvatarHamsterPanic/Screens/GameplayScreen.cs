@@ -46,11 +46,12 @@ namespace GameStateManagement
     public float CountdownEnd { get; set; }
     public Rectangle SafeRect { get; private set; }
 
+    TubeMaze tubeMaze;
     SpriteFont gameFont;
     float lastRowY = 0f;
     float lastCamY = 0f;
     float rowSpacing = 5f * FloorBlock.Size / 2f;
-    float stageWidth = FloorBlock.Size * 6f;
+    float stageWidth = FloorBlock.Size * 8f;
     Boundary leftBoundary  = null;
     Boundary rightBoundary = null;
     int lastRowPattern = int.MaxValue;
@@ -106,6 +107,9 @@ namespace GameStateManagement
       InitSafeRectangle();
       InitCamera();
       InitStage();
+
+      tubeMaze = new TubeMaze( this, 7, 7, 1f, new Vector3( 0f, -3f, -5f ) );
+      ObjectTable.Add( tubeMaze );
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
@@ -363,7 +367,7 @@ namespace GameStateManagement
     {
       float fov = MathHelper.ToRadians( 30f );
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
-      Camera = new Camera( fov, aspect, 5f, 100f, new Vector3( 0f, 0f, 16f ), Vector3.Zero );
+      Camera = new Camera( fov, aspect, 5f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
 
       // set relative spawn and kill lines for spawning and killing rows of blocks
       Viewport viewport = this.ScreenManager.Game.GraphicsDevice.Viewport;
