@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 using MathLib;
+using System.Diagnostics;
 
 namespace Physics
 {
@@ -75,8 +76,6 @@ namespace Physics
     // Construct PhysBody and add it to the list
     public PhysBody( Vector2 pos, Vector2 vel, float mass )
     {
-      Touching = null;
-
       m_pos  = pos;
       m_vel  = vel;
       m_mass = mass;
@@ -128,6 +127,12 @@ namespace Physics
     {
       PhysBody body = result.Object;
 
+      this.m_touching = body;
+      body.m_touching = this;
+
+      this.m_touchN = result.Normal;
+      body.m_touchN = -result.Normal;
+
       bool ignoreResponse = false;
       if ( Collided != null )
         ignoreResponse = !Collided( this, result );
@@ -154,9 +159,8 @@ namespace Physics
 
       if ( fricDir != Vector2.Zero )
         fricDir.Normalize();
-
-      Touching = body;
-      body.Touching = this;
+      if ( float.IsInfinity( fricDir.X ) || float.IsInfinity( fricDir.Y ) )
+        fricDir = Vector2.Zero;
 
       float oneByMassA = 1f / Mass;
       float oneByMassB = 1f / body.Mass;

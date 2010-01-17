@@ -22,6 +22,7 @@ using MathLib;
 using Microsoft.Xna.Framework.Audio;
 using CustomAvatarAnimationFramework;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 #endregion
 
 namespace GameStateManagement
@@ -55,6 +56,11 @@ namespace GameStateManagement
     int lastRowPattern = int.MaxValue;
     SlotState[] initSlotInfo;
     bool firstFrame;
+
+    double totalPhysTime = 0;
+    int nFrames = 0;
+    double avgPhysUpdate = 0;
+    double longestPhysUpdate = 0;
 
     Random random = new Random();
 
@@ -149,7 +155,14 @@ namespace GameStateManagement
         double elapsed = /*/gameTime.ElapsedGameTime.TotalSeconds/*/1.0 / 60.0/**/;
 
         // Update physics
+        long tick = Stopwatch.GetTimestamp();
         PhysicsManager.Instance.Update( elapsed );
+        double physElapsed = ( (double)( Stopwatch.GetTimestamp() - tick ) / (double)Stopwatch.Frequency );
+        if ( physElapsed > longestPhysUpdate )
+          longestPhysUpdate = physElapsed;
+        totalPhysTime += physElapsed;
+        nFrames++;
+        avgPhysUpdate = totalPhysTime / (double)nFrames;
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
@@ -253,13 +266,21 @@ namespace GameStateManagement
 
       DrawSafeRect( device );
 
+      // 2D elements drawn here
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
-
       spriteBatch.Begin();
-      // draw player huds
+
+      // player HUDs
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
       foreach ( Player player in players )
         player.HUD.Draw();
+
+      // debugging stuff for physics
+      string physString = "Physics Debug\n";
+      physString += "Slowest: " + ( 1.0 / longestPhysUpdate ).ToString() + "\n";
+      physString += "Average: " + ( 1.0 / avgPhysUpdate ).ToString() + "\n";
+      spriteBatch.DrawString( gameFont, physString, new Vector2( 100, 100 ), Color.Black );
+
       spriteBatch.End();
 
       // If the game is transitioning on or off, fade it out to black.

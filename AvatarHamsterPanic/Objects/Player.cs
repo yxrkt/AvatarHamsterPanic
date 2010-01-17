@@ -19,11 +19,18 @@ namespace GameObjects
     static float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
     ParticleEmitter emitter;
+    float jumpRegistered;
+    const float jumpTimeout = .125f;
+    GameTime lastGameTime;
+    float lastCollision;
 
     public static float Scale { get; private set; }
     public static float DeathLine { get; set; }
     public static double RespawnLength { get; private set; }
 
+    public bool Boosting { get; private set; }
+    public float BoostBurnRate { get; set; }
+    public float BoostRechargeRate { get; set; }
     public int PlayerNumber { get; private set; }
     public PlayerIndex PlayerIndex { get; private set; }
     public PhysCircle BoundingCircle { get; private set; }
@@ -49,6 +56,8 @@ namespace GameObjects
 
       PlayerIndex = playerIndex;
       PlayerNumber = playerNumber;
+      BoostBurnRate = 2f;
+      BoostRechargeRate = .125f;
 
       Avatar = avatar;
       BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
@@ -113,6 +122,9 @@ namespace GameObjects
     {
       PhysCircle circle = BoundingCircle;
 
+      // keep track of last time of collision (for jumping)
+      lastCollision = (float)lastGameTime.TotalGameTime.TotalSeconds;
+
       // set emitter direction
       ParticleConeFactory factory = (ParticleConeFactory)emitter.Factory;
 
@@ -148,6 +160,8 @@ namespace GameObjects
 
     public override void Update( GameTime gameTime )
     {
+      lastGameTime = gameTime;
+
       UpdateAvatar( gameTime );
       HUD.Update( gameTime );
 
@@ -159,7 +173,7 @@ namespace GameObjects
         if ( pos.Y >= Screen.Camera.Position.Y + DeathLine )
         {
           RespawnTime = 0f;
-          BoundingCircle.Velocity += new Vector2( 0f, -3f );
+          //BoundingCircle.Velocity += new Vector2( 0f, -3f );
         }
       }
       else
@@ -186,13 +200,16 @@ namespace GameObjects
       float forceX = 0f;
       float maxVelX = 4f;
 
+      Boosting = false;
       if ( gamePadState.Triggers.Left != 0f )
       {
+        Boosting = true;
         forceX = -200f;
-        maxVelX = 8f;
+        maxVelX = 6f;
       }
       if ( gamePadState.Triggers.Right != 0f )
       {
+        Boosting = true;
         if ( forceX != 0f )
         {
           forceX = 0f;
@@ -202,7 +219,7 @@ namespace GameObjects
         else
         {
           forceX = 200f;
-          maxVelX = 8f;
+          maxVelX = 6f;
         }
       }
 
@@ -212,27 +229,65 @@ namespace GameObjects
       float torqueScale = -100f;
       float torque = torqueScale * leftStick.X;
 
+      float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;//1f / 60f; // TODO: Get the real timestep
+
       // torque
       if ( circle.AngularVelocity < 0f && torque < 0f )
       {
         float reqTorque = PhysBody.GetForceRequired( -maxAngVel, circle.AngularVelocity,
-                                                     circle.Torque, circle.MomentOfIntertia, 1f / 60f );
+                                                     circle.Torque, circle.MomentOfIntertia, elapsed );
         torque = Math.Max( torque, reqTorque );
       }
       else if ( circle.AngularVelocity > 0f && torque > 0f )
       {
         float reqTorque = PhysBody.GetForceRequired( maxAngVel, circle.AngularVelocity,
-                                                     circle.Torque, circle.MomentOfIntertia, 1f / 60f );
+                                                     circle.Torque, circle.MomentOfIntertia, elapsed );
         torque = Math.Min( torque, reqTorque );
       }
       circle.Torque += torque;
 
       // linear force
-      if ( circle.Velocity.X < 0f && forceX < 0f )
-        forceX = Math.Max( forceX, PhysBody.GetForceRequired( -maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, 1f / 60f ) );
-      else if ( circle.Velocity.X > 0f && forceX > 0f )
-        forceX = Math.Min( forceX, PhysBody.GetForceRequired( maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, 1f / 60f ) );
-      circle.Force += new Vector2( forceX, forceY );
+      if ( Boosting )
+      {
+        if ( circle.Velocity.X < 0f && forceX < 0f )
+          forceX = Math.Max( forceX, PhysBody.GetForceRequired( -maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, elapsed ) );
+        else if ( circle.Velocity.X > 0f && forceX > 0f )
+          forceX = Math.Min( forceX, PhysBody.GetForceRequired( maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, elapsed ) );
+
+        float maxBurn = BoostBurnRate * elapsed;
+        float burn = Math.Min( HUD.Boost, maxBurn );
+        HUD.Boost -= burn;
+
+        circle.Force += ( burn / maxBurn ) * new Vector2( forceX, forceY );
+      }
+      else
+      {
+        HUD.Boost = MathHelper.Clamp( HUD.Boost + BoostRechargeRate * elapsed, 0f, 1f );
+      }
+
+      // jumping
+      float totalTime = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      PlayerIndex ret;
+      if ( input.IsNewButtonPress( Buttons.A, PlayerIndex, out ret ) )
+      {
+        if ( totalTime - lastCollision < jumpTimeout )
+          circle.Velocity += 2f * circle.TouchNormal;
+        else
+          jumpRegistered = totalTime;
+      }
+
+      if ( jumpRegistered != 0f )
+      {
+        if ( circle.Touching != null )
+        {
+          circle.Velocity += 2f * circle.TouchNormal;
+          jumpRegistered = 0f;
+        }
+        else if ( totalTime - jumpRegistered > jumpTimeout )
+        {
+          jumpRegistered = 0f;
+        }
+      }
     }
 
     public override void Draw()
