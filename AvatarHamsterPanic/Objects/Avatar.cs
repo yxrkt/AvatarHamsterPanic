@@ -10,7 +10,7 @@ using Microsoft.Xna.Framework.Content;
 using CustomAvatarAnimationFramework;
 using GameStateManagement;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   public class Avatar
   {

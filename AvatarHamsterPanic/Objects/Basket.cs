@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using GameStateManagement;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   class Basket : GameObject
   {

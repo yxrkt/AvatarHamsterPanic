@@ -8,7 +8,7 @@ using GameStateManagement;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.ObjectModel;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   class PlayerHUD
   {

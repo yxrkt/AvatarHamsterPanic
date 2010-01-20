@@ -11,7 +11,7 @@ using CustomAvatarAnimationFramework;
 using GameStateManagement;
 using Microsoft.Xna.Framework.Input;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   class Player : GameObject
   {

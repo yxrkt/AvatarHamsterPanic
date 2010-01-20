@@ -6,7 +6,7 @@ using GameStateManagement;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   public abstract class GameObject
   {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Collections.ObjectModel;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   public class ObjectTable<BaseType>
   {

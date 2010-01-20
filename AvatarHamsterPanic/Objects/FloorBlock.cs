@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Physics;
 using GameStateManagement;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   class FloorBlock : GameObject
   {
@@ -20,6 +20,8 @@ namespace GameObjects
 
     public static float Size { get; private set; }
     public static float Height { get; private set; }
+    public static float BirthLine { get; private set; }
+    public static float DeathLine { get; private set; }
 
     public Model Model { get; private set; }
     public Texture2D DiffuseMap { get; private set; }
@@ -35,7 +37,7 @@ namespace GameObjects
       NormalMap  = content.Load<Texture2D>( "Textures/glassNormal" );
 
       effect = content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
-      effect.CurrentTechnique = effect.Techniques["Basic"];
+      effect.CurrentTechnique = effect.Techniques["DiffuseColor"];
       effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
       effect.Parameters["NormalMap"].SetValue( NormalMap );
 
@@ -57,6 +59,14 @@ namespace GameObjects
       Height = 2f * Size / 8f;
     }
 
+    public static void Initialize( Camera camera )
+    {
+      float depth = camera.Position.Z + Size / 2f;
+      float height = depth * (float)Math.Tan( camera.Fov / 2f );
+      DeathLine = height + Height / 2f;
+      BirthLine = -DeathLine;
+    }
+
     public void GetTransform( out Matrix transform )
     {
       Matrix matTrans, matRot;
@@ -69,7 +79,7 @@ namespace GameObjects
 
     public override void Update( GameTime gameTime )
     {
-      float clearLine = Screen.CameraInfo.DeathLine + Screen.Camera.Position.Y;
+      float clearLine = DeathLine + Screen.Camera.Position.Y;
       if ( BoundingPolygon.Position.Y > clearLine )
       {
         Screen.ObjectTable.MoveToTrash( this );

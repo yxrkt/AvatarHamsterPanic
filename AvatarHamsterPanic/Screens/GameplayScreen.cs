@@ -16,7 +16,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.GamerServices;
 using Physics;
-using GameObjects;
+using AvatarHamsterPanic.Objects;
 using System.Collections.Generic;
 using MathLib;
 using Microsoft.Xna.Framework.Audio;
@@ -38,7 +38,6 @@ namespace GameStateManagement
 
     public ContentManager Content { get; private set; }
     public Camera Camera { get; private set; }
-    public CameraInfo CameraInfo { get; private set; }
     public Matrix View { get; private set; }
     public Matrix Projection { get; private set; }
     public ObjectTable<GameObject> ObjectTable { get; private set; }
@@ -52,11 +51,10 @@ namespace GameStateManagement
     float lastCamY = 0f;
     float rowSpacing = 5f * FloorBlock.Size / 2f;
     float stageWidth = FloorBlock.Size * 8f;
-    Boundary leftBoundary  = null;
-    Boundary rightBoundary = null;
     int lastRowPattern = int.MaxValue;
     SlotState[] initSlotInfo;
     bool firstFrame;
+    float camScrollSpeed = -1.25f;
 
     double totalPhysTime = 0;
     int nFrames = 0;
@@ -104,11 +102,18 @@ namespace GameStateManagement
 
       // init game stuff
       ObjectTable = new ObjectTable<GameObject>();
+
+      float fov = MathHelper.ToRadians( 30f );
+      float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
+      Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
+
+      FloorBlock.Initialize( Camera );
+
       InitSafeRectangle();
-      InitCamera();
       InitStage();
 
-      tubeMaze = new TubeMaze( this, 7, 7, 1f, new Vector3( 0f, -3f, -5f ) );
+      // the background tube-maze
+      tubeMaze = new TubeMaze( this, -5f, 2.3f );
       ObjectTable.Add( tubeMaze );
 
       CountdownTime = 0f;
@@ -116,7 +121,7 @@ namespace GameStateManagement
 
       lastRowY = 0f;
       lastCamY = Camera.Position.Y;
-      UpdateStage(); // spawn additional rows before loading screen is over
+      SpawnRows(); // spawn additional rows before loading screen is over
 
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
@@ -124,6 +129,15 @@ namespace GameStateManagement
       //Thread.Sleep( 5000 );
 
       ScreenManager.Game.ResetElapsedTime();
+    }
+
+    private void SpawnRows()
+    {
+      while ( lastRowY > FloorBlock.BirthLine + Camera.Position.Y )
+      {
+        lastRowY -= rowSpacing;
+        SpawnRow( lastRowY, 58, 83 );
+      }
     }
 
 
@@ -186,7 +200,7 @@ namespace GameStateManagement
           UpdateCamera( (float)elapsed );
         }
 
-        UpdateStage();
+        SpawnRows();
 
         // Delete objects
         ObjectTable.EmptyTrash();
@@ -252,7 +266,6 @@ namespace GameStateManagement
                                                         Camera.Near, Camera.Far );
       View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
 
-      // need to set vertex declaration every frame for shaders
       GraphicsDevice device = ScreenManager.GraphicsDevice;
       VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
       device.VertexDeclaration = new VertexDeclaration( device, elements );
@@ -268,7 +281,7 @@ namespace GameStateManagement
       foreach ( ParticleEmitter emitter in emitters )
         emitter.Draw();
 
-      DrawSafeRect( device );
+      //DrawSafeRect( device );
 
       // 2D elements drawn here
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
@@ -279,11 +292,11 @@ namespace GameStateManagement
       foreach ( Player player in players )
         player.HUD.Draw();
 
-      // debugging stuff for physics
-      string physString = "Physics Debug\n";
-      physString += "Slowest: " + ( 1.0 / longestPhysUpdate ).ToString() + "\n";
-      physString += "Average: " + ( 1.0 / avgPhysUpdate ).ToString() + "\n";
-      spriteBatch.DrawString( gameFont, physString, new Vector2( 100, 100 ), Color.Black );
+      //// debugging stuff for physics
+      //string physString = "Physics Debug\n";
+      //physString += "Slowest: " + ( 1.0 / longestPhysUpdate ).ToString() + "\n";
+      //physString += "Average: " + ( 1.0 / avgPhysUpdate ).ToString() + "\n";
+      //spriteBatch.DrawString( gameFont, physString, new Vector2( 100, 100 ), Color.Black );
 
       spriteBatch.End();
 
@@ -323,12 +336,13 @@ namespace GameStateManagement
     private void InitStage()
     {
       // create side boundaries
-      leftBoundary = new Boundary( -.5f * stageWidth );
-      rightBoundary = new Boundary( -leftBoundary.X );
+      float leftBoundX = -.5f * stageWidth;
+      ObjectTable.Add( new Boundary( this,  leftBoundX ) );
+      ObjectTable.Add( new Boundary( this, -leftBoundX ) );
 
       // trap doors and players
-      float doorPosY = CameraInfo.DeathLine - 2f * Player.Scale;
-      float doorPosX = leftBoundary.X;
+      float doorPosY = FloorBlock.DeathLine - 2f * Player.Scale;
+      float doorPosX = leftBoundX;
       float doorPosXStep = stageWidth / 3f - FloorBlock.Size / 3f;
 
       Vector2 doorPos = new Vector2( doorPosX, 0f );
@@ -361,38 +375,6 @@ namespace GameStateManagement
 
         doorPos.X += doorPosXStep;
       }
-    }
-
-    private void InitCamera()
-    {
-      float fov = MathHelper.ToRadians( 30f );
-      float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
-      Camera = new Camera( fov, aspect, 5f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
-
-      // set relative spawn and kill lines for spawning and killing rows of blocks
-      Viewport viewport = this.ScreenManager.Game.GraphicsDevice.Viewport;
-      Vector3 nearScreen = new Vector3( viewport.Width / 2f, viewport.Height, 0f );
-      Vector3 farScreen = new Vector3( viewport.Width / 2f, viewport.Height, 1f );
-
-      // unproject lower screen point on near plane and far plan
-      Matrix proj = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect, Camera.Near, Camera.Far );
-      Matrix view = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
-      Matrix world = Matrix.Identity;
-      Vector3 nearWorld = viewport.Unproject( nearScreen, proj, view, world );
-      Vector3 farWorld = viewport.Unproject( farScreen, proj, view, world );
-
-      // intersect ray with vertical plane aligned with backs of blocks
-      Ray ray = new Ray( nearWorld, farWorld - nearWorld );
-      ray.Direction.Normalize();
-      float? dist = ray.Intersects( new Plane( 0f, 0f, 1f, FloorBlock.Size / 2f ) );
-
-      if ( dist == null )
-        throw new NullReferenceException( "Ray does not intersect with plane." );
-
-      float birthLine = ( dist.Value * ray.Direction + ray.Position ).Y - FloorBlock.Size / 8f;
-      float deathLine = -birthLine;
-
-      CameraInfo = new CameraInfo( birthLine, deathLine, /*/0f/*/-1.25f/**/ );
     }
 
     private void SpawnRow( float yPos, int lowPct, int hiPct )
@@ -448,24 +430,12 @@ namespace GameStateManagement
       lastRowPattern = curPattern;
     }
 
-    private void UpdateStage()
-    {
-      float screenLine = CameraInfo.BirthLine + Camera.Position.Y;
-
-      // spawn rows
-      while ( lastRowY > screenLine )
-      {
-        lastRowY -= rowSpacing;
-        SpawnRow( lastRowY, 58, 83 );
-      }
-    }
-
     private void UpdateCamera( float elapsed )
     {
       if ( elapsed == 0f ) return;
     
-      float scrollLine  = .2f * CameraInfo.BirthLine;  // camera will be pulled by a spring
-      float scrollLine2 = .7f * CameraInfo.BirthLine;  // camera will be snapped down
+      float scrollLine  = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
+      float scrollLine2 = .7f * FloorBlock.BirthLine;  // camera will be snapped down
 
       float prevY = Camera.Position.Y;
       //float backScrollRatio = .5f;
@@ -493,7 +463,7 @@ namespace GameStateManagement
           float vel0  = ( begCamPos - lastCamY ) / elapsed;
           float accel = -k * x + vel0 * b;
           float vel   = vel0 + accel * elapsed;
-          float trans = Math.Min( vel * elapsed, CameraInfo.ScrollSpeed * (float)elapsed );
+          float trans = Math.Min( vel * elapsed, camScrollSpeed * (float)elapsed );
           Camera.Translate( new Vector3( 0f, trans, 0f ) );
         }
         else
@@ -503,14 +473,10 @@ namespace GameStateManagement
       }
       else
       {
-        Camera.Translate( new Vector3( 0f, CameraInfo.ScrollSpeed * (float)elapsed, 0f ) );
+        Camera.Translate( new Vector3( 0f, camScrollSpeed * (float)elapsed, 0f ) );
       }
     
       lastCamY = begCamPos;
-    
-      // scroll the boundaries
-      leftBoundary.Y = Camera.Position.Y;
-      rightBoundary.Y = Camera.Position.Y;
     }
 
     private void BeginCountdown()
@@ -549,19 +515,5 @@ namespace GameStateManagement
 #endif
 
     #endregion
-  }
-
-  public class CameraInfo
-  {
-    public float BirthLine { get; set; }
-    public float DeathLine { get; set; }
-    public float ScrollSpeed { get; set; }
-
-    public CameraInfo( float birthLine, float deathLine, float scrollSpeed )
-    {
-      BirthLine = birthLine;
-      DeathLine = deathLine;
-      ScrollSpeed = scrollSpeed;
-    }
   }
 }

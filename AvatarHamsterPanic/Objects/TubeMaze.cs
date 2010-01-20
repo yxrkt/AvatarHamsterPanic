@@ -8,11 +8,12 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using System.Diagnostics;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   class TubeMaze : GameObject
   {
     TubePiece[,] tubes;
+    Matrix[,] worldBuffer;
     int rows, cols;
     Vector3 topLeft;
     int highestRow;
@@ -20,11 +21,19 @@ namespace GameObjects
     bool cupRow;
 
     Effect effect;
+    EffectParameter effectParamWorld;
+    EffectParameter effectParamView;
+    EffectParameter effectParamProjection;
+    EffectParameter effectParamEye;
+    EffectParameter effectParamColor;
     Model[] tubeModels;
+    int[] nTubes;
+    Vector4[] colors;
 
     static Random rand;
     static Matrix[] rotations;
-    
+
+    public float DeathLine { get; set; }
     public float TubeSize { get; private set; }
 
     static TubeMaze()
@@ -51,11 +60,27 @@ namespace GameObjects
                                   0,  0,  0,  1 );
     }
 
-    public TubeMaze( GameplayScreen screen, int rows, int cols, float tubeSize, Vector3 start )
+    public TubeMaze( GameplayScreen screen, float z, float tubeSize )
       : base( screen )
     {
+      colors = new Vector4[]
+      {
+        new Vector4( 1f, .7f, .7f, .3f ),
+        new Vector4( .7f, 1f, .7f, .3f ),
+        new Vector4( .7f, .7f, 1f, .3f ),
+        new Vector4( 1f, 1f, .7f, .3f )
+      };
+
       ContentManager content = screen.Content;
       effect = content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
+      effect.CurrentTechnique = effect.Techniques["Color"];
+      effectParamColor = effect.Parameters["Color"];
+      effectParamWorld = effect.Parameters["World"];
+      effectParamView = effect.Parameters["View"];
+      effectParamProjection = effect.Parameters["Projection"];
+      effectParamEye = effect.Parameters["Eye"];
+
+      effectParamColor.SetValue( colors[0] );
 
       tubeModels = new Model[4];
       tubeModels[(int)TubePattern.Elbow] = content.Load<Model>( "Models/tubeElbow" );
@@ -63,17 +88,37 @@ namespace GameObjects
       tubeModels[(int)TubePattern.Tee]   = content.Load<Model>( "Models/tubeTee"   );
       tubeModels[(int)TubePattern.Cross] = content.Load<Model>( "Models/tubeCross" );
 
-      this.rows = rows;
-      this.cols = cols;
-      tubes = new TubePiece[rows, cols];
-      cupRow = ( rows % 2 == 1 );
+      Camera camera = screen.Camera;
 
       TubeSize = tubeSize;
+      float dist = camera.Position.Z - ( z - TubeSize / 2f );
+      float tanFovyOverTwo = (float)Math.Tan( camera.Fov / 2f );
+      DeathLine = dist * tanFovyOverTwo + TubeSize / 2f;
+
+      rows = (int)Math.Ceiling( 2f * DeathLine / TubeSize );
+
+      float aspect = screen.ScreenManager.GraphicsDevice.Viewport.AspectRatio;
+      float fovxOverTwo = (float)Math.Atan( aspect * tanFovyOverTwo );
+      float worldWidth = 2f * ( dist * (float)Math.Tan( fovxOverTwo ) + TubeSize / 2f );
+
+      cols = (int)Math.Ceiling( worldWidth / TubeSize );
+
+      tubes = new TubePiece[rows, cols];
+      worldBuffer = new Matrix[4, rows * cols];
+      nTubes = new int[4];
+      cupRow = ( rows % 2 == 1 );
+
       scaleMatrix = Matrix.CreateScale( tubeSize );
 
-      topLeft = new Vector3( start.X - tubeSize * (float)cols / 2f + TubeSize / 2f, start.Y, start.Z );
+      topLeft = new Vector3( camera.Position.X - tubeSize * (float)cols / 2f + TubeSize / 2f, 
+                             camera.Position.Y + DeathLine - TubeSize, z );
       highestRow = 0;
 
+      InitializeGrid();
+    }
+
+    private void InitializeGrid()
+    {
       // fill tube grid
       tubes[0, 0] = TubePiece.GetRandomPiece( rand );
       for ( int c = 1; c < cols; ++c )
@@ -102,7 +147,7 @@ namespace GameObjects
             bool bottomOpen = tubes[r - 1, c].BottomOpen();
             if ( c % 2 == 0 )
               tubes[r, c] = TubePiece.GetRandomPieceLeftTop( rand, rightOpen, bottomOpen );
-            else if ( tubes[r, c - 1].RightOpen() )
+            else if ( rightOpen )
               tubes[r, c] = new TubePiece( TubePattern.Cup, 1 );
           }
         }
@@ -119,17 +164,26 @@ namespace GameObjects
 
     public override void Update( GameTime gameTime )
     {
-      // delete rows
-      // spawn rows
+      int nColors = colors.Length;
+      float timePerColor = 4f;
+      float time = (float)gameTime.TotalGameTime.TotalSeconds;
+      float fakeTime = time / timePerColor;
 
-      while ( topLeft.Y > Screen.Camera.Position.Y + Screen.CameraInfo.DeathLine )
+      int a = (int)( fakeTime ) % nColors;
+      int b = ( a + 1 ) % nColors;
+      float t = .5f + -(float)Math.Cos( (float)Math.PI * fakeTime ) / 2f;
+      if ( (int)fakeTime % 2 == 1 )
+        t = 1f - t;
+      effectParamColor.SetValue( colors[a] + t * ( colors[b] - colors[a] ) );
+
+      while ( topLeft.Y > Screen.Camera.Position.Y + DeathLine )
       {
         int lowestRow = highestRow;
         int secondLowestRow = ( highestRow + rows - 1 ) % rows;
         highestRow = ( highestRow + 1 ) % rows;
         topLeft.Y -= TubeSize;
 
-        // re-generate row to fit with its new predecessor
+        // recreate row to fit with its new predecessor
         if ( !cupRow )
         {
           tubes[lowestRow, 0] = TubePiece.GetRandomPieceTop( rand, tubes[secondLowestRow, 0].BottomOpen() );
@@ -153,6 +207,8 @@ namespace GameObjects
             {
               if ( tubes[secondLowestRow, c].BottomOpen() )
                 tubes[lowestRow, c] = new TubePiece( TubePattern.Cup, 0 );
+              else
+                tubes[lowestRow, c].Alive = false;
             }
             else
             {
@@ -172,31 +228,59 @@ namespace GameObjects
       device.VertexDeclaration = new VertexDeclaration( device, VertexPositionNormalTexture.VertexElements );
       SetRenderState( device.RenderState );
 
+      GetWorldTransforms();
+
+      effectParamView.SetValue( Screen.View );
+      effectParamProjection.SetValue( Screen.Projection );
+      effectParamEye.SetValue( Screen.Camera.Position );
+
+      effect.Begin();
+      effect.CurrentTechnique.Passes[0].Begin();
+
+      // for each model
+      for ( int i = 0; i < 4; ++i )
+      {
+        TubePattern type = (TubePattern)i;
+
+        foreach ( ModelMesh mesh in tubeModels[i].Meshes )
+        {
+          foreach ( ModelMeshPart part in mesh.MeshParts )
+          {
+            device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+            device.Indices = mesh.IndexBuffer;
+
+            for ( int j = 0; j < nTubes[i]; ++j )
+            {
+              effectParamWorld.SetValue( worldBuffer[i, j] );
+              effect.CommitChanges();
+              device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
+                                            part.NumVertices, part.StartIndex, part.PrimitiveCount );
+            }
+          }
+        }
+      }
+
+      effect.CurrentTechnique.Passes[0].End();
+      effect.End();
+    }
+
+    private void GetWorldTransforms()
+    {
+      nTubes[0] = nTubes[1] = nTubes[2] = nTubes[3] = 0;
       Vector3 position = topLeft;
 
-      // draw each tube
       for ( int r = 0; r < rows; ++r )
       {
         position.X = topLeft.X;
         int row = ( highestRow + r ) % rows;
-
         for ( int c = 0; c < cols; ++c )
         {
           TubePiece tube = tubes[row, c];
-
           if ( tube.Alive )
           {
-            foreach ( ModelMesh mesh in tubeModels[(int)tube.Pattern].Meshes )
-            {
-              foreach ( BasicEffect effect in mesh.Effects )
-              {
-                effect.EnableDefaultLighting();
-                effect.World = scaleMatrix * rotations[tube.Rotation] * Matrix.CreateTranslation( position );
-                effect.View = Screen.View;
-                effect.Projection = Screen.Projection;
-              }
-              mesh.Draw();
-            }
+            int typeIndex = (int)tube.Pattern;
+            Matrix translation = Matrix.CreateTranslation( position );
+            worldBuffer[typeIndex, nTubes[typeIndex]++] = scaleMatrix * rotations[tube.Rotation] * translation;
           }
           position.X += TubeSize;
         }
@@ -206,9 +290,9 @@ namespace GameObjects
 
     private void SetRenderState( RenderState renderState )
     {
-      renderState.CullMode = CullMode.CullCounterClockwiseFace;//CullMode.None;
+      renderState.CullMode = CullMode.None;
 
-      renderState.AlphaBlendEnable = false;//true;
+      renderState.AlphaBlendEnable = true;
       //renderState.SourceBlend = Blend.SourceAlpha;
       //renderState.DestinationBlend = Blend.InverseSourceAlpha;
 
@@ -282,7 +366,7 @@ namespace GameObjects
             rotation = 1;
             break;
           case TubePattern.Tee:
-            rotation = 2;
+            rotation = 1;
             break;
         }
 
@@ -332,6 +416,9 @@ namespace GameObjects
     /// </summary>
     public bool RightOpen()
     {
+      if ( !Alive )
+        return false;
+
       if ( Pattern == TubePattern.Elbow )
         return ( Rotation == 0 || Rotation == 1 );
       if ( Pattern == TubePattern.Cup )
@@ -348,5 +435,19 @@ namespace GameObjects
     Cup,
     Tee,
     Cross,
+  }
+
+  static class TubePatternHelper
+  {
+    public static TubePattern Increment( this TubePattern pattern )
+    {
+      pattern = (TubePattern)( (int)pattern + 1 );
+      return pattern;
+    }
+
+    public static bool LessOrEqual( this TubePattern pattern, TubePattern value )
+    {
+      return ( (int)pattern < (int)value );
+    }
   }
 }

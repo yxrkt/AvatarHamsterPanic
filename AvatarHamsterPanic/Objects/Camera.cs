@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   public class Camera
   {

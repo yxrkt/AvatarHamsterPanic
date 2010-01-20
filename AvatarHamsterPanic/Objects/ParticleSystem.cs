@@ -7,16 +7,17 @@ using Microsoft.Xna.Framework.Graphics;
 using GameStateManagement;
 using System.Diagnostics;
 
-namespace GameObjects
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// Base particle class
   /// </summary>
-  class Particle
+  struct Particle
   {
     public Vector3 Position;
     public Vector3 Velocity;
-    public float Time, Life;
+    public float Time;
+    public float Life;
     public float Size;
     public float Stretch;
     public Color Color;
@@ -59,6 +60,13 @@ namespace GameObjects
     const float fadeTime = 2f;
     float totalTime = 0f;
     MeshParticle[] particles;
+
+    Effect effect;
+    EffectParameter effectParamWorld;
+    EffectParameter effectParamView;
+    EffectParameter effectParamProjection;
+    EffectParameter effectParamEye;
+    EffectParameter effectParamColor;
     
     const float minSpeed = 2f;
     const float maxSpeed = 9f;
@@ -66,6 +74,14 @@ namespace GameObjects
     public MeshClusterExplosion( GameplayScreen screen, Vector3 position, ModelMeshCollection meshes )
       : base( screen, position )
     {
+      effect = screen.Content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
+      effect.CurrentTechnique = effect.Techniques["Color"];
+      effectParamWorld = effect.Parameters["World"];
+      effectParamView = effect.Parameters["View"];
+      effectParamProjection = effect.Parameters["Projection"];
+      effectParamEye = effect.Parameters["Eye"];
+      effectParamColor = effect.Parameters["Color"];
+
       int nMeshes = meshes.Count;
       particles = new MeshParticle[nMeshes];
       for ( int i = 0; i < nMeshes; ++i )
@@ -107,32 +123,48 @@ namespace GameObjects
     {
       Matrix modelTransform = Matrix.CreateScale( FloorBlock.Size ) * Matrix.CreateTranslation( Position );
 
-      GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      CullMode lastCullMode = graphics.RenderState.CullMode;
-      graphics.RenderState.CullMode = CullMode.None;
+      GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
+      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionNormalTexture.VertexElements );
+      SetRenderState( device.RenderState );
+
+      /**/
+      effectParamView.SetValue( Screen.View );
+      effectParamProjection.SetValue( Screen.Projection );
+      effectParamEye.SetValue( Screen.Camera.Position );
+
+      effect.Begin();
+      effect.CurrentTechnique.Passes[0].Begin();
 
       foreach ( MeshParticle particle in particles )
       {
-        foreach ( BasicEffect effect in particle.mesh.Effects )
-        {
-          effect.DiffuseColor = Color.White.ToVector3();
-          effect.EnableDefaultLighting();
-          effect.View = Screen.View;
-          effect.Projection = Screen.Projection;
-          effect.Alpha = particle.alpha;
-          effect.DiffuseColor = new Color( 0xB1, 0xBF, 0xD0, 0xFF ).ToVector3();
+        effectParamColor.SetValue( new Vector4( .69f, .75f, .82f, particle.alpha ) );
 
-          ModelBone startBone;
-          Matrix originTransform = XFileUtils.GetOriginTransform( particle.mesh.ParentBone, out startBone );
-          Matrix rotate = Matrix.CreateFromAxisAngle( particle.axis, particle.angle );
-          Matrix translate = Matrix.CreateTranslation( particle.position );
-          Matrix offsetTransform = XFileUtils.GetTransform( startBone );
-          effect.World = originTransform * rotate * translate * offsetTransform * modelTransform;
+        ModelBone startBone;
+        Matrix originTransform = XFileUtils.GetOriginTransform( particle.mesh.ParentBone, out startBone );
+        Matrix rotate = Matrix.CreateFromAxisAngle( particle.axis, particle.angle );
+        Matrix translate = Matrix.CreateTranslation( particle.position );
+        Matrix offsetTransform = XFileUtils.GetTransform( startBone );
+        effectParamWorld.SetValue( originTransform * rotate * translate * offsetTransform * modelTransform );
+
+        effect.CommitChanges();
+
+        foreach ( ModelMeshPart part in particle.mesh.MeshParts )
+        {
+          device.Vertices[0].SetSource( particle.mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+          device.Indices = particle.mesh.IndexBuffer;
+          device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0, part.NumVertices,
+                                        part.StartIndex, part.PrimitiveCount );
         }
-        particle.mesh.Draw();
       }
 
-      graphics.RenderState.CullMode = lastCullMode;
+      effect.CurrentTechnique.Passes[0].End();
+      effect.End();
+    }
+
+    private void SetRenderState( RenderState renderState )
+    {
+      renderState.CullMode = CullMode.None;
+      renderState.AlphaBlendEnable = true;
     }
 
     struct MeshParticle
@@ -263,8 +295,11 @@ namespace GameObjects
         UpdateSpray( elapsed );
 
       // update particles
-      foreach ( Particle particle in particles )
+      //foreach ( Particle particle in particles )
+      int nTotalParticles = particles.Count;
+      for ( int i = 0; i < nTotalParticles; ++i )
       {
+        Particle particle = particles[i];
         if ( particle.Time >= particle.Life )
         {
           particle.Dead = true;
@@ -276,6 +311,7 @@ namespace GameObjects
           particle.Color.A = (byte)( 255.0 * ( 1.0 - Math.Pow( particle.Time / particle.Life, particle.FadePower ) ) );
           particle.Time += elapsed;
         }
+        particles[i] = particle;
       }
     }
 

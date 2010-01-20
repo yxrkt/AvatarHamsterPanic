@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using GameObjects;
+using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Content;
 using CustomAvatarAnimationFramework;
 using Microsoft.Xna.Framework.GamerServices;
