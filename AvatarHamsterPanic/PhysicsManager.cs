@@ -43,7 +43,7 @@ namespace Physics
       {
         body.Touching = null;
 
-        if ( ( body.Flags & PhysBodyFlags.Anchored ) != 0 )
+        if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
           continue;
 
         // factor in net linear force
@@ -69,7 +69,7 @@ namespace Physics
           PhysBody bodyA = bodies[i];
 
           // this assumes that all non-anchored bodies come before anchored ones
-          if ( ( bodyA.Flags & PhysBodyFlags.Anchored ) != 0 )
+          if ( bodyA.Flags.HasFlags( PhysBodyFlags.Anchored ) )
             break;
 
           for ( int j = i + 1; j < nBodies; ++j )
@@ -78,7 +78,7 @@ namespace Physics
             CollisResult result = bodyA.TestVsBody( bodyB, timeLeft );
             if ( result.Collision )
             {
-              if ( ( ( bodyA.Flags & PhysBodyFlags.Ghost ) | ( bodyB.Flags & PhysBodyFlags.Ghost ) ) != 0 )
+              if ( bodyA.Flags.HasFlags( PhysBodyFlags.Ghost ) || bodyB.Flags.HasFlags( PhysBodyFlags.Ghost ) )
               {
                 bodyA.HandleCollision( result );
                 bodyB.HandleCollision( result.GetInvert( bodyA ) );
@@ -108,7 +108,7 @@ namespace Physics
         {
           foreach ( PhysBody body in bodies )
           {
-            if ( ( body.Flags & PhysBodyFlags.Anchored ) != 0 )
+            if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
               break;
             MoveBody( body, timeLeft, 0f );
           }
@@ -124,7 +124,7 @@ namespace Physics
             {
               CollisResult collision = collisions[body];
               MoveBody( body, collision.Time, .001f );
-              if ( ( collision.Object.Flags & PhysBodyFlags.Anchored ) == 0 )
+              if ( !collision.Object.Flags.HasFlags( PhysBodyFlags.Anchored ) )
                 MoveBody( collision.Object, collision.Time, .001f );
               body.ApplyResponseFrom( collision );
             }

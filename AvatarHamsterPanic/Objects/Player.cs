@@ -24,10 +24,11 @@ namespace AvatarHamsterPanic.Objects
     GameTime lastGameTime;
     float lastCollision;
 
-    public static float Scale { get; private set; }
+    public static float Size { get; private set; }
     public static float DeathLine { get; set; }
     public static double RespawnLength { get; private set; }
 
+    public float Scale { get; private set; }
     public bool Boosting { get; private set; }
     public float BoostBurnRate { get; set; }
     public float BoostRechargeRate { get; set; }
@@ -42,7 +43,7 @@ namespace AvatarHamsterPanic.Objects
 
     static Player()
     {
-      Scale = 1.3f;
+      Size = 1.3f;
       DeathLine = 3.5f;
       RespawnLength = 1f;
     }
@@ -54,13 +55,14 @@ namespace AvatarHamsterPanic.Objects
 
       RespawnTime = float.MaxValue;
 
+      Scale = 1f;
       PlayerIndex = playerIndex;
       PlayerNumber = playerNumber;
       BoostBurnRate = 2f;
       BoostRechargeRate = .125f;
 
       Avatar = avatar;
-      BoundingCircle = new PhysCircle( Scale / 2f, pos, 10f );
+      BoundingCircle = new PhysCircle( Size / 2f, pos, 10f );
       BoundingCircle.Parent = this;
       BoundingCircle.Elasticity = .4f;
       BoundingCircle.Friction = .5f;
@@ -84,7 +86,7 @@ namespace AvatarHamsterPanic.Objects
       Matrix matTrans, matRot, matScale;
       Matrix.CreateTranslation( BoundingCircle.Position.X, BoundingCircle.Position.Y, 0f, out matTrans );
       Matrix.CreateRotationZ( BoundingCircle.Angle, out matRot );
-      Matrix.CreateScale( Scale, out matScale );
+      Matrix.CreateScale( Size * Scale, out matScale );
 
       Matrix.Multiply( ref matScale, ref matRot, out transform );
       Matrix.Multiply( ref transform, ref matTrans, out transform );
@@ -99,7 +101,7 @@ namespace AvatarHamsterPanic.Objects
           FloorBlock block = (FloorBlock)data.Object.Parent;
 
           // make sure this only happens once
-          if ( ( block.BoundingPolygon.Flags & PhysBodyFlags.Ghost ) == 0 )
+          if ( !block.BoundingPolygon.Flags.HasFlags( PhysBodyFlags.Ghost ) )
           {
             // remove the block
             block.BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
@@ -194,6 +196,18 @@ namespace AvatarHamsterPanic.Objects
       PlayerIndex trash;
       if ( input.IsNewButtonPress( Buttons.B, null, out trash ) )
         HUD.Place = ( HUD.Place ) % 4 + 1;
+
+      PlayerIndex playerIndex = PlayerIndex;
+      if ( input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex ) )
+      {
+        Scale = .5f;
+        BoundingCircle.Radius = ( Scale * Size ) / 2f;
+      }
+      else if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
+      {
+        Scale = 1f;
+        BoundingCircle.Radius = Size / 2f;
+      }
       // == testing garbage ==
 
       float forceY = 0f;
@@ -323,7 +337,7 @@ namespace AvatarHamsterPanic.Objects
 
       Matrix matRot = Matrix.CreateWorld( Vector3.Zero, Avatar.Direction, Screen.Camera.Up );
       Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
-      Avatar.Renderer.World = Matrix.CreateScale( Avatar.Scale ) * matRot * matTrans;
+      Avatar.Renderer.World = Matrix.CreateScale( .45f * Size * Scale ) * matRot * matTrans;
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
     }
 
@@ -339,7 +353,7 @@ namespace AvatarHamsterPanic.Objects
 
     private void UpdateAvatar( GameTime gameTime )
     {
-      Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - Scale / 2.5f, 0f );
+      Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - ( Scale * Size ) / 2.5f, 0f );
 
       double absAngVel = Math.Abs( (double)BoundingCircle.AngularVelocity );
 

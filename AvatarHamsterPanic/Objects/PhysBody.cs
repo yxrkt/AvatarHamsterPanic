@@ -17,6 +17,14 @@ namespace Physics
     Ghost,
   }
 
+  static class PhysBodyFlagsHelper
+  {
+    public static bool HasFlags( this PhysBodyFlags flags, PhysBodyFlags value )
+    {
+      return ( ( flags & value ) == value );
+    }
+  }
+
   class CollisResult
   {
     public CollisResult()
@@ -167,7 +175,7 @@ namespace Physics
       float oneByIA = 1f / MomentOfIntertia;
       float oneByIB = 1f / body.MomentOfIntertia;
 
-      if ( ( body.Flags & PhysBodyFlags.Anchored ) != 0 )
+      if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
       {
         oneByMassB = 0f;
         oneByIB = 0f;
@@ -245,13 +253,29 @@ namespace Physics
     {
       CollisResult result = new CollisResult();
 
-      Vector2 relVel    = Vector2.Subtract( m_vel, circle.Velocity );
+      //if ( Vector2.Dot( this.m_vel, circle.m_vel ) < 0f ) return result;
+
+      Vector2 normal;
+
+      // if intersecting at t = 0
+      Vector2 popoutPos = Vector2.Zero;
+      bool popout = false;
+
+      float totalRadius = m_radius + circle.m_radius;
+      if ( Vector2.DistanceSquared( m_pos, circle.m_pos ) < .95f * ( totalRadius * totalRadius ) )
+      {
+        normal = Vector2.Normalize( m_pos - circle.m_pos );
+        popoutPos = circle.m_pos + 1.0001f * totalRadius * normal - m_vel * t;
+        popout = true;
+      }
+
+      // if not intersecting at t = 0
+      Vector2 relVel    = Vector2.Subtract( m_vel, circle.m_vel );
       Vector2 relVelByT = Vector2.Multiply( relVel, t );
       Vector2 posAtT    = Vector2.Add( m_pos, relVelByT );
 
-      float   time   = 0.0f;
-      Vector2 normal = Vector2.Zero;
-      if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, circle.Position, m_radius + circle.m_radius ) )
+      float time;
+      if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, circle.m_pos, m_radius + circle.m_radius ) )
       {
         float timeStep = time * t;
         result.Time = timeStep;
@@ -263,11 +287,17 @@ namespace Physics
         result.Intersection = m_pos + ( m_radius / ( m_radius + circle.m_radius ) ) * dispAtCollision;
       }
 
+      if ( popout && !result.Collision )
+        m_pos = popoutPos;
       return result;
     }
 
     protected override CollisResult TestVsPolygon( PhysPolygon poly, float t )
     {
+      // moving away from box
+      // TODO: take this out
+      if ( Vector2.Dot( this.m_vel, poly.Velocity ) < 0f ) return new CollisResult();
+
       // transform that takes local vertex coordinates to world space
       Matrix transform;
       poly.GetTransform( out transform );
@@ -281,6 +311,8 @@ namespace Physics
       lastVert = Vector2.Transform( lastVert, transform );
 
       CollisResult bestResult = new CollisResult();
+      Vector2 popoutPos = Vector2.Zero;
+      int popoutPriority = 0;
 
       int nVerts = verts.Count;
       for ( int i = 0; i < nVerts; ++i )
@@ -291,14 +323,31 @@ namespace Physics
         Vector2 n = new Vector2( edge.Y, -edge.X );
 
         float time;
+        Vector2 normal;
 
         // ball is moving towards the segment
         if ( Vector2.Dot( n, relVel ) < 0.0f )
         {
           n.Normalize();
           Vector2 offset = Vector2.Multiply( n, m_radius );
+          Vector2 q0 = lastVert + offset;
+          Vector2 q1 = transfVert + offset;
 
-          if ( Geometry.SegmentVsSegment( out time, m_pos, posAtT, lastVert + offset, transfVert + offset ) )
+          // check if intersecting segment at t = 0
+          if ( Geometry.SegmentVsCircle( out time, out normal, lastVert, transfVert, m_pos, m_radius ) )
+          {
+            if ( time < .95f && popoutPriority != 1 )
+            {
+              float dot = Vector2.Dot( normal, -n );
+              if ( dot > 0f )
+              {
+                popoutPos = m_pos + n * 1.0001f * m_radius * ( 1f - dot ) - m_vel * t;
+                popoutPriority = 1;
+              }
+            }
+          }
+
+          if ( Geometry.SegmentVsSegment( out time, m_pos, posAtT, q0, q1 ) )
           {
             // if collision with segment (and polygon is convex), we're done
             if ( poly.Convex )
@@ -308,8 +357,19 @@ namespace Physics
           }
         }
 
-        // check corner
-        Vector2 normal;
+        // CHECK CORNER
+        // inside circle?
+        if ( Vector2.DistanceSquared( m_pos, transfVert ) <  ( m_radius * m_radius ) )
+        {
+          if ( popoutPriority == 0 )
+          {
+            popoutPriority = 2;
+            normal = Vector2.Normalize( m_pos - transfVert );
+            popoutPos = transfVert + m_radius * normal;
+          }
+        }
+
+        // intersecting circle
         if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, transfVert, m_radius ) )
         {
           // additional checks to see if hitting correct sector of circle
@@ -329,6 +389,13 @@ namespace Physics
         }
 
         lastVert = transfVert;
+      }
+
+      // hack to keep objects from penetrating in rare cases
+      if ( !this.m_flags.HasFlags( PhysBodyFlags.Ghost ) && !poly.Flags.HasFlags( PhysBodyFlags.Ghost ) )
+      {
+        if ( !bestResult.Collision && popoutPriority != 0 )
+          m_pos = popoutPos;
       }
 
       return bestResult;

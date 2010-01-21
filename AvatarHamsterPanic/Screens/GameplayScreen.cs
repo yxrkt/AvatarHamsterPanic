@@ -341,7 +341,7 @@ namespace GameStateManagement
       ObjectTable.Add( new Boundary( this, -leftBoundX ) );
 
       // trap doors and players
-      float doorPosY = FloorBlock.DeathLine - 2f * Player.Scale;
+      float doorPosY = FloorBlock.DeathLine - 2f * Player.Size;
       float doorPosX = leftBoundX;
       float doorPosXStep = stageWidth / 3f - FloorBlock.Size / 3f;
 
@@ -354,9 +354,9 @@ namespace GameStateManagement
           {
             Vector2 playerPos = doorPos;
             playerPos.X += Basket.Scale / 2f;
-            playerPos.Y += Player.Scale;
+            playerPos.Y += Player.Size;
             Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
-                                        .45f * Player.Scale, Vector3.UnitX, new Vector3( doorPos, 0f ) );
+                                        Player.Size, Vector3.UnitX, new Vector3( doorPos, 0f ) );
             Player player = new Player( this, i, (PlayerIndex)i, avatar, playerPos );
             ObjectTable.Add( player );
           }
@@ -365,8 +365,8 @@ namespace GameStateManagement
         {
           Vector2 playerPos = doorPos;
           playerPos.X += Basket.Scale / 2f;
-          playerPos.Y += Player.Scale;
-          initSlotInfo[i].Avatar.Scale = .45f * Player.Scale;
+          playerPos.Y += Player.Size;
+          initSlotInfo[i].Avatar.Scale = Player.Size;
           Player player = new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar, playerPos );
           ObjectTable.Add( player );
         }
