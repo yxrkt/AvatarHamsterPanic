@@ -96,9 +96,9 @@ namespace AvatarHamsterPanic.Objects
     {
       if ( Respawning )
       {
-        if ( data.Object.Parent is FloorBlock )
+        if ( data.BodyB.Parent is FloorBlock )
         {
-          FloorBlock block = (FloorBlock)data.Object.Parent;
+          FloorBlock block = (FloorBlock)data.BodyB.Parent;
 
           // make sure this only happens once
           if ( !block.BoundingPolygon.Flags.HasFlags( PhysBodyFlags.Ghost ) )

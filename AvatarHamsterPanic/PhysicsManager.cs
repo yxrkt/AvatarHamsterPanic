@@ -81,7 +81,7 @@ namespace Physics
               if ( bodyA.Flags.HasFlags( PhysBodyFlags.Ghost ) || bodyB.Flags.HasFlags( PhysBodyFlags.Ghost ) )
               {
                 bodyA.HandleCollision( result );
-                bodyB.HandleCollision( result.GetInvert( bodyA ) );
+                bodyB.HandleCollision( result.GetInvert() );
               }
               else
               {
@@ -124,11 +124,11 @@ namespace Physics
             {
               CollisResult collision = collisions[body];
               MoveBody( body, collision.Time, .001f );
-              if ( !collision.Object.Flags.HasFlags( PhysBodyFlags.Anchored ) )
-                MoveBody( collision.Object, collision.Time, .001f );
+              if ( !collision.BodyB.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+                MoveBody( collision.BodyB, collision.Time, .001f );
               body.ApplyResponseFrom( collision );
             }
-            else if ( collisions.Count( kvp => kvp.Value.Object == body ) == 0 )
+            else if ( collisions.Count( kvp => kvp.Value.BodyB == body ) == 0 )
             {
               MoveBody( body, firstCollision.Time, 0f );
             }

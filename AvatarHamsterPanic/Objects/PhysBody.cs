@@ -25,31 +25,28 @@ namespace Physics
     }
   }
 
-  class CollisResult
+  struct CollisResult
   {
-    public CollisResult()
-      : this( false, float.MaxValue, null, Vector2.Zero, Vector2.Zero )
-    {
-    }
-
-    public CollisResult( bool collision, float time, PhysBody obj, Vector2 normal, Vector2 intersection )
+    public CollisResult( bool collision, float time, PhysBody bodyA, PhysBody bodyB, Vector2 normal, Vector2 isect )
     {
       Collision    = collision;
       Time         = time;
-      Object       = obj;
+      BodyA        = bodyA;
+      BodyB        = bodyB;
       Normal       = normal;
-      Intersection = intersection;
+      Intersection = isect;
     }
 
-    public bool Collision { get; set; }
-    public float Time { get; set; }
-    public PhysBody Object { get; set; }
-    public Vector2 Normal { get; set; }
-    public Vector2 Intersection { get; set; }
+    public bool Collision;
+    public float Time;
+    public PhysBody BodyA;
+    public PhysBody BodyB;
+    public Vector2 Normal;
+    public Vector2 Intersection;
 
-    public CollisResult GetInvert( PhysBody collider )
+    public CollisResult GetInvert()
     {
-      return new CollisResult( Collision, Time, collider, -Normal, Intersection );
+      return new CollisResult( Collision, Time, BodyB, BodyA, -Normal, Intersection );
     }
   }
 
@@ -133,7 +130,7 @@ namespace Physics
 
     public void ApplyResponseFrom( CollisResult result )
     {
-      PhysBody body = result.Object;
+      PhysBody body = result.BodyB;
 
       this.m_touching = body;
       body.m_touching = this;
@@ -145,7 +142,7 @@ namespace Physics
       if ( Collided != null )
         ignoreResponse = !Collided( this, result );
       if ( body.Collided != null )
-        ignoreResponse = ignoreResponse || !body.Collided( body, result.GetInvert( this ) );
+        ignoreResponse = ignoreResponse || !body.Collided( body, result.GetInvert() );
       if ( ignoreResponse ) return;
 
       float e = Math.Min( this.Elasticity, body.Elasticity );
@@ -203,7 +200,7 @@ namespace Physics
       if ( Responded != null )
         Responded( this, result );
       if ( body.Responded != null )
-        body.Responded( body, result.GetInvert( this ) );
+        body.Responded( body, result.GetInvert() );
     }
 
     public bool HandleCollision( CollisResult data )
@@ -281,7 +278,8 @@ namespace Physics
         result.Time = timeStep;
         result.Collision = true;
         result.Normal = normal;
-        result.Object = circle;
+        result.BodyA = this;
+        result.BodyB = circle;
 
         Vector2 dispAtCollision = ( circle.m_pos + circle.m_vel * timeStep ) - ( m_pos + m_vel * timeStep );
         result.Intersection = m_pos + ( m_radius / ( m_radius + circle.m_radius ) ) * dispAtCollision;
@@ -311,6 +309,7 @@ namespace Physics
       lastVert = Vector2.Transform( lastVert, transform );
 
       CollisResult bestResult = new CollisResult();
+      bestResult.Time = float.MaxValue;
       Vector2 popoutPos = Vector2.Zero;
       int popoutPriority = 0;
 
@@ -351,9 +350,9 @@ namespace Physics
           {
             // if collision with segment (and polygon is convex), we're done
             if ( poly.Convex )
-              return new CollisResult( true, time * t, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
+              return new CollisResult( true, time * t, this, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
             else if ( time * t < bestResult.Time )
-              bestResult = new CollisResult( true, time * t, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
+              bestResult = new CollisResult( true, time * t, this, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
           }
         }
 
@@ -381,9 +380,9 @@ namespace Physics
             if ( Vector2.Dot( normal, edge2 ) < 0.0f )
             {
               if ( poly.Convex )
-                return new CollisResult( true, time * t, poly, normal, transfVert + t * time * poly.Velocity );
+                return new CollisResult( true, time * t, this, poly, normal, transfVert + t * time * poly.Velocity );
               else if ( time * t < bestResult.Time )
-                bestResult = new CollisResult( true, time * t, poly, normal, transfVert + t * time * poly.Velocity );
+                bestResult = new CollisResult( true, time * t, this, poly, normal, transfVert + t * time * poly.Velocity );
             }
           }
         }
