@@ -70,6 +70,7 @@
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="IMessageDisplay.cs" />
+    <Compile Include="Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />
     <Compile Include="MenuItems\MenuText.cs" />
@@ -85,7 +86,9 @@
     <Compile Include="Objects\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />
     <Compile Include="Objects\PlayerHUD.cs" />
+    <Compile Include="Objects\PopupText.cs" />
     <Compile Include="Objects\TubeMaze.cs" />
+    <Compile Include="Performance.cs" />
     <Compile Include="PhysicsManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RandomBag.cs" />

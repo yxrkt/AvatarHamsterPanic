@@ -9,6 +9,7 @@
 
 #region Using Statements
 using System;
+using System.Linq;
 using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -25,12 +26,10 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
-  /// This screen implements the actual game logic. It is just a
-  /// placeholder to get the idea across: you'll probably want to
-  /// put some more interesting gameplay in here!
+  /// This screen implements the actual game logic.
   /// </summary>
   public class GameplayScreen : GameScreen
   {
@@ -44,6 +43,7 @@ namespace GameStateManagement
     public float CountdownTime { get; set; }
     public float CountdownEnd { get; set; }
     public Rectangle SafeRect { get; private set; }
+    public static string DebugString { get; set; }
 
     TubeMaze tubeMaze;
     SpriteFont gameFont;
@@ -157,7 +157,6 @@ namespace GameStateManagement
 
     #region Update and Draw
 
-
     /// <summary>
     /// Updates the state of the game. This method checks the GameScreen.IsActive
     /// property, so the game will stop updating when the pause menu is active,
@@ -170,7 +169,7 @@ namespace GameStateManagement
 
       if ( IsActive )
       {
-        double elapsed = /*/gameTime.ElapsedGameTime.TotalSeconds/*/1.0 / 60.0/**/;
+        double elapsed = /**/gameTime.ElapsedGameTime.TotalSeconds/*/1.0 / 60.0/**/;
 
         // Update physics
         long tick = Stopwatch.GetTimestamp();
@@ -208,6 +207,8 @@ namespace GameStateManagement
         // Update objects
         foreach ( GameObject obj in ObjectTable.AllObjects )
           obj.Update( gameTime );
+
+        Performance.Update( gameTime.ElapsedGameTime );
       }
     }
 
@@ -281,7 +282,7 @@ namespace GameStateManagement
       foreach ( ParticleEmitter emitter in emitters )
         emitter.Draw();
 
-      //DrawSafeRect( device );
+      DrawSafeRect( device );
 
       // 2D elements drawn here
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
@@ -297,14 +298,18 @@ namespace GameStateManagement
       //physString += "Slowest: " + ( 1.0 / longestPhysUpdate ).ToString() + "\n";
       //physString += "Average: " + ( 1.0 / avgPhysUpdate ).ToString() + "\n";
       //spriteBatch.DrawString( gameFont, physString, new Vector2( 100, 100 ), Color.Black );
+      //spriteBatch.DrawString( gameFont, debug, new Vector2( 100, 100 ), Color.AntiqueWhite );
+      string fps = "FrameRate: " + Performance.FrameRate.ToString();
+      spriteBatch.DrawString( gameFont, fps + "\n" + DebugString, new Vector2( 20, 20 ), Color.Black );
 
       spriteBatch.End();
 
       // If the game is transitioning on or off, fade it out to black.
       if ( TransitionPosition > 0 )
         ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
-    }
 
+      Performance.CountFrame();
+    }
 
     #endregion
 
@@ -399,6 +404,9 @@ namespace GameStateManagement
       int nBits = nSpaces;
       for ( int i = 0; i < nBits && nBlocks > 0; ++i )
       {
+        if ( random.Next( 10 ) < 7 )
+          ObjectTable.Add( Powerup.CreatePowerup( this, blockPos + new Vector2( 0f, 1f ), PowerupType.ScoreCoin ) );
+
         if ( ( lastRowPattern & ( 1 << i ) ) == 0 )
         {
           ObjectTable.Add( new FloorBlock( this, blockPos ) );
@@ -438,8 +446,7 @@ namespace GameStateManagement
       float scrollLine2 = .7f * FloorBlock.BirthLine;  // camera will be snapped down
 
       float prevY = Camera.Position.Y;
-      //float backScrollRatio = .5f;
-    
+
       // get the body of the lowest player
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
       PhysCircle lowestPlayer = null;
@@ -457,12 +464,12 @@ namespace GameStateManagement
       {
         if ( lowestPlayer.Position.Y > begCamPos + scrollLine2 )
         {
-          float k     = 65f;
-          float b     = -(float)Math.Sqrt( (double)( 4f * k ) );
-          float x     = ( begCamPos + scrollLine ) - lowestPlayer.Position.Y;
-          float vel0  = ( begCamPos - lastCamY ) / elapsed;
+          float k = 65f;
+          float b = -(float)Math.Sqrt( (double)( 4f * k ) );
+          float x = ( begCamPos + scrollLine ) - lowestPlayer.Position.Y;
+          float vel0 = ( begCamPos - lastCamY ) / elapsed;
           float accel = -k * x + vel0 * b;
-          float vel   = vel0 + accel * elapsed;
+          float vel = vel0 + accel * elapsed;
           float trans = Math.Min( vel * elapsed, camScrollSpeed * (float)elapsed );
           Camera.Translate( new Vector3( 0f, trans, 0f ) );
         }

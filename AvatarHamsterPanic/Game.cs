@@ -11,9 +11,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Storage;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// Sample showing how to manage different game states, with transitions
@@ -44,6 +45,9 @@ namespace GameStateManagement
 
       graphics.PreferredBackBufferWidth = 1920;//853;
       graphics.PreferredBackBufferHeight = 1080;//480;
+
+      IsFixedTimeStep = false;
+      graphics.SynchronizeWithVerticalRetrace = true;
 
       // Create the screen manager component.
       screenManager = new ScreenManager( this );

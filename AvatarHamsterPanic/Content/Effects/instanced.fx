@@ -135,6 +135,32 @@ ColorOut VS_Color( ColorIn params )
   return Out;
 }
 
+ColorOut VS_VFetchColor( int index : INDEX )
+{
+  int vertex   = ( index + .5 ) % VertexCount;
+  int instance = ( index + .5 ) / VertexCount;
+
+  float4 position;
+  float4 normal;
+  float4 color;
+
+  asm
+  {
+    vfetch position, vertex, position0
+    vfetch normal,   vertex, normal0
+    vfetch color,    vertex, color0
+  };
+  
+  ColorIn In;
+  In.Position  = position;
+  In.Normal    = normal;
+  In.Color     = color;
+  
+  World = InstanceTransforms[instance];
+  
+  return VS_Color( In );
+}
+
 float4 PS_ColorDefault( ColorOut params ) : COLOR
 {
   float3 normal  = normalize( params.Normal );
@@ -176,6 +202,32 @@ DiffuseColorOut VS_DiffuseColor( DiffuseColorIn params )
   return Out;
 }
 
+DiffuseColorOut VS_VFetchDiffuseColor( int index : INDEX )
+{
+  int vertex   = ( index + .5 ) % VertexCount;
+  int instance = ( index + .5 ) / VertexCount;
+
+  float4 position;
+  float4 normal;
+  float4 texcoord;
+
+  asm
+  {
+    vfetch position, vertex, position0
+    vfetch normal,   vertex, normal0
+    vfetch texcoord, vertex, texcoord0
+  };
+  
+  DiffuseColorIn In;
+  In.Position  = position;
+  In.Normal    = normal;
+  In.TextureUV = texcoord;
+  
+  World = InstanceTransforms[instance];
+  
+  return VS_DiffuseColor( In );
+}
+
 float4 PS_DiffuseColor( DiffuseColorOut params ) : COLOR
 {
   float3 normal  = normalize( params.Normal );
@@ -214,6 +266,38 @@ NormalDiffuseColorOut VS_NormalDiffuseColor( NormalDiffuseColorIn params )
   return Out;
 }
 
+NormalDiffuseColorOut VS_VFetchNormalDiffuseColor( int index : INDEX )
+{
+  int vertex   = ( index + .5 ) % VertexCount;
+  int instance = ( index + .5 ) / VertexCount;
+
+  float4 position;
+  float4 normal;
+  float4 texcoord;
+  float4 tangent;
+  float4 binormal;
+
+  asm
+  {
+    vfetch position, vertex, position0
+    vfetch normal,   vertex, normal0
+    vfetch texcoord, vertex, texcoord0
+    vfetch tangent,  vertex, tangent0
+    vfetch binormal, vertex, binormal0
+  };
+  
+  NormalDiffuseColorIn In;
+  In.Position  = position;
+  In.Normal    = normal;
+  In.TextureUV = texcoord;
+  In.Tangent   = tangent;
+  In.Binormal  = binormal;
+  
+  World = InstanceTransforms[instance];
+  
+  return VS_NormalDiffuseColor( In );
+}
+
 float4 PS_NormalDiffuseColor( NormalDiffuseColorOut params ) : COLOR
 {
   //float3 normal  = normalize( params.Normal );
@@ -235,7 +319,7 @@ technique ColorDefault
 {
   pass
   {
-    VertexShader = compile vs_3_0 VS_Color();
+    VertexShader = compile vs_3_0 VS_VFetchColor();
     PixelShader  = compile ps_3_0 PS_ColorDefault();
   }
 }
@@ -244,7 +328,7 @@ technique Color
 {
   pass
   {
-    VertexShader = compile vs_3_0 VS_Color();
+    VertexShader = compile vs_3_0 VS_VFetchColor();
     PixelShader  = compile ps_3_0 PS_Color();
   }
 }
@@ -253,7 +337,7 @@ technique DiffuseColor
 {
   pass
 {
-    VertexShader = compile vs_3_0 VS_DiffuseColor();
+    VertexShader = compile vs_3_0 VS_VFetchDiffuseColor();
     PixelShader  = compile ps_3_0 PS_DiffuseColor();
   }
 }
@@ -262,7 +346,7 @@ technique NormalDiffuseColor
 {
   pass
   {
-    VertexShader = compile vs_3_0 VS_NormalDiffuseColor();
+    VertexShader = compile vs_3_0 VS_VFetchNormalDiffuseColor();
     PixelShader  = compile ps_3_0 PS_NormalDiffuseColor();
   }
 }

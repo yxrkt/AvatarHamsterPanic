@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 using MathLib;
+using AvatarHamsterPanic.Objects;
+using System.Diagnostics;
 
 
 namespace Physics
@@ -42,6 +44,7 @@ namespace Physics
       foreach ( PhysBody body in bodies )
       {
         body.Touching = null;
+        body.CollisionList.Clear();
 
         if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
           continue;
@@ -57,6 +60,8 @@ namespace Physics
         body.Torque = 0f;
         body.AngularVelocity += ( angAccel * (float)elapsed );
       }
+
+      int nIterations = 0;
 
       // update 'til the end of the frame
       float timeLeft = (float)elapsed;
@@ -135,6 +140,8 @@ namespace Physics
           }
 
           timeLeft -= firstCollision.Time;
+          if ( ++nIterations > 10 )
+            timeLeft = 0f;
         }
       }
     }

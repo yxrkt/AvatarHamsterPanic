@@ -72,7 +72,7 @@ namespace Physics
     protected float m_elasticity = .5f;
     protected float m_friction = .5f;
 
-    public delegate bool CollisionEvent( PhysBody collider, CollisResult data );
+    public delegate bool CollisionEvent( CollisResult data );
     public event CollisionEvent Collided = null;
     public event CollisionEvent Responded = null;
 
@@ -85,6 +85,8 @@ namespace Physics
       m_vel  = vel;
       m_mass = mass;
       MomentOfIntertia = 1f;
+
+      CollisionList = new List<PhysBody>( 4 );
 
       s_bodies.Add( this );
     }
@@ -112,6 +114,7 @@ namespace Physics
     public bool Released { get { return released; } }
     public float MomentOfIntertia { get; set; }
     public object Parent { get; set; }
+    public List<PhysBody> CollisionList { get; private set; }
 
     public void Release()
     {
@@ -139,10 +142,10 @@ namespace Physics
       body.m_touchN = -result.Normal;
 
       bool ignoreResponse = false;
-      if ( Collided != null )
-        ignoreResponse = !Collided( this, result );
-      if ( body.Collided != null )
-        ignoreResponse = ignoreResponse || !body.Collided( body, result.GetInvert() );
+      if ( this.Collided != null && !this.CollisionList.Contains( body ) )
+        ignoreResponse = !Collided( result );
+      if ( body.Collided != null && !body.CollisionList.Contains( this ) )
+        ignoreResponse = ignoreResponse || !body.Collided( result.GetInvert() );
       if ( ignoreResponse ) return;
 
       float e = Math.Min( this.Elasticity, body.Elasticity );
@@ -197,17 +200,20 @@ namespace Physics
       this.AngularVelocity += ( Geometry.PerpDot( rA, impulse ) * oneByIA );
       body.AngularVelocity -= ( Geometry.PerpDot( rB, impulse ) * oneByIB );
 
-      if ( Responded != null )
-        Responded( this, result );
-      if ( body.Responded != null )
-        body.Responded( body, result.GetInvert() );
+      if ( this.Responded != null && !this.CollisionList.Contains( body ) )
+        Responded( result );
+      if ( body.Responded != null && !body.CollisionList.Contains( this ) )
+        body.Responded( result.GetInvert() );
+
+      this.CollisionList.Add( body );
+      body.CollisionList.Add( this );
     }
 
     public bool HandleCollision( CollisResult data )
     {
       if ( Collided != null )
       {
-        Collided( this, data );
+        Collided( data );
         return true;
       }
       return false;
@@ -261,9 +267,16 @@ namespace Physics
       float totalRadius = m_radius + circle.m_radius;
       if ( Vector2.DistanceSquared( m_pos, circle.m_pos ) < .95f * ( totalRadius * totalRadius ) )
       {
-        normal = Vector2.Normalize( m_pos - circle.m_pos );
-        popoutPos = circle.m_pos + 1.0001f * totalRadius * normal - m_vel * t;
-        popout = true;
+        if ( !m_flags.HasFlags( PhysBodyFlags.Ghost ) && !circle.m_flags.HasFlags( PhysBodyFlags.Ghost ) )
+        {
+          normal = Vector2.Normalize( m_pos - circle.m_pos );
+          popoutPos = circle.m_pos + 1.0001f * totalRadius * normal - m_vel * t;
+          popout = true;
+        }
+        else
+        {
+          return new CollisResult( true, 0f, this, circle, Vector2.Zero, Vector2.Zero );
+        }
       }
 
       // if not intersecting at t = 0
@@ -274,7 +287,7 @@ namespace Physics
       float time;
       if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, circle.m_pos, m_radius + circle.m_radius ) )
       {
-        float timeStep = time * t;
+        float timeStep = Math.Max( 0f, time * t );
         result.Time = timeStep;
         result.Collision = true;
         result.Normal = normal;

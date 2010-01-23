@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Physics;
 using Microsoft.Xna.Framework;
-using GameStateManagement;
+using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace AvatarHamsterPanic.Objects

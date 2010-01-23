@@ -13,7 +13,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// The main menu screen is the first thing displayed when the game starts up.

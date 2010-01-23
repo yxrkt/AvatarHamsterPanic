@@ -18,7 +18,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Input;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// The loading screen coordinates transitions between the menu system and the

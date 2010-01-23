@@ -12,7 +12,7 @@ using System;
 using Microsoft.Xna.Framework;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
     /// <summary>
     /// Custom event argument which includes the index of the player who

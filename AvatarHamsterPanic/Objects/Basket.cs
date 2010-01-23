@@ -6,7 +6,7 @@ using Physics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using GameStateManagement;
+using AvatarHamsterPanic.Objects;
 
 namespace AvatarHamsterPanic.Objects
 {

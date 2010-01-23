@@ -12,7 +12,7 @@ using Microsoft.Xna.Framework;
 using System;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// The pause menu comes up over the top of the game,

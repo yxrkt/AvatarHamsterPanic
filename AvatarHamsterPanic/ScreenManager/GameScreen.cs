@@ -12,7 +12,7 @@ using System;
 using Microsoft.Xna.Framework;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// Enum describes the screen transition state.

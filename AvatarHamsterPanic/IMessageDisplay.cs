@@ -11,7 +11,7 @@
 using Microsoft.Xna.Framework;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
     /// <summary>
     /// Interface used to display notification messages when interesting events occur,

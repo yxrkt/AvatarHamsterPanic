@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework;
-using GameStateManagement;
+using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.ObjectModel;
 
@@ -25,6 +25,8 @@ namespace AvatarHamsterPanic.Objects
 
     SpriteFont scoreFont;
     Vector2 scorePos;
+    SpringInterpolater scoreSpring;
+    PopupText scorePopup;
 
     SpriteFont placeFont;
     Vector2 placePos;
@@ -98,6 +100,14 @@ namespace AvatarHamsterPanic.Objects
       // score
       scorePos = new Vector2( x0 + 235, y0 + 88 );
       scoreFont = screen.Content.Load<SpriteFont>( "Fonts/HUDScoreFont" );
+      scoreSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
+      scoreSpring.SetSource( 1f );
+      scoreSpring.SetDest( 1f );
+      scoreSpring.Active = true;
+
+      // score popup
+      scorePopup = new PopupText( 1f, scorePos + new Vector2( -25f, -120f ), 
+                                  scorePos + new Vector2( -15f, -15f ), 1f );
 
       // place
       placePos = new Vector2( x0 + 37, y0 + 65 );
@@ -106,7 +116,15 @@ namespace AvatarHamsterPanic.Objects
 
     public void Update( GameTime gameTime )
     {
-      // TODO: springy score stuff
+      float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+      int scoreChange = scorePopup.Update( elapsed );
+      if ( scoreChange != 0 )
+        scoreSpring.SetSource( 1.3f * scoreSpring.GetSource()[0] );
+      Score += scoreChange;
+      Score = Math.Max( 0, Score );
+
+      scoreSpring.Update( elapsed );
 
       lastTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
@@ -146,7 +164,11 @@ namespace AvatarHamsterPanic.Objects
       string score = Score.ToString();
       Vector2 scoreOrigin = scoreFont.MeasureString( score );
       spriteBatch.DrawString( scoreFont, score, scorePos, Color.Black, 0f, 
-                              scoreOrigin, 1f, SpriteEffects.None, 0f );
+                              scoreOrigin, scoreSpring.GetSource()[0], SpriteEffects.None, 0f );
+
+      // score popup
+      if ( scorePopup.Active )
+        scorePopup.Draw( spriteBatch, scoreFont, Color.Black );
       
       // place
       string placeNumber = Place.ToString();
@@ -157,6 +179,11 @@ namespace AvatarHamsterPanic.Objects
       Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X - 1, placeTagSize.Y + 12 );
       spriteBatch.DrawString( placeFont, placeNumber, placePos, Color.Black, 0f, placeNumberOrigin, 1f, SpriteEffects.None, 0f );
       spriteBatch.DrawString( nameFont, placeTag, placePos, Color.Black, 0f, placeTagOrigin, 1f, SpriteEffects.None, 0f );
+    }
+
+    public void AddPoints( int points )
+    {
+      scorePopup.Add( points );
     }
   }
 }

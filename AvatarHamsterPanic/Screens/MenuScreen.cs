@@ -16,7 +16,7 @@ using AvatarHamsterPanic.Objects;
 using System.Collections.ObjectModel;
 #endregion
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   /// <summary>
   /// Base class for screens that contain a menu of options. The user can

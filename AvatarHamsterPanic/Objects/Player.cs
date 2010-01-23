@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.GamerServices;
 using CustomAvatarAnimationFramework;
-using GameStateManagement;
+using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Input;
 
 namespace AvatarHamsterPanic.Objects
@@ -68,6 +68,8 @@ namespace AvatarHamsterPanic.Objects
       BoundingCircle.Friction = .5f;
       BoundingCircle.Collided += KillBlockIfPwnt;
       BoundingCircle.Responded += new PhysBody.CollisionEvent( HandleCollisionResponse );
+      ////if ( playerIndex < 0 )
+      //  BoundingCircle.Flags |= PhysBodyFlags.Anchored;
 
       Texture2D particleTex = screen.Content.Load<Texture2D>( "Textures/particleRound" );
       ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 2f, 4f, 
@@ -92,7 +94,7 @@ namespace AvatarHamsterPanic.Objects
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
-    private bool KillBlockIfPwnt( PhysBody collider, CollisResult data )
+    private bool KillBlockIfPwnt( CollisResult data )
     {
       if ( Respawning )
       {
@@ -120,7 +122,7 @@ namespace AvatarHamsterPanic.Objects
       return true;
     }
 
-    private bool HandleCollisionResponse( PhysBody collider, CollisResult data )
+    private bool HandleCollisionResponse( CollisResult data )
     {
       PhysCircle circle = BoundingCircle;
 
@@ -135,7 +137,7 @@ namespace AvatarHamsterPanic.Objects
       emitter.Position = position;
 
       // spit some particles
-      Vector2 r = Vector2.Normalize( data.Intersection - collider.Position );
+      Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
       Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
       Vector2 dir = circle.Velocity;
 
@@ -175,13 +177,14 @@ namespace AvatarHamsterPanic.Objects
         if ( pos.Y >= Screen.Camera.Position.Y + DeathLine )
         {
           RespawnTime = 0f;
+          HUD.AddPoints( -5 );
           //BoundingCircle.Velocity += new Vector2( 0f, -3f );
         }
       }
       else
       {
-        // something something something darkside
-        RespawnTime += gameTime.ElapsedGameTime.TotalSeconds;
+        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
+        RespawnTime += elapsed;
       }
     }
 
@@ -243,7 +246,7 @@ namespace AvatarHamsterPanic.Objects
       float torqueScale = -100f;
       float torque = torqueScale * leftStick.X;
 
-      float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;//1f / 60f; // TODO: Get the real timestep
+      float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;//1f / 60f;
 
       // torque
       if ( circle.AngularVelocity < 0f && torque < 0f )

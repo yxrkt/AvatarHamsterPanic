@@ -10,7 +10,7 @@ using CustomAvatarAnimationFramework;
 using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Input;
 
-namespace GameStateManagement
+namespace AvatarHamsterPanic.Objects
 {
   public struct SlotState
   {
