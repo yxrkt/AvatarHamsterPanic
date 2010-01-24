@@ -526,11 +526,14 @@ namespace AvatarHamsterPanic.Objects
       if ( randTrans == Vector3.Zero )
         particle.Position = origin;
       else
-        particle.Position = origin + ( (float)rand.NextDouble() * raidius ) * Vector3.Normalize( randTrans );
+        particle.Position = origin + ( (float)rand.NextDouble() * radius ) * Vector3.Normalize( randTrans );
 
       particle.Time = 0f;
       particle.Life = scaleUpTime + scaleDownTime;
       particle.Size = sizeSmall;
+      particle.Stretch = 0f;
+
+      return particle;
     }
   }
 }

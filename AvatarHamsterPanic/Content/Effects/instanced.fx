@@ -1,4 +1,3 @@
-float4x4 World;
 float4x4 View;
 float4x4 Projection;
 
@@ -118,7 +117,7 @@ float3 ComputePerPixelLights( float3 E, float3 N, float3 LightDir0, float3 Light
   return diffuse + specular * SpecularColor;
 }
 
-ColorOut VS_Color( ColorIn params )
+ColorOut VS_Color( ColorIn params, float4x4 World )
 {
   ColorOut Out = (ColorOut)0;
   
@@ -156,9 +155,7 @@ ColorOut VS_VFetchColor( int index : INDEX )
   In.Normal    = normal;
   In.Color     = color;
   
-  World = InstanceTransforms[instance];
-  
-  return VS_Color( In );
+  return VS_Color( In, InstanceTransforms[instance] );
 }
 
 float4 PS_ColorDefault( ColorOut params ) : COLOR
@@ -185,7 +182,7 @@ float4 PS_Color( ColorOut params ) : COLOR
   return color;
 }
 
-DiffuseColorOut VS_DiffuseColor( DiffuseColorIn params )
+DiffuseColorOut VS_DiffuseColor( DiffuseColorIn params, float4x4 World )
 {
   DiffuseColorOut Out = (DiffuseColorOut)0;
   
@@ -223,9 +220,7 @@ DiffuseColorOut VS_VFetchDiffuseColor( int index : INDEX )
   In.Normal    = normal;
   In.TextureUV = texcoord;
   
-  World = InstanceTransforms[instance];
-  
-  return VS_DiffuseColor( In );
+  return VS_DiffuseColor( In, InstanceTransforms[instance] );
 }
 
 float4 PS_DiffuseColor( DiffuseColorOut params ) : COLOR
@@ -240,7 +235,7 @@ float4 PS_DiffuseColor( DiffuseColorOut params ) : COLOR
   return color;
 }
 
-NormalDiffuseColorOut VS_NormalDiffuseColor( NormalDiffuseColorIn params )
+NormalDiffuseColorOut VS_NormalDiffuseColor( NormalDiffuseColorIn params, float4x4 World )
 {
   NormalDiffuseColorOut Out = (NormalDiffuseColorOut)0;
   
@@ -293,9 +288,7 @@ NormalDiffuseColorOut VS_VFetchNormalDiffuseColor( int index : INDEX )
   In.Tangent   = tangent;
   In.Binormal  = binormal;
   
-  World = InstanceTransforms[instance];
-  
-  return VS_NormalDiffuseColor( In );
+  return VS_NormalDiffuseColor( In, InstanceTransforms[instance] );
 }
 
 float4 PS_NormalDiffuseColor( NormalDiffuseColorOut params ) : COLOR
@@ -336,7 +329,7 @@ technique Color
 technique DiffuseColor
 {
   pass
-{
+  {
     VertexShader = compile vs_3_0 VS_VFetchDiffuseColor();
     PixelShader  = compile ps_3_0 PS_DiffuseColor();
   }

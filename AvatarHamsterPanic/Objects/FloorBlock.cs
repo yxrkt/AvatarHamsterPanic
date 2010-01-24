@@ -89,36 +89,36 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Draw()
     {
-      //GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      //graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
-      //SetRenderState( graphics.RenderState );
+      GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
+      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      SetRenderState( graphics.RenderState );
 
-      //effect.Begin();
+      effect.Begin();
 
-      //Matrix world;
-      //GetTransform( out world );
-      //effectParameterWorld.SetValue( world );
-      //effectParameterView.SetValue( Screen.View );
-      //effectParameterProjection.SetValue( Screen.Projection );
-      //effectParameterEye.SetValue( Screen.Camera.Position );
+      Matrix world;
+      GetTransform( out world );
+      effectParameterWorld.SetValue( world );
+      effectParameterView.SetValue( Screen.View );
+      effectParameterProjection.SetValue( Screen.Projection );
+      effectParameterEye.SetValue( Screen.Camera.Position );
 
-      //foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
-      //{
-      //  pass.Begin();
-      //  foreach ( ModelMesh mesh in Model.Meshes )
-      //  {
-      //    foreach ( ModelMeshPart part in mesh.MeshParts )
-      //    {
-      //      graphics.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-      //      graphics.Indices = mesh.IndexBuffer;
-      //      graphics.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
-      //                                      part.NumVertices, part.StartIndex, part.PrimitiveCount );
-      //    }
-      //  }
-      //  pass.End();
-      //}
+      foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
+      {
+        pass.Begin();
+        foreach ( ModelMesh mesh in Model.Meshes )
+        {
+          foreach ( ModelMeshPart part in mesh.MeshParts )
+          {
+            graphics.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+            graphics.Indices = mesh.IndexBuffer;
+            graphics.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
+                                            part.NumVertices, part.StartIndex, part.PrimitiveCount );
+          }
+        }
+        pass.End();
+      }
 
-      //effect.End();
+      effect.End();
     }
 
     private void SetRenderState( RenderState renderState )

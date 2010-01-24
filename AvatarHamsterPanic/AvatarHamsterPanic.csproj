@@ -70,6 +70,9 @@
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="IMessageDisplay.cs" />
+    <Compile Include="InstancedModel.cs" />
+    <Compile Include="InstancedModelPart.cs" />
+    <Compile Include="InstancedModelReader.cs" />
     <Compile Include="Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />

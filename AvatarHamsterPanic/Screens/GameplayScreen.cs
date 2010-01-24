@@ -24,6 +24,7 @@ using Microsoft.Xna.Framework.Audio;
 using CustomAvatarAnimationFramework;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using InstancedModelSample;
 #endregion
 
 namespace AvatarHamsterPanic.Objects
@@ -302,40 +303,40 @@ namespace AvatarHamsterPanic.Objects
           obj.Draw();
       }
 
-      // DRAW FLOORBLOCKSEN
-      ReadOnlyCollection<FloorBlock> blocks = ObjectTable.GetObjects<FloorBlock>();
-      int nBlocks = blocks.Count;
-      for ( int i = 0; i < nBlocks; ++i )
-        blocks[i].GetTransform( out blockTransforms[i] );
+      //// DRAW FLOORBLOCKSEN
+      //ReadOnlyCollection<FloorBlock> blocks = ObjectTable.GetObjects<FloorBlock>();
+      //int nBlocks = blocks.Count;
+      //for ( int i = 0; i < nBlocks; ++i )
+      //  blocks[i].GetTransform( out blockTransforms[i] );
 
-      effectParameterEye.SetValue( Camera.Position );
-      effectParameterView.SetValue( View );
-      effectParameterProjection.SetValue( Projection );
-      effectParameterTransforms.SetValue( blockTransforms );
+      //effectParameterEye.SetValue( Camera.Position );
+      //effectParameterView.SetValue( View );
+      //effectParameterProjection.SetValue( Projection );
+      //effectParameterTransforms.SetValue( blockTransforms );
 
-      effect.Begin();
-      foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
-      {
-        pass.Begin();
-        foreach ( ModelMesh mesh in blockModel.Meshes )
-        {
-          foreach ( ModelMeshPart part in mesh.MeshParts )
-          {
-            device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-            device.Indices = mesh.IndexBuffer;
+      //effect.Begin();
+      //foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
+      //{
+      //  pass.Begin();
+      //  foreach ( ModelMesh mesh in blockModel.Meshes )
+      //  {
+      //    foreach ( ModelMeshPart part in mesh.MeshParts )
+      //    {
+      //      device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+      //      device.Indices = mesh.IndexBuffer;
 
-            effectParameterVertexCount.SetValue( part.NumVertices );
-            effect.CommitChanges();
+      //      effectParameterVertexCount.SetValue( part.NumVertices );
+      //      effect.CommitChanges();
 
-            device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,
-                                          2 * part.NumVertices, 0, part.PrimitiveCount * 2 );
-          }
-        }
-        pass.End();
-      }
-      effect.End();
+      //      device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,
+      //                                    2 * part.NumVertices, 0, part.PrimitiveCount * 2 );
+      //    }
+      //  }
+      //  pass.End();
+      //}
+      //effect.End();
 
-      // DRAW FLOORBLOCKSEN
+      //// DRAW FLOORBLOCKSEN
 
       // draw particles
       ReadOnlyCollection<ParticleEmitter> emitters = ObjectTable.GetObjects<ParticleEmitter>();

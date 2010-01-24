@@ -67,6 +67,10 @@
       <Project>{A6D980EB-170D-4302-97C2-19693FC7B63A}</Project>
       <Name>CustomAvatarAnimationPipeline</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\InstancedModelPipeline\InstancedModelPipeline.csproj">
+      <Project>{5201E245-0736-4146-AA6B-3F7A86513F00}</Project>
+      <Name>InstancedModelPipeline</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Animations\Walk.fbx">
@@ -188,22 +192,22 @@
     <Compile Include="Models\tubeCross.X">
       <Name>tubeCross</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>InstancedModelProcessor</Processor>
     </Compile>
     <Compile Include="Models\tubeCup.X">
       <Name>tubeCup</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>InstancedModelProcessor</Processor>
     </Compile>
     <Compile Include="Models\tubeElbow.X">
       <Name>tubeElbow</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>InstancedModelProcessor</Processor>
     </Compile>
     <Compile Include="Models\tubeTee.X">
       <Name>tubeTee</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>InstancedModelProcessor</Processor>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -218,6 +222,20 @@
       <Name>instanced</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Textures\particleSparkle.png">
+      <Name>particleSparkle</Name>
+      <Importer>TextureImporter</Importer>
+      <Processor>TextureProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\wheelInst.X">
+      <Name>wheelInst</Name>
+      <Importer>XImporter</Importer>
+      <Processor>InstancedModelProcessor</Processor>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\$(XnaFrameworkVersion)\Microsoft.Xna.GameStudio.ContentPipeline.targets" />

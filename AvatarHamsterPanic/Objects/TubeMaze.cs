@@ -7,26 +7,21 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using System.Diagnostics;
+using InstancedModelSample;
 
 namespace AvatarHamsterPanic.Objects
 {
   class TubeMaze : GameObject
   {
     TubePiece[,] tubes;
-    Matrix[,] worldBuffer;
+    Matrix[][] worldBuffer;
     int rows, cols;
     Vector3 topLeft;
     int highestRow;
     Matrix scaleMatrix;
     bool cupRow;
 
-    Effect effect;
-    EffectParameter effectParamWorld;
-    EffectParameter effectParamView;
-    EffectParameter effectParamProjection;
-    EffectParameter effectParamEye;
-    EffectParameter effectParamColor;
-    Model[] tubeModels;
+    InstancedModel[] tubeModels;
     int[] nTubes;
     Vector4[] colors;
 
@@ -38,7 +33,7 @@ namespace AvatarHamsterPanic.Objects
 
     static TubeMaze()
     {
-      rand = new Random(1);
+      rand = new Random();
 
       rotations = new Matrix[4];
 
@@ -72,21 +67,14 @@ namespace AvatarHamsterPanic.Objects
       };
 
       ContentManager content = screen.Content;
-      effect = content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
-      effect.CurrentTechnique = effect.Techniques["Color"];
-      effectParamColor = effect.Parameters["Color"];
-      effectParamWorld = effect.Parameters["World"];
-      effectParamView = effect.Parameters["View"];
-      effectParamProjection = effect.Parameters["Projection"];
-      effectParamEye = effect.Parameters["Eye"];
 
-      effectParamColor.SetValue( colors[0] );
-
-      tubeModels = new Model[4];
-      tubeModels[(int)TubePattern.Elbow] = content.Load<Model>( "Models/tubeElbow" );
-      tubeModels[(int)TubePattern.Cup]   = content.Load<Model>( "Models/tubeCup"   );
-      tubeModels[(int)TubePattern.Tee]   = content.Load<Model>( "Models/tubeTee"   );
-      tubeModels[(int)TubePattern.Cross] = content.Load<Model>( "Models/tubeCross" );
+      tubeModels = new InstancedModel[4];
+      tubeModels[(int)TubePattern.Elbow] = content.Load<InstancedModel>( "Models/tubeElbow" );
+      tubeModels[(int)TubePattern.Cup]   = content.Load<InstancedModel>( "Models/tubeCup" );
+      tubeModels[(int)TubePattern.Tee]   = content.Load<InstancedModel>( "Models/tubeTee" );
+      tubeModels[(int)TubePattern.Cross] = content.Load<InstancedModel>( "Models/tubeCross" );
+      foreach ( InstancedModel model in tubeModels )
+        model.SetInstancingTechnique( InstancingTechnique.Color );
 
       Camera camera = screen.Camera;
 
@@ -104,7 +92,10 @@ namespace AvatarHamsterPanic.Objects
       cols = (int)Math.Ceiling( worldWidth / TubeSize );
 
       tubes = new TubePiece[rows, cols];
-      worldBuffer = new Matrix[4, rows * cols];
+      int maxPipes = rows * cols;
+      worldBuffer = new Matrix[4][];
+      for ( int i = 0; i < 4; ++i )
+        worldBuffer[i] = new Matrix[maxPipes];
       nTubes = new int[4];
       cupRow = ( rows % 2 == 1 );
 
@@ -174,7 +165,14 @@ namespace AvatarHamsterPanic.Objects
       float t = .5f + -(float)Math.Cos( (float)Math.PI * fakeTime ) / 2f;
       if ( (int)fakeTime % 2 == 1 )
         t = 1f - t;
-      effectParamColor.SetValue( colors[a] + t * ( colors[b] - colors[a] ) );
+
+      // set color for tubes
+      Vector4 color = colors[a] + t * ( colors[b] - colors[a] );
+      foreach ( InstancedModel model in tubeModels )
+      {
+        foreach ( InstancedModelPart part in model.ModelParts )
+          part.EffectParameterColor.SetValue( color );
+      }
 
       while ( topLeft.Y > Screen.Camera.Position.Y + DeathLine )
       {
@@ -230,38 +228,44 @@ namespace AvatarHamsterPanic.Objects
 
       GetWorldTransforms();
 
-      effectParamView.SetValue( Screen.View );
-      effectParamProjection.SetValue( Screen.Projection );
-      effectParamEye.SetValue( Screen.Camera.Position );
-
-      effect.Begin();
-      effect.CurrentTechnique.Passes[0].Begin();
-
-      // for each model
       for ( int i = 0; i < 4; ++i )
       {
-        TubePattern type = (TubePattern)i;
-
-        foreach ( ModelMesh mesh in tubeModels[i].Meshes )
-        {
-          foreach ( ModelMeshPart part in mesh.MeshParts )
-          {
-            device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-            device.Indices = mesh.IndexBuffer;
-
-            for ( int j = 0; j < nTubes[i]; ++j )
-            {
-              effectParamWorld.SetValue( worldBuffer[i, j] );
-              effect.CommitChanges();
-              device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
-                                            part.NumVertices, part.StartIndex, part.PrimitiveCount );
-            }
-          }
-        }
+        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View, 
+                                     Screen.Projection, Screen.Camera.Position );
       }
 
-      effect.CurrentTechnique.Passes[0].End();
-      effect.End();
+      //effectParamView.SetValue( Screen.View );
+      //effectParamProjection.SetValue( Screen.Projection );
+      //effectParamEye.SetValue( Screen.Camera.Position );
+
+      //effect.Begin();
+      //effect.CurrentTechnique.Passes[0].Begin();
+
+      //// for each model
+      //for ( int i = 0; i < 4; ++i )
+      //{
+      //  TubePattern type = (TubePattern)i;
+
+      //  foreach ( ModelMesh mesh in tubeModels[i].Meshes )
+      //  {
+      //    foreach ( ModelMeshPart part in mesh.MeshParts )
+      //    {
+      //      device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+      //      device.Indices = mesh.IndexBuffer;
+
+      //      for ( int j = 0; j < nTubes[i]; ++j )
+      //      {
+      //        effectParamWorld.SetValue( worldBuffer[i, j] );
+      //        effect.CommitChanges();
+      //        device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
+      //                                      part.NumVertices, part.StartIndex, part.PrimitiveCount );
+      //      }
+      //    }
+      //  }
+      //}
+
+      //effect.CurrentTechnique.Passes[0].End();
+      //effect.End();
     }
 
     private void GetWorldTransforms()
@@ -280,7 +284,7 @@ namespace AvatarHamsterPanic.Objects
           {
             int typeIndex = (int)tube.Pattern;
             Matrix translation = Matrix.CreateTranslation( position );
-            worldBuffer[typeIndex, nTubes[typeIndex]++] = scaleMatrix * rotations[tube.Rotation] * translation;
+            worldBuffer[typeIndex][nTubes[typeIndex]++] = scaleMatrix * rotations[tube.Rotation] * translation;
           }
           position.X += TubeSize;
         }
