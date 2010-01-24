@@ -372,7 +372,6 @@ namespace AvatarHamsterPanic.Objects
         effect.CurrentTechnique = effect.Techniques[0];
         effect.Begin();
 
-        //Matrix world = Matrix.CreateBillboard( particle.Position, eye, up, null );
         float length = particle.Velocity.Length();
         Vector3 axis = particle.Velocity / length;
         Matrix world = Matrix.CreateConstrainedBillboard( particle.Position, eye, axis, null, null );
@@ -503,6 +502,35 @@ namespace AvatarHamsterPanic.Objects
       particle.FadePower = fadePower;
 
       return particle;
+    }
+  }
+
+  class ParticleSparklesFactory : IParticleFactory
+  {
+    float radius;
+    float scaleUpTime;
+    float scaleDownTime;
+    float sizeSmall;
+    float sizeLarge;
+
+    public ParticleSparklesFactory( float radius )
+    {
+      this.radius = radius;
+    }
+
+    public Particle CreateParticle( Random rand, Vector3 origin )
+    {
+      Particle particle = new Particle();
+
+      Vector3 randTrans = new Vector3( (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f, (float)rand.NextDouble() - .5f );
+      if ( randTrans == Vector3.Zero )
+        particle.Position = origin;
+      else
+        particle.Position = origin + ( (float)rand.NextDouble() * raidius ) * Vector3.Normalize( randTrans );
+
+      particle.Time = 0f;
+      particle.Life = scaleUpTime + scaleDownTime;
+      particle.Size = sizeSmall;
     }
   }
 }

@@ -127,6 +127,20 @@ namespace AvatarHamsterPanic.Objects
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
       //Thread.Sleep( 5000 );
+      effect = Content.Load<Effect>( "Effects/instanced" );
+      effect.CurrentTechnique = effect.Techniques["DiffuseColor"];
+      Texture2D DiffuseMap = Content.Load<Texture2D>( "Textures/glassDiffuse" );
+      Texture2D NormalMap = Content.Load<Texture2D>( "Textures/glassNormal" );
+      effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
+      effect.Parameters["NormalMap"].SetValue( NormalMap );
+
+      effectParameterWorld = effect.Parameters["World"];
+      effectParameterView = effect.Parameters["View"];
+      effectParameterProjection = effect.Parameters["Projection"];
+      effectParameterEye = effect.Parameters["Eye"];
+      effectParameterVertexCount = effect.Parameters["VertexCount"];
+      effectParameterTransforms = effect.Parameters["InstanceTransforms"];
+      blockModel = Content.Load<Model>( "Models/block" );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -254,6 +268,16 @@ namespace AvatarHamsterPanic.Objects
       }
     }
 
+    Matrix[] blockTransforms = new Matrix[59];
+    Effect effect;
+    EffectParameter effectParameterWorld;
+    EffectParameter effectParameterView;
+    EffectParameter effectParameterProjection;
+    EffectParameter effectParameterEye;
+    EffectParameter effectParameterVertexCount;
+    EffectParameter effectParameterTransforms;
+    Model blockModel;
+
 
     /// <summary>
     /// Draws the gameplay screen.
@@ -271,13 +295,49 @@ namespace AvatarHamsterPanic.Objects
       VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
       device.VertexDeclaration = new VertexDeclaration( device, elements );
 
-      // particles must be drawn last
+      // draw non-particles
       foreach ( GameObject obj in ObjectTable.AllObjects )
       {
         if ( !( obj is ParticleEmitter ) )
           obj.Draw();
       }
 
+      // DRAW FLOORBLOCKSEN
+      ReadOnlyCollection<FloorBlock> blocks = ObjectTable.GetObjects<FloorBlock>();
+      int nBlocks = blocks.Count;
+      for ( int i = 0; i < nBlocks; ++i )
+        blocks[i].GetTransform( out blockTransforms[i] );
+
+      effectParameterEye.SetValue( Camera.Position );
+      effectParameterView.SetValue( View );
+      effectParameterProjection.SetValue( Projection );
+      effectParameterTransforms.SetValue( blockTransforms );
+
+      effect.Begin();
+      foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
+      {
+        pass.Begin();
+        foreach ( ModelMesh mesh in blockModel.Meshes )
+        {
+          foreach ( ModelMeshPart part in mesh.MeshParts )
+          {
+            device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
+            device.Indices = mesh.IndexBuffer;
+
+            effectParameterVertexCount.SetValue( part.NumVertices );
+            effect.CommitChanges();
+
+            device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,
+                                          2 * part.NumVertices, 0, part.PrimitiveCount * 2 );
+          }
+        }
+        pass.End();
+      }
+      effect.End();
+
+      // DRAW FLOORBLOCKSEN
+
+      // draw particles
       ReadOnlyCollection<ParticleEmitter> emitters = ObjectTable.GetObjects<ParticleEmitter>();
       foreach ( ParticleEmitter emitter in emitters )
         emitter.Draw();
