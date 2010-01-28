@@ -46,7 +46,7 @@ namespace AvatarHamsterPanic.Objects
       graphics.PreferredBackBufferWidth = 1920;//853;
       graphics.PreferredBackBufferHeight = 1080;//480;
 
-      IsFixedTimeStep = false;
+      IsFixedTimeStep = true;
       graphics.SynchronizeWithVerticalRetrace = true;
 
       // Create the screen manager component.

@@ -21,51 +21,82 @@ namespace AvatarHamsterPanic.Objects
 
     Matrix world;
     int owner;
+    bool alive;
+
+    static VertexDeclaration vertexDeclaration;
+    static GameplayScreen screen;
+    static Model scoreCoinModel;
+    static Powerup[] pool;
 
     event UpdateMethod UpdateSelf;
 
-    public PhysBody Body { get; private set; }
+    public PhysCircle Body { get; private set; }
     public Model Model { get; private set; }
     public float Size { get; private set; }
 
     public static float DeathLine { get; private set; }
 
-    public static Powerup CreatePowerup( GameplayScreen screen, Vector2 pos, PowerupType type )
+    public static void Initialize( GameplayScreen screen )
     {
+      Powerup.screen = screen;
+      GraphicsDevice device = screen.ScreenManager.GraphicsDevice;
+      vertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
+
+      scoreCoinModel = screen.Content.Load<Model>( "Models/collectible" );
+
+      float maxPowerupSize = 2f;
+      Camera camera = screen.Camera;
+      float dist = camera.Position.Z + maxPowerupSize / 2f;
+      float height = dist * (float)Math.Tan( camera.Fov / 2f );
+      DeathLine = height + maxPowerupSize / 2f;
+
+      const int poolSize = 20;
+      pool = new Powerup[poolSize];
+      for ( int i = 0; i < poolSize; ++i )
+        pool[i] = new Powerup( screen );
+    }
+
+    public static Powerup CreatePowerup( Vector2 pos, PowerupType type )
+    {
+      foreach ( Powerup powerup in pool )
+      {
+        if ( !powerup.alive )
+        {
+          powerup.Initialize( pos, type );
+          return powerup;
+        }
+      }
+
+      return null;
+    }
+
+    private void Initialize( Vector2 pos, PowerupType type )
+    {
+      Body.Position = pos;
+      Body.released = false;
+      PhysBody.AllBodies.Add( Body );
+      alive = true;
+      owner = -1;
+
       switch ( type )
       {
         case PowerupType.ScoreCoin:
-          float size = .6f;
-          PhysCircle body = new PhysCircle( size / 2f, pos, 1f );
-          body.Flags = PhysBodyFlags.Anchored | PhysBodyFlags.Ghost;
-          Model model = screen.Content.Load<Model>( "Models/collectible" );
-          Powerup coin = new Powerup( screen, body, model, size );
-          coin.UpdateSelf += coin.UpdateScoreCoin;
-          body.Collided += coin.HandleCoinCollision;
-          return coin;
-        default:
-          return null;
+          Size = .6f;
+          Body.Radius = Size / 2f;
+          Model = scoreCoinModel;
+          UpdateSelf += UpdateScoreCoin;
+          Body.Collided += HandleCoinCollision;
+          break;
       }
     }
 
-    private Powerup( GameplayScreen screen, PhysBody body, Model model, float size )
+    private Powerup( GameplayScreen screen )
       : base( screen )
     {
-      owner = -1;
-
-      Body = body;
-      Model = model;
-      Size = size;
-
-      body.Parent = this;
-
-      if ( DeathLine == 0f )
-      {
-        Camera camera = screen.Camera;
-        float  dist   = camera.Position.Z + size / 2f;
-        float  height = dist * (float)Math.Tan( camera.Fov / 2f );
-        DeathLine = height + size / 2f;
-      }
+      Body = new PhysCircle( 1f, Vector2.Zero, 1f );
+      Body.Flags = PhysBodyFlags.Anchored | PhysBodyFlags.Ghost;
+      Body.Parent = this;
+      Body.Release();
     }
 
     public override void Update( GameTime gameTime )
@@ -74,6 +105,7 @@ namespace AvatarHamsterPanic.Objects
       {
         Body.Release();
         Screen.ObjectTable.MoveToTrash( this );
+        alive = false;
       }
       else if ( UpdateSelf != null )
         UpdateSelf( gameTime );
@@ -88,10 +120,15 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Draw()
     {
+      SetupRendering();
+
       foreach ( ModelMesh mesh in Model.Meshes )
       {
-        foreach ( BasicEffect effect in mesh.Effects )
+        ModelEffectCollection effects = mesh.Effects;
+        int nEffects = effects.Count;
+        for ( int i = 0; i < nEffects; ++i )
         {
+          BasicEffect effect = (BasicEffect)effects[i];
           effect.EnableDefaultLighting();
           effect.View = Screen.View;
           effect.Projection = Screen.Projection;
@@ -99,6 +136,16 @@ namespace AvatarHamsterPanic.Objects
         }
         mesh.Draw();
       }
+    }
+
+    void SetupRendering()
+    {
+      GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
+      RenderState renderState = device.RenderState;
+
+      device.VertexDeclaration = vertexDeclaration;
+      renderState.AlphaBlendEnable = false;
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
     }
 
     public bool HandleCoinCollision( CollisResult result )
@@ -111,6 +158,7 @@ namespace AvatarHamsterPanic.Objects
 
         result.BodyA.Release();
         Screen.ObjectTable.MoveToTrash( this );
+        alive = false;
       }
 
       return true;

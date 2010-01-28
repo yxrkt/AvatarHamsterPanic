@@ -15,14 +15,16 @@ namespace AvatarHamsterPanic.Objects
 {
   class Player : GameObject
   {
-    static float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
-    static float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
+    static readonly float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
+    static readonly float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
-    ParticleEmitter emitter;
     float jumpRegistered;
     const float jumpTimeout = .125f;
-    GameTime lastGameTime;
+    GameTime lastGameTime = new GameTime();
     float lastCollision;
+    VertexDeclaration vertexDeclaration;
+    CustomAvatarAnimationData walkAnim;
+    CustomAvatarAnimationData runAnim;
 
     public static float Size { get; private set; }
     public static float DeathLine { get; set; }
@@ -66,21 +68,20 @@ namespace AvatarHamsterPanic.Objects
       BoundingCircle.Parent = this;
       BoundingCircle.Elasticity = .4f;
       BoundingCircle.Friction = .5f;
-      BoundingCircle.Collided += KillBlockIfPwnt;
-      BoundingCircle.Responded += new PhysBody.CollisionEvent( HandleCollisionResponse );
-      ////if ( playerIndex < 0 )
-      //  BoundingCircle.Flags |= PhysBodyFlags.Anchored;
+      BoundingCircle.Responded += HandleCollisionResponse;
+
+      walkAnim = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
+      runAnim  = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );
 
       Texture2D particleTex = screen.Content.Load<Texture2D>( "Textures/particleRound" );
-      ParticleConeFactory factory = new ParticleConeFactory( Vector3.Up, MathHelper.ToRadians( 30f ), 2f, 4f, 
-                                                             .5f, .75f, .03f, .03f, 2.5f, Color.White, 3 );
-      emitter = new ParticleEmitter( screen, Vector3.Zero, factory, particleTex );
-      screen.ObjectTable.Add( emitter );
 
       if ( playerIndex >= PlayerIndex.One )
         HUD = new PlayerHUD( this, SignedInGamer.SignedInGamers[playerIndex] );
       else
         HUD = new PlayerHUD( this, null );
+
+      vertexDeclaration = new VertexDeclaration( screen.ScreenManager.GraphicsDevice, 
+                                                 VertexPositionNormalTexture.VertexElements );
     }
 
     public void GetWheelTransform( out Matrix transform )
@@ -94,34 +95,6 @@ namespace AvatarHamsterPanic.Objects
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
-    private bool KillBlockIfPwnt( CollisResult data )
-    {
-      if ( Respawning )
-      {
-        if ( data.BodyB.Parent is FloorBlock )
-        {
-          FloorBlock block = (FloorBlock)data.BodyB.Parent;
-
-          // make sure this only happens once
-          if ( !block.BoundingPolygon.Flags.HasFlags( PhysBodyFlags.Ghost ) )
-          {
-            // remove the block
-            block.BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
-            block.BoundingPolygon.Release();
-            Screen.ObjectTable.MoveToTrash( block );
-
-            // add the exploding block particle system
-            Vector3 position = new Vector3( block.BoundingPolygon.Position, 0f );
-            ModelMeshCollection meshes = Screen.Content.Load<Model>( "Models/block_broken" ).Meshes;
-            Screen.ObjectTable.Add( new MeshClusterExplosion( Screen, position, meshes ) );
-
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
     private bool HandleCollisionResponse( CollisResult data )
     {
       PhysCircle circle = BoundingCircle;
@@ -129,35 +102,32 @@ namespace AvatarHamsterPanic.Objects
       // keep track of last time of collision (for jumping)
       lastCollision = (float)lastGameTime.TotalGameTime.TotalSeconds;
 
-      // set emitter direction
-      ParticleConeFactory factory = (ParticleConeFactory)emitter.Factory;
+      //// set emitter position
+      //Vector3 position = new Vector3( data.Intersection, FloorBlock.Size / 2f - .2f );
+      //emitter.Position = position;
 
-      // set emitter position
-      Vector3 position = new Vector3( data.Intersection, FloorBlock.Size / 2f - .2f );
-      emitter.Position = position;
+      //// spit some particles
+      //Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
+      //Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
+      //Vector2 dir = circle.Velocity;
 
-      // spit some particles
-      Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
-      Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
-      Vector2 dir = circle.Velocity;
+      //Vector2 vpn = Vector2.Normalize( vp );
+      //factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
 
-      Vector2 vpn = Vector2.Normalize( vp );
-      factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
-
-      Vector2 sum = vp + dir;
-      if ( sum != Vector2.Zero )
-      {
-        float sumLength = sum.Length();
-        if ( sumLength > .05f )
-        {
-          float numToSpit = .5f * sumLength;
-          //emitter.Position += new Vector3( ( vpn * .1f ), 0f );
-          emitter.Spit( numToSpit );
-          position.Z = -position.Z;
-          emitter.Position = position;
-          emitter.Spit( numToSpit );
-        }
-      }
+      //Vector2 sum = vp + dir;
+      //if ( sum != Vector2.Zero )
+      //{
+      //  float sumLength = sum.Length();
+      //  if ( sumLength > .05f )
+      //  {
+      //    float numToSpit = .5f * sumLength;
+      //    //emitter.Position += new Vector3( ( vpn * .1f ), 0f );
+      //    emitter.Spit( numToSpit );
+      //    position.Z = -position.Z;
+      //    emitter.Position = position;
+      //    emitter.Spit( numToSpit );
+      //  }
+      //}
 
       return true;
     }
@@ -309,11 +279,11 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Draw()
     {
-      if ( Respawning && ( (int)Math.Floor( RespawnTime * 16f ) % 2 ) == 0 )
+      if ( Respawning && ( (int)( RespawnTime * 16f ) % 2 ) == 0 )
         return;
 
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      graphics.VertexDeclaration = vertexDeclaration;
       SetRenderState( graphics.RenderState );
 
       Matrix transform;
@@ -321,8 +291,11 @@ namespace AvatarHamsterPanic.Objects
       // draw wheel
       foreach ( ModelMesh mesh in WheelModel.Meshes )
       {
-        foreach ( BasicEffect effect in mesh.Effects )
+        ModelEffectCollection effects = mesh.Effects;
+        int nEffects = effects.Count;
+        for ( int i = 0; i < nEffects; ++i )
         {
+          BasicEffect effect = (BasicEffect)effects[i];
           effect.EnableDefaultLighting();
 
           GetWheelTransform( out transform );
@@ -356,9 +329,10 @@ namespace AvatarHamsterPanic.Objects
 
     private void UpdateAvatar( GameTime gameTime )
     {
-      Avatar.Position = new Vector3( BoundingCircle.Position.X, BoundingCircle.Position.Y - ( Scale * Size ) / 2.5f, 0f );
+      PhysCircle circle = BoundingCircle;
+      Avatar.Position = new Vector3( circle.Position.X, circle.Position.Y - ( Scale * Size ) / 2.5f, 0f );
 
-      double absAngVel = Math.Abs( (double)BoundingCircle.AngularVelocity );
+      double absAngVel = Math.Abs( (double)circle.AngularVelocity );
 
       // update avatar's animation
       double idleThresh = .1;
@@ -376,13 +350,11 @@ namespace AvatarHamsterPanic.Objects
         if ( absAngVel <= walkThresh )
         {
           animScaleFactor = 1.0;
-          CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
-          Avatar.SetAnimation( data );
+          Avatar.SetAnimation( walkAnim );
         }
         else
         {
-          CustomAvatarAnimationData data = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );
-          Avatar.SetAnimation( data );
+          Avatar.SetAnimation( runAnim );
         }
         double animScale = animScaleFactor * absAngVel;
         Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );

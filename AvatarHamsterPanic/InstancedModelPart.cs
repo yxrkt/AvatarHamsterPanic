@@ -192,8 +192,11 @@ namespace InstancedModelSample
       // Begin the effect, then loop over all the effect passes.
       effect.Begin();
 
-      foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
+      EffectPassCollection passes = effect.CurrentTechnique.Passes;
+      int nPasses = passes.Count;
+      for ( int i = 0; i < nPasses; ++i )
       {
+        EffectPass pass = passes[i];
         pass.Begin();
 
         DrawShaderInstancing( instanceTransforms, nTransforms );
@@ -213,8 +216,7 @@ namespace InstancedModelSample
                           Matrix view, Matrix projection, Vector3 eye )
     {
       // Set the graphics device to use our vertex data.
-      graphicsDevice.VertexDeclaration = new VertexDeclaration( graphicsDevice, VertexPositionNormalTexture.VertexElements );
-      //graphicsDevice.VertexDeclaration = vertexDeclaration;
+      graphicsDevice.VertexDeclaration = vertexDeclaration;
       graphicsDevice.Vertices[0].SetSource( vertexBuffer, 0, vertexStride );
       graphicsDevice.Indices = indexBuffer;
 

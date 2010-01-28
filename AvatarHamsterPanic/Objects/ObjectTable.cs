@@ -3,29 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Collections.ObjectModel;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace AvatarHamsterPanic.Objects
 {
   public class ObjectTable<BaseType>
   {
-    private delegate bool RemoveDelegate<T>( T obj );
+    private delegate bool RemoveDelegate<T>( T obj ) where T : BaseType;
+
+    delegate object InvokeDelegate( object obj, object[] parameters );
 
     private Dictionary<Type, object> table = new Dictionary<Type, object>();
-    private Dictionary<Type, Delegate> cleaner = new Dictionary<Type, Delegate>();
-    private List<BaseType> trash = new List<BaseType>();
+    private Dictionary<Type, object> readOnlyTable = new Dictionary<Type, object>();
+    private Dictionary<Type, InvokeDelegate> cleaner = new Dictionary<Type, InvokeDelegate>();
+    private List<BaseType> trash = new List<BaseType>( 100 );
     private object[] objInArray = new object[1];
 
     public ReadOnlyCollection<BaseType> AllObjects
     {
-      get { return ( (List<BaseType>)table[typeof( BaseType )] ).AsReadOnly(); }
+      get { return ( (ReadOnlyCollection<BaseType>)readOnlyTable[typeof( BaseType )] ); }
     }
 
     public ObjectTable()
     {
-      table.Add( typeof( BaseType ), new List<BaseType>() );
+      List<BaseType> commonList = new List<BaseType>( 100 );
+      table.Add( typeof( BaseType ), commonList );
+      readOnlyTable.Add( typeof( BaseType ), new ReadOnlyCollection<BaseType>( commonList ) );
     }
 
-    public void Add<T>( T obj )
+    public void Add<T>( T obj ) where T : BaseType
     {
       // Add to specific list
       if ( !table.ContainsKey( obj.GetType() ) )
@@ -33,61 +40,63 @@ namespace AvatarHamsterPanic.Objects
 
       ( (List<T>)table[obj.GetType()] ).Add( obj );
 
-      // Add to generic list
-      ( (List<BaseType>)table[typeof( BaseType )] ).Add( (BaseType)(object)obj );
+      // Add to base list
+      ( (List<BaseType>)table[typeof( BaseType )] ).Add( obj );
     }
 
-    public void Remove<T>( T obj )
+    public void Remove<T>( T obj ) where T : BaseType
     {
       ( (List<T>)table[obj.GetType()] ).Remove( obj );
-      ( (List<object>)table[typeof( object )] ).Remove( obj );
+      ( (List<BaseType>)table[typeof( BaseType )] ).Remove( obj );
     }
 
-    public ReadOnlyCollection<T> GetObjects<T>()
+    public ReadOnlyCollection<T> GetObjects<T>() where T : BaseType
     {
-      if ( table.ContainsKey( typeof( T ) ) )
-      {
-        object temp = table[typeof( T )];
-        return ((List<T>)temp).AsReadOnly();
-      }
+      if ( !readOnlyTable.ContainsKey( typeof( T ) ) )
+        InitList<T>();
 
-      return null;
+      return (ReadOnlyCollection<T>)readOnlyTable[typeof( T )];
     }
 
     public void Clear()
     {
       table.Clear();
+      readOnlyTable.Clear();
       trash.Clear();
-      table.Add( typeof( BaseType ), new List<BaseType>() );
+
+      List<BaseType> commonList = new List<BaseType>( 100 );
+      table.Add( typeof( BaseType ), commonList );
+      readOnlyTable.Add( typeof( BaseType ), new ReadOnlyCollection<BaseType>( commonList ) );
     }
 
-    public bool InitList<T>()
+    public bool InitList<T>() where T : BaseType
     {
       if ( table.ContainsKey( typeof( T ) ) )
         return false;
-      List<T> list = new List<T>();
+      List<T> list = new List<T>( 50 );
       table.Add( typeof( T ), list );
-      cleaner.Add( typeof( T ), new RemoveDelegate<T>( list.Remove ) );
+      readOnlyTable.Add( typeof( T ), new ReadOnlyCollection<T>( list ) );
+      cleaner.Add( typeof( T ), new RemoveDelegate<T>( list.Remove ).Method.Invoke );
       return true;
     }
 
-    public void MoveToTrash<T>( T obj )
+    public void MoveToTrash<T>( T obj ) where T : BaseType
     {
-      trash.Add( (BaseType)(object)obj );
+      trash.Add( obj );
     }
 
-    public void RemoveFromTrash<T>( T obj )
+    public void RemoveFromTrash<T>( T obj ) where T : BaseType
     {
-      trash.Remove( (BaseType)(object)obj );
+      trash.Remove( obj );
     }
 
     public void EmptyTrash()
     {
-      foreach ( object obj in trash )
+      foreach ( BaseType obj in trash )
       {
         objInArray[0] = obj;
-        cleaner[obj.GetType()].Method.Invoke( table[obj.GetType()], objInArray );
-        ( (List<BaseType>)table[typeof( BaseType )] ).Remove( (BaseType)(object)obj );
+        cleaner[obj.GetType()]( table[obj.GetType()], objInArray );
+        ( (List<BaseType>)table[typeof( BaseType )] ).Remove( obj );
       }
       trash.Clear();
     }

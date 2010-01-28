@@ -43,7 +43,8 @@ namespace InstancedModelSample
     // Internally our custom model is made up from a list of model parts.
     // Most of the interesting code lives in the InstancedModelPart class.
     List<InstancedModelPart> modelParts = new List<InstancedModelPart>();
-    internal ReadOnlyCollection<InstancedModelPart> ModelParts { get { return modelParts.AsReadOnly(); } }
+    ReadOnlyCollection<InstancedModelPart> readOnlyParts;
+    internal ReadOnlyCollection<InstancedModelPart> ModelParts { get { return readOnlyParts; } }
 
     // Keep track of what graphics device we are using.
     GraphicsDevice graphicsDevice;
@@ -61,6 +62,8 @@ namespace InstancedModelSample
     {
       // Look up our graphics device.
       graphicsDevice = GetGraphicsDevice( input );
+
+      readOnlyParts = new ReadOnlyCollection<InstancedModelPart>( modelParts );
 
       // Load the model data.
       int partCount = input.ReadInt32();

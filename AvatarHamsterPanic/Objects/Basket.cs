@@ -17,9 +17,10 @@ namespace AvatarHamsterPanic.Objects
     public PhysPolygon BoundingPolygon { get; set; }
     public bool Released { get; private set; }
 
-    private bool WarpingOut { get { return warpTimeEnd != 0f; } }
-    private float warpTime = 0f, warpTimeEnd = 0f;
-    private Effect warpEffect = null;
+    bool WarpingOut { get { return warpTimeEnd != 0f; } }
+    float warpTime = 0f, warpTimeEnd = 0f;
+    Effect warpEffect = null;
+    VertexDeclaration vertexDeclaration;
 
     static Basket()
     {
@@ -57,6 +58,9 @@ namespace AvatarHamsterPanic.Objects
       BoundingPolygon.Flags |= PhysBodyFlags.Anchored;
       BoundingPolygon.Elasticity = 1f;
       BoundingPolygon.Friction = 1.5f;
+
+      vertexDeclaration = new VertexDeclaration( screen.ScreenManager.GraphicsDevice,
+                                                 VertexPositionNormalTexture.VertexElements );
 
       // load the mesh
       Model = screen.Content.Load<Model>( "Models/basket" );
@@ -104,23 +108,23 @@ namespace AvatarHamsterPanic.Objects
     public override void Draw()
     {
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      graphics.VertexDeclaration = vertexDeclaration;
       SetRenderState( graphics.RenderState );
 
       if ( !WarpingOut )
       {
+        int nMeshes = Model.Meshes.Count;
         foreach ( ModelMesh mesh in Model.Meshes )
         {
-          foreach ( BasicEffect effect in mesh.Effects )
-          {
-            Matrix world;
-            GetTransform( out world );
+          BasicEffect effect = (BasicEffect)mesh.Effects[0];
 
-            effect.EnableDefaultLighting();
-            effect.World = world;
-            effect.View = Screen.View;
-            effect.Projection = Screen.Projection;
-          }
+          Matrix world;
+          GetTransform( out world );
+
+          effect.EnableDefaultLighting();
+          effect.World = world;
+          effect.View = Screen.View;
+          effect.Projection = Screen.Projection;
 
           mesh.Draw();
         }
@@ -135,11 +139,16 @@ namespace AvatarHamsterPanic.Objects
         warpEffect.Parameters["matWorldViewProj"].SetValue( world * Screen.View * Screen.Projection );
         warpEffect.Parameters["time"].SetValue( Math.Min( warpTime / warpTimeEnd, 1f ) );
 
-        foreach ( EffectPass pass in warpEffect.CurrentTechnique.Passes )
+        EffectPassCollection passes = warpEffect.CurrentTechnique.Passes;
+        int nPasses = passes.Count;
+        for ( int i = 0; i < nPasses; ++i )
         {
+          EffectPass pass = passes[i];
+
           pass.Begin();
           foreach ( ModelMesh mesh in Model.Meshes )
           {
+            int nParts = mesh.MeshParts.Count;
             foreach ( ModelMeshPart part in mesh.MeshParts )
             {
               part.Effect = warpEffect;

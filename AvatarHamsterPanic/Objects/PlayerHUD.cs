@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.ObjectModel;
+using Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -27,9 +28,11 @@ namespace AvatarHamsterPanic.Objects
     Vector2 scorePos;
     SpringInterpolater scoreSpring;
     PopupText scorePopup;
+    StringBuilder scoreString;
 
     SpriteFont placeFont;
     Vector2 placePos;
+    StringBuilder placeNumber;
 
     Rectangle boostRect;
     Effect boostEffect;
@@ -40,7 +43,7 @@ namespace AvatarHamsterPanic.Objects
 
     float lastTime;
 
-    static string[] placeStrings = { "st", "nd", "rd", "th" };
+    static readonly string[] placeStrings = { "st", "nd", "rd", "th" };
     static int xPadding = 10;
     static int yPadding = 10;
 
@@ -104,6 +107,7 @@ namespace AvatarHamsterPanic.Objects
       scoreSpring.SetSource( 1f );
       scoreSpring.SetDest( 1f );
       scoreSpring.Active = true;
+      scoreString = new StringBuilder( 1 );
 
       // score popup
       scorePopup = new PopupText( 1f, scorePos + new Vector2( -25f, -120f ), 
@@ -112,6 +116,7 @@ namespace AvatarHamsterPanic.Objects
       // place
       placePos = new Vector2( x0 + 37, y0 + 65 );
       placeFont = screen.Content.Load<SpriteFont>( "Fonts/HUDPlaceFont" );
+      placeNumber = new StringBuilder( "0" );
     }
 
     public void Update( GameTime gameTime )
@@ -161,17 +166,18 @@ namespace AvatarHamsterPanic.Objects
                               nameOrigin, nameScale, SpriteEffects.None, 0f );
 
       // score
-      string score = Score.ToString();
-      Vector2 scoreOrigin = scoreFont.MeasureString( score );
-      spriteBatch.DrawString( scoreFont, score, scorePos, Color.Black, 0f, 
+      scoreString.Remove( 0, scoreString.Length );
+      scoreString.AppendInt( Score );
+      Vector2 scoreOrigin = scoreFont.MeasureString( scoreString );
+      spriteBatch.DrawString( scoreFont, scoreString, scorePos, Color.Black, 0f, 
                               scoreOrigin, scoreSpring.GetSource()[0], SpriteEffects.None, 0f );
 
       // score popup
       if ( scorePopup.Active )
         scorePopup.Draw( spriteBatch, scoreFont, Color.Black );
-      
+
       // place
-      string placeNumber = Place.ToString();
+      placeNumber[0] = (char)( '0' + Place );
       string placeTag = placeStrings[Place - 1];
       Vector2 placeNumberSize = placeFont.MeasureString( placeNumber );
       Vector2 placeTagSize = nameFont.MeasureString( placeTag );

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -13,6 +14,7 @@ namespace AvatarHamsterPanic.Objects
     Vector2 showPos, hidePos;
     float size;
     float time, timeout;
+    StringBuilder text;
 
     public bool Active { get; private set; }
     public SpringInterpolater PositionSpring { get; private set; }
@@ -24,6 +26,7 @@ namespace AvatarHamsterPanic.Objects
       this.showPos = showPos;
       this.hidePos = hidePos;
       this.timeout = timeout;
+      this.text = new StringBuilder( 4 );
 
       PositionSpring = new SpringInterpolater( 2, 600f, SpringInterpolater.GetCriticalDamping( 600f ) );
       ScaleSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
@@ -44,7 +47,7 @@ namespace AvatarHamsterPanic.Objects
         {
           ScaleSpring.B = SpringInterpolater.GetCriticalDamping( ScaleSpring.K );
           ScaleSpring.SetDest( 0f );
-          PositionSpring.SetDest( hidePos.X, hidePos.Y );
+          PositionSpring.SetDest( hidePos );
           PositionSpring.Active = true;
         }
 
@@ -77,7 +80,7 @@ namespace AvatarHamsterPanic.Objects
         {
           ScaleSpring.SetDest( size );
           ScaleSpring.B = .25f * SpringInterpolater.GetCriticalDamping( ScaleSpring.K );
-          PositionSpring.SetDest( showPos.X, showPos.Y );
+          PositionSpring.SetDest( showPos );
         }
         else
         {
@@ -88,9 +91,10 @@ namespace AvatarHamsterPanic.Objects
 
     public void Draw( SpriteBatch spriteBatch, SpriteFont font, Color color )
     {
-      string text = number.ToString();
+      text.Remove( 0, text.Length );
       if ( number >= 0 )
-        text = "+" + text;
+        text.Append( '+' );
+      text.AppendInt( number );
       Vector2 origin = font.MeasureString( text ) / 2f;
       float[] source = PositionSpring.GetSource();
       Vector2 position = new Vector2( source[0], source[1] );
@@ -99,8 +103,8 @@ namespace AvatarHamsterPanic.Objects
 
     private void ResetSprings()
     {
-      PositionSpring.SetSource( showPos.X, showPos.Y );
-      PositionSpring.SetDest( hidePos.X, hidePos.Y );
+      PositionSpring.SetSource( showPos );
+      PositionSpring.SetDest( hidePos );
       ScaleSpring.SetSource( 0f );
       ScaleSpring.SetDest( size );
       ScaleSpring.B = .25f * SpringInterpolater.GetCriticalDamping( ScaleSpring.K );

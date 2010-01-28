@@ -10,10 +10,8 @@ namespace MathLib
   /// <summary>
   /// Geometry tools
   /// </summary>
-  class Geometry
+  public static class Geometry
   {
-    private Geometry() { }
-
     /// <summary>
     /// Tests for an intersection between two line segments.
     /// </summary>
@@ -121,6 +119,8 @@ namespace MathLib
 
         t = p0toIsect / (float)Math.Sqrt( vpLenSq );
       }
+
+      t = Math.Max( 0f, t );
 
       Vector2 vpByT = Vector2.Multiply( vp, t );
       Vector2 isect = Vector2.Add( p0, vpByT );

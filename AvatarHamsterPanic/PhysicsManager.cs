@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using MathLib;
 using AvatarHamsterPanic.Objects;
+using Utilities;
 using System.Diagnostics;
 
 
@@ -13,8 +14,10 @@ namespace Physics
   sealed class PhysicsManager
   {
     static readonly PhysicsManager instance = new PhysicsManager();
+    public static StringBuilder DebugString = new StringBuilder( 260 );
 
     Vector2 m_gravity = new Vector2( 0.0f, -10.0f );
+    uint collisionIndex = 0;
 
     // initialization
     private PhysicsManager()
@@ -36,13 +39,14 @@ namespace Physics
       bodies.RemoveAll( body => body.Released );
 
       // bubbles anchored bodies to the bottom of the list
-      bodies.Sort( (lhs, rhs) => (lhs.Flags & PhysBodyFlags.Anchored) - (rhs.Flags & PhysBodyFlags.Anchored) );
+      bodies.Sort();
 
       int nBodies = bodies.Count;
 
       // factor in forces for each object
-      foreach ( PhysBody body in bodies )
+      for ( int i = 0; i < nBodies; ++i )
       {
+        PhysBody body = bodies[i];
         body.Touching = null;
         body.CollisionList.Clear();
 
@@ -63,15 +67,19 @@ namespace Physics
 
       int nIterations = 0;
 
-      // update 'til the end of the frame
+      // update until the end of the frame
       float timeLeft = (float)elapsed;
       while ( timeLeft > 0f )
       {
-        Dictionary<PhysBody, CollisResult> collisions = new Dictionary<PhysBody,CollisResult>();
+        collisionIndex++;
+        int nCollisions = 0;
+        float bestTime = float.MaxValue;
 
         for ( int i = 0; i < nBodies; ++i )
         {
           PhysBody bodyA = bodies[i];
+          bodyA.Moved = false;
+          bodyA.LastResult.BodyB = null;
 
           // this assumes that all non-anchored bodies come before anchored ones
           if ( bodyA.Flags.HasFlags( PhysBodyFlags.Anchored ) )
@@ -90,26 +98,35 @@ namespace Physics
               }
               else
               {
-                if ( collisions.Count == 0 )
+                if ( nCollisions == 0 )
                 {
-                  collisions.Add( bodyA, result );
+                  bodyA.LastResult = result;
+                  bodyA.CollisionIndex = collisionIndex;
+                  bodyB.CollisionIndex = bodyA.CollisionIndex;
+                  bestTime = result.Time;
+                  nCollisions++;
                 }
-                else if ( result.Time < collisions.First().Value.Time )
+                else if ( result.Time < bestTime )
                 {
-                  collisions.Clear();
-                  collisions.Add( bodyA, result );
+                  bodyA.LastResult = result;
+                  bodyA.CollisionIndex = ++collisionIndex;
+                  bodyB.CollisionIndex = bodyA.CollisionIndex;
+                  bestTime = result.Time;
+                  nCollisions = 1;
                 }
-                else if ( result.Time == collisions.First().Value.Time )
+                else if ( result.Time == bestTime )
                 {
-                  if ( !collisions.ContainsKey( bodyA ) )
-                    collisions.Add( bodyA, result );
+                  bodyA.LastResult = result;
+                  bodyA.CollisionIndex = collisionIndex;
+                  bodyB.CollisionIndex = bodyA.CollisionIndex;
+                  nCollisions++;
                 }
               }
             }
           }
         }
 
-        if ( collisions.Count == 0 )
+        if ( nCollisions == 0 )
         {
           foreach ( PhysBody body in bodies )
           {
@@ -122,28 +139,31 @@ namespace Physics
         }
         else
         {
-          CollisResult firstCollision = collisions.First().Value;
           foreach ( PhysBody body in bodies )
           {
-            if ( collisions.ContainsKey( body ) )
+            if ( body.CollisionIndex == collisionIndex && body.LastResult.BodyB != null )
             {
-              CollisResult collision = collisions[body];
-              MoveBody( body, collision.Time, .001f );
-              if ( !collision.BodyB.Flags.HasFlags( PhysBodyFlags.Anchored ) )
-                MoveBody( collision.BodyB, collision.Time, .001f );
-              body.ApplyResponseFrom( collision );
+              if ( !body.Moved )
+                MoveBody( body, body.LastResult.Time, .001f );
+              if ( !body.LastResult.BodyB.Moved && !body.LastResult.BodyB.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+                MoveBody( body.LastResult.BodyB, bestTime, .001f );
+              body.ApplyResponseFrom( body.LastResult );
             }
-            else if ( collisions.Count( kvp => kvp.Value.BodyB == body ) == 0 )
+            else if ( !body.Moved )
             {
-              MoveBody( body, firstCollision.Time, 0f );
+              MoveBody( body, bestTime, 0f );
             }
           }
 
-          timeLeft -= firstCollision.Time;
+          timeLeft -= bestTime;
+          //++nIterations;
           if ( ++nIterations > 10 )
             timeLeft = 0f;
         }
       }
+
+      DebugString.Clear();
+      DebugString.AppendInt( nIterations );
     }
 
     // private helpers
@@ -152,6 +172,7 @@ namespace Physics
       if ( body.Velocity == Vector2.Zero ) return;
       if ( timeStep <= 0f ) return;
 
+      body.Moved = true;
       Vector2 disp = body.Velocity * timeStep;
       if ( pullBackPct != 0f )
         disp *= ( 1f - pullBackPct );

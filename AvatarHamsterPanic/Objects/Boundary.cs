@@ -6,94 +6,103 @@ using Physics;
 using Microsoft.Xna.Framework;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
+using InstancedModelSample;
 
 namespace AvatarHamsterPanic.Objects
 {
   class Boundary : GameObject
   {
-    PhysPolygon poly;
-    Model model;
-    Matrix deform;
-    Effect effect;
-    EffectParameter effectParamWorld;
-    EffectParameter effectParamView;
-    EffectParameter effectParamProjection;
-    EffectParameter effectParamEye;
+    const float polyWidth = 100f;
+    const float halfPolyWidth = polyWidth / 2f;
 
-    public float X
+    PhysPolygon polyLeft, polyRight;
+    float deathLine;
+    int nTransforms;
+
+    InstancedModel cageModel;
+    Matrix[] transforms;
+
+    public static float Size { get; private set; }
+
+    static Boundary()
     {
-      get { return poly.Position.X; }
-      set { poly.Position = new Vector2( value, poly.Position.Y ); }
+      Size = 2.3f;
     }
 
-    public float Y
-    {
-      get { return poly.Position.Y; }
-      set { poly.Position = new Vector2( poly.Position.X, value ); }
-    }
+    public float Left { get; private set; }
+    public float Right { get; private set; }
 
-    public Boundary( GameplayScreen screen, float xPos )
+    public Boundary( GameplayScreen screen, float left, float right )
       : base( screen )
     {
-      // polygon
-      poly = new PhysPolygon( .01f, 10000f, new Vector2( xPos, 0f ), 1f );
-      poly.Elasticity = 1f;
-      poly.Friction = 1.5f;
-      poly.Flags = PhysBodyFlags.Anchored;
+      Left  = left;
+      Right = right;
+
+      // left polygon
+      polyLeft = new PhysPolygon( polyWidth, 100f, new Vector2( left - halfPolyWidth, 0f ), 1f );
+      polyLeft.Elasticity = 1f;
+      polyLeft.Friction = 1.5f;
+      polyLeft.Flags = PhysBodyFlags.Anchored;
+
+      // right polygon
+      polyRight = new PhysPolygon( polyWidth, 100f, new Vector2( right + halfPolyWidth, 0f ), 1f );
+      polyRight.Elasticity = 1f;
+      polyRight.Friction = 1.5f;
+      polyRight.Flags = PhysBodyFlags.Anchored;
 
       // model
-      model = screen.Content.Load<Model>( "Models/block" );
-      float height = FloorBlock.DeathLine - FloorBlock.BirthLine;
-      Matrix rotate = new Matrix( 0, 1, 0, 0,
-                                 -1, 0, 0, 0,
-                                  0, 0, 1, 0,
-                                  0, 0, 0, 1 );
-      Matrix scale = Matrix.CreateScale( 1, height, 1 );
-      Matrix trans = Matrix.CreateTranslation( Math.Sign( X ) * .125f * FloorBlock.Size, 0f, 0f );
-      deform = Matrix.CreateScale( FloorBlock.Size ) * rotate * scale * trans;
+      cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );
 
-      // effect
-      effect = screen.Content.Load<Effect>( "Effects/basic" ).Clone( screen.ScreenManager.GraphicsDevice );
-      effect.CurrentTechnique = effect.Techniques["Color"];
-      effect.Parameters["Color"].SetValue( new Vector4( .69f, .75f, .82f, 1f ) );
-      effectParamWorld = effect.Parameters["World"];
-      effectParamView = effect.Parameters["View"];
-      effectParamProjection = effect.Parameters["Projection"];
-      effectParamEye = effect.Parameters["Eye"];
+      Camera camera = screen.Camera;
+
+      float dist = camera.Position.Z + Size / 2f;
+      float tanFovyOverTwo = (float)Math.Tan( camera.Fov / 2f );
+      deathLine = dist * tanFovyOverTwo + Size / 2f;
+
+      int rows = (int)Math.Ceiling( 2f * deathLine / Size );
+      nTransforms = rows * 2;
+      transforms = new Matrix[nTransforms];
     }
 
     public override void Update( GameTime gameTime )
     {
-      this.Y = Screen.Camera.Position.Y;
+      // update physics bodies
+      Vector2 leftPos = new Vector2( polyLeft.Position.X, Screen.Camera.Position.Y );
+      polyLeft.Position = leftPos;
+
+      Vector2 rightPos = new Vector2( polyRight.Position.X, Screen.Camera.Position.Y );
+      polyRight.Position = rightPos;
+
+      // update model transforms
+      Camera camera = Screen.Camera;
+      // get y height of top transform
+      float yTop = deathLine - Size + camera.Position.Y - camera.Position.Y % Size;
+
+      Matrix rotateL = new Matrix( 0, 0,-1, 0,
+                                   0, 1, 0, 0,
+                                   1, 0, 0, 0,
+                                   0, 0, 0, 1 );
+      Matrix rotateR = new Matrix( 0, 0, 1, 0,
+                                   0, 1, 0, 0,
+                                  -1, 0, 0, 0,
+                                   0, 0, 0, 1 );
+      Matrix scale = Matrix.CreateScale( Size );
+
+      float y = yTop;
+      for ( int i = 0; i < nTransforms; i += 2 )
+      {
+        transforms[i] = scale * rotateL * Matrix.CreateTranslation( new Vector3( Left, y, 0 ) );
+        transforms[i + 1] = scale * rotateR * Matrix.CreateTranslation( new Vector3( Right, y, 0 ) );
+        y -= Size;
+      }
     }
 
     public override void Draw()
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
-      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionNormalTexture.VertexElements );
       SetRenderState( device.RenderState );
 
-      effectParamView.SetValue( Screen.View );
-      effectParamProjection.SetValue( Screen.Projection );
-      effectParamEye.SetValue( Screen.Camera.Position );
-      effectParamWorld.SetValue( deform * Matrix.CreateTranslation( poly.Position.X, poly.Position.Y, 0f ) );
-
-      effect.Begin();
-      effect.CurrentTechnique.Passes[0].Begin();
-
-      foreach ( ModelMesh mesh in model.Meshes )
-      {
-        foreach ( ModelMeshPart part in mesh.MeshParts )
-        {
-          device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-          device.Indices = mesh.IndexBuffer;
-          device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0, part.NumVertices,
-                                        part.StartIndex, part.PrimitiveCount );
-        }
-      }
-
-      effect.CurrentTechnique.Passes[0].End();
-      effect.End();
+      cageModel.DrawInstances( transforms, nTransforms, Screen.View, Screen.Projection, Screen.Camera.Position );
     }
 
     private void SetRenderState( RenderState renderState )

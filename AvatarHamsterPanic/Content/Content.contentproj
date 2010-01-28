@@ -232,8 +232,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Models\wheelInst.X">
-      <Name>wheelInst</Name>
+    <Compile Include="Models\cage.X">
+      <Name>cage</Name>
       <Importer>XImporter</Importer>
       <Processor>InstancedModelProcessor</Processor>
     </Compile>

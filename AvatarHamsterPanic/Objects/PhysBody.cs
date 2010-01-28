@@ -53,7 +53,7 @@ namespace Physics
   /// <summary>
   /// Base physics object class
   /// </summary>
-  abstract class PhysBody
+  abstract class PhysBody : IComparable
   {
     // Static list available 
     private static List<PhysBody> s_bodies = new List<PhysBody>();
@@ -76,7 +76,11 @@ namespace Physics
     public event CollisionEvent Collided = null;
     public event CollisionEvent Responded = null;
 
-    private bool released = false;
+    public uint CollisionIndex = 0;
+    public CollisResult LastResult = new CollisResult();
+    public bool Moved = false;
+
+    public bool released = false;
 
     // Construct PhysBody and add it to the list
     public PhysBody( Vector2 pos, Vector2 vel, float mass )
@@ -89,12 +93,6 @@ namespace Physics
       CollisionList = new List<PhysBody>( 4 );
 
       s_bodies.Add( this );
-    }
-
-    // Remove PhysBody from the list
-    ~PhysBody()
-    {
-      s_bodies.Remove( this );
     }
 
     // Properties
@@ -209,11 +207,11 @@ namespace Physics
       body.CollisionList.Add( this );
     }
 
-    public bool HandleCollision( CollisResult data )
+    public bool HandleCollision( CollisResult result )
     {
       if ( Collided != null )
       {
-        Collided( data );
+        Collided( result );
         return true;
       }
       return false;
@@ -234,6 +232,11 @@ namespace Physics
 
     protected abstract CollisResult TestVsCircle( PhysCircle circle, float t );
     protected abstract CollisResult TestVsPolygon( PhysPolygon box, float t );
+
+    public int CompareTo( object obj )
+    {
+      return ( (int)( this.Flags & PhysBodyFlags.Anchored ) - (int)(( (PhysBody)obj ).Flags & PhysBodyFlags.Anchored ) );
+    }
   }
 
   /// <summary>
@@ -255,8 +258,6 @@ namespace Physics
     protected override CollisResult TestVsCircle( PhysCircle circle, float t )
     {
       CollisResult result = new CollisResult();
-
-      //if ( Vector2.Dot( this.m_vel, circle.m_vel ) < 0f ) return result;
 
       Vector2 normal;
 
@@ -305,10 +306,6 @@ namespace Physics
 
     protected override CollisResult TestVsPolygon( PhysPolygon poly, float t )
     {
-      // moving away from box
-      // TODO: take this out
-      if ( Vector2.Dot( this.m_vel, poly.Velocity ) < 0f ) return new CollisResult();
-
       // transform that takes local vertex coordinates to world space
       Matrix transform;
       poly.GetTransform( out transform );
@@ -317,7 +314,7 @@ namespace Physics
       Vector2 relVelByT = Vector2.Multiply( relVel, t );
       Vector2 posAtT    = Vector2.Add( m_pos, relVelByT );
 
-      List<Vector2> verts = poly.Vertices;
+      Vector2[] verts = poly.Vertices;
       Vector2 lastVert = verts.Last();
       lastVert = Vector2.Transform( lastVert, transform );
 
@@ -326,7 +323,7 @@ namespace Physics
       Vector2 popoutPos = Vector2.Zero;
       int popoutPriority = 0;
 
-      int nVerts = verts.Count;
+      int nVerts = verts.Length;
       for ( int i = 0; i < nVerts; ++i )
       {
         Vector2 vert = verts[i];
@@ -371,7 +368,7 @@ namespace Physics
 
         // CHECK CORNER
         // inside circle?
-        if ( Vector2.DistanceSquared( m_pos, transfVert ) <  ( m_radius * m_radius ) )
+        if ( Vector2.DistanceSquared( m_pos, transfVert ) < ( m_radius * m_radius ) )
         {
           if ( popoutPriority == 0 )
           {
@@ -419,17 +416,18 @@ namespace Physics
   /// </summary>
   class PhysPolygon : PhysBody
   {
-    private List<Vector2> m_verts = new List<Vector2>();
+    Vector2[] m_verts;
 
     public PhysPolygon( Vector2[] verts, Vector2 pos, float mass )
       : base( pos, Vector2.Zero, mass )
     {
-      foreach ( Vector2 vert in verts )
-        m_verts.Add( vert );
+      int nVerts = verts.Length;
+      m_verts = new Vector2[nVerts];
+      Array.Copy( verts, m_verts, nVerts );
 
       MomentOfIntertia = GetMomentOfInertia( this );
 
-      Convex = Geometry.PolyIsConvex( m_verts.ToArray() );
+      Convex = Geometry.PolyIsConvex( m_verts );
     }
 
     public PhysPolygon( float width, float height, Vector2 pos, float mass )
@@ -438,26 +436,29 @@ namespace Physics
       float widthByTwo  = width  / 2.0f;
       float heightByTwo = height / 2.0f;
 
-      m_verts.Add( new Vector2(  widthByTwo,  heightByTwo ) );
-      m_verts.Add( new Vector2( -widthByTwo,  heightByTwo ) );
-      m_verts.Add( new Vector2( -widthByTwo, -heightByTwo ) );
-      m_verts.Add( new Vector2(  widthByTwo, -heightByTwo ) );
+      m_verts = new Vector2[]
+      {
+        new Vector2(  widthByTwo,  heightByTwo ),
+        new Vector2( -widthByTwo,  heightByTwo ),
+        new Vector2( -widthByTwo, -heightByTwo ),
+        new Vector2(  widthByTwo, -heightByTwo )
+      };
 
       MomentOfIntertia = GetMomentOfInertia( this );
 
-      Convex = Geometry.PolyIsConvex( m_verts.ToArray() );
+      Convex = Geometry.PolyIsConvex( m_verts );
     }
 
     private static float GetMomentOfInertia( PhysPolygon poly )
     {
       float sum = 0f;
-      foreach ( Vector2 vert in poly.Vertices )
-        sum += ( vert - poly.Position ).LengthSquared();
+      foreach ( Vector2 vert in poly.m_verts )
+        sum += ( vert - poly.m_pos ).LengthSquared();
 
-      return ( ( poly.Mass / poly.Vertices.Count ) * sum );
+      return ( ( poly.m_mass / poly.m_verts.Length ) * sum );
     }
 
-    public List<Vector2> Vertices { get { return m_verts; } }
+    public Vector2[] Vertices { get { return m_verts; } }
     public bool Convex { get; private set; }
 
     protected override CollisResult TestVsCircle( PhysCircle circle, float t )

@@ -123,16 +123,16 @@ namespace InstancedModelPipeline
             // through our instancing data aren't already in use.
             VertexChannelCollection vertexChannels = geometry.Vertices.Channels;
 
-            for (int i = 1; i <= 4; i++)
-            {
-                if (vertexChannels.Contains(VertexChannelNames.TextureCoordinate(i)))
-                {
-                    throw new InvalidContentException(
-                        string.Format("Model already contains data for texture " +
-                                      "coordinate channel {0}, but instancing " +
-                                      "requires this channel for its own use.", i));
-                }
-            }
+            //for (int i = 1; i <= 4; i++)
+            //{
+            //    if (vertexChannels.Contains(VertexChannelNames.TextureCoordinate(i)))
+            //    {
+            //        throw new InvalidContentException(
+            //            string.Format("Model already contains data for texture " +
+            //                          "coordinate channel {0}, but instancing " +
+            //                          "requires this channel for its own use.", i));
+            //    }
+            //}
 
             // Flatten the flexible input vertex channel data into
             // a simple GPU style vertex buffer byte array.

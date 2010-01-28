@@ -28,13 +28,40 @@ namespace AvatarHamsterPanic
       return source;
     }
 
-    public void SetSource( params float[] source )
+    public void SetSource( float source )
     {
-      for ( int i = 0; i < dims; ++i )
-      {
-        this.source[i] = source[i];
-        this.prev[i] = source[i];
-      }
+      this.source[0] = source;
+      this.prev[0] = source;
+    }
+
+    public void SetSource( Vector2 source )
+    {
+      this.source[0] = source.X;
+      this.source[1] = source.Y;
+      this.prev[0] = source.X;
+      this.prev[1] = source.Y;
+    }
+
+    public void SetSource( Vector3 source )
+    {
+      this.source[0] = source.X;
+      this.source[1] = source.Y;
+      this.source[2] = source.Z;
+      this.prev[0] = source.X;
+      this.prev[1] = source.Y;
+      this.prev[2] = source.Z;
+    }
+
+    public void SetSource( Vector4 source )
+    {
+      this.source[0] = source.X;
+      this.source[1] = source.Y;
+      this.source[2] = source.Z;
+      this.source[3] = source.W;
+      this.prev[0] = source.X;
+      this.prev[1] = source.Y;
+      this.prev[2] = source.Z;
+      this.prev[3] = source.W;
     }
 
     public float[] GetDest()
@@ -42,10 +69,30 @@ namespace AvatarHamsterPanic
       return dest;
     }
 
-    public void SetDest( params float[] dest )
+    public void SetDest( float dest )
     {
-      for ( int i = 0; i < dims; ++i )
-        this.dest[i] = dest[i];
+      this.dest[0] = dest;
+    }
+
+    public void SetDest( Vector2 dest )
+    {
+      this.dest[0] = dest.X;
+      this.dest[1] = dest.Y;
+    }
+
+    public void SetDest( Vector3 dest )
+    {
+      this.dest[0] = dest.X;
+      this.dest[1] = dest.Y;
+      this.dest[2] = dest.Z;
+    }
+
+    public void SetDest( Vector4 dest )
+    {
+      this.dest[0] = dest.X;
+      this.dest[1] = dest.Y;
+      this.dest[2] = dest.Z;
+      this.dest[3] = dest.W;
     }
 
     public abstract void Update( float elapsed );

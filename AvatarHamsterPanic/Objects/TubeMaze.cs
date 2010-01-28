@@ -28,7 +28,7 @@ namespace AvatarHamsterPanic.Objects
     static Random rand;
     static Matrix[] rotations;
 
-    public float DeathLine { get; set; }
+    public float DeathLine { get; private set; }
     public float TubeSize { get; private set; }
 
     static TubeMaze()
@@ -168,10 +168,12 @@ namespace AvatarHamsterPanic.Objects
 
       // set color for tubes
       Vector4 color = colors[a] + t * ( colors[b] - colors[a] );
-      foreach ( InstancedModel model in tubeModels )
+      int nModels = tubeModels.Length;
+      for ( int i = 0; i < nModels; ++i )
       {
-        foreach ( InstancedModelPart part in model.ModelParts )
-          part.EffectParameterColor.SetValue( color );
+        int nParts = tubeModels[i].ModelParts.Count;
+        for ( int j = 0; j < nParts; ++j )
+          tubeModels[i].ModelParts[j].EffectParameterColor.SetValue( color );
       }
 
       while ( topLeft.Y > Screen.Camera.Position.Y + DeathLine )
@@ -223,49 +225,23 @@ namespace AvatarHamsterPanic.Objects
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
 
-      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionNormalTexture.VertexElements );
       SetRenderState( device.RenderState );
+      device.RenderState.CullMode = CullMode.CullClockwiseFace;
 
       GetWorldTransforms();
 
       for ( int i = 0; i < 4; ++i )
       {
-        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View, 
+        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View,
                                      Screen.Projection, Screen.Camera.Position );
       }
 
-      //effectParamView.SetValue( Screen.View );
-      //effectParamProjection.SetValue( Screen.Projection );
-      //effectParamEye.SetValue( Screen.Camera.Position );
-
-      //effect.Begin();
-      //effect.CurrentTechnique.Passes[0].Begin();
-
-      //// for each model
-      //for ( int i = 0; i < 4; ++i )
-      //{
-      //  TubePattern type = (TubePattern)i;
-
-      //  foreach ( ModelMesh mesh in tubeModels[i].Meshes )
-      //  {
-      //    foreach ( ModelMeshPart part in mesh.MeshParts )
-      //    {
-      //      device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-      //      device.Indices = mesh.IndexBuffer;
-
-      //      for ( int j = 0; j < nTubes[i]; ++j )
-      //      {
-      //        effectParamWorld.SetValue( worldBuffer[i, j] );
-      //        effect.CommitChanges();
-      //        device.DrawIndexedPrimitives( PrimitiveType.TriangleList, part.BaseVertex, 0,
-      //                                      part.NumVertices, part.StartIndex, part.PrimitiveCount );
-      //      }
-      //    }
-      //  }
-      //}
-
-      //effect.CurrentTechnique.Passes[0].End();
-      //effect.End();
+      device.RenderState.CullMode = CullMode.CullCounterClockwiseFace;
+      for ( int i = 0; i < 4; ++i )
+      {
+        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View,
+                                     Screen.Projection, Screen.Camera.Position );
+      }
     }
 
     private void GetWorldTransforms()

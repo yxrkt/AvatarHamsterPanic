@@ -18,6 +18,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.GamerServices;
 using Physics;
 using AvatarHamsterPanic.Objects;
+using Utilities;
 using System.Collections.Generic;
 using MathLib;
 using Microsoft.Xna.Framework.Audio;
@@ -25,6 +26,7 @@ using CustomAvatarAnimationFramework;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using InstancedModelSample;
+using System.Text;
 #endregion
 
 namespace AvatarHamsterPanic.Objects
@@ -44,7 +46,8 @@ namespace AvatarHamsterPanic.Objects
     public float CountdownTime { get; set; }
     public float CountdownEnd { get; set; }
     public Rectangle SafeRect { get; private set; }
-    public static string DebugString { get; set; }
+    public ParticleManager ParticleManager { get; private set; }
+    public static StringBuilder DebugString { get; set; }
 
     TubeMaze tubeMaze;
     SpriteFont gameFont;
@@ -57,16 +60,16 @@ namespace AvatarHamsterPanic.Objects
     bool firstFrame;
     float camScrollSpeed = -1.25f;
 
-    double totalPhysTime = 0;
-    int nFrames = 0;
-    double avgPhysUpdate = 0;
-    double longestPhysUpdate = 0;
-
     Random random = new Random();
 
     #endregion
 
     #region Initialization
+
+    static GameplayScreen()
+    {
+      DebugString = new StringBuilder( 100 );
+    }
 
 
     /// <summary>
@@ -79,7 +82,6 @@ namespace AvatarHamsterPanic.Objects
       initSlotInfo = slots;
     }
 
-
     /// <summary>
     /// Load graphics content for the game.
     /// </summary>
@@ -91,6 +93,10 @@ namespace AvatarHamsterPanic.Objects
       firstFrame = true;
       gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
       Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
+
+      ParticleManager = new ParticleManager( ScreenManager.Game, Content );
+      ParticleManager.Initialize();
+      ScreenManager.Game.Components.Add( ParticleManager );
 
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
@@ -108,7 +114,8 @@ namespace AvatarHamsterPanic.Objects
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
       Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
 
-      FloorBlock.Initialize( Camera );
+      FloorBlock.Initialize( this );
+      Powerup.Initialize( this );
 
       InitSafeRectangle();
       InitStage();
@@ -126,23 +133,9 @@ namespace AvatarHamsterPanic.Objects
 
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
+      //PhysicsManager.Instance.Gravity = Vector2.Zero;
 
       //Thread.Sleep( 5000 );
-      effect = Content.Load<Effect>( "Effects/instanced" );
-      effect.CurrentTechnique = effect.Techniques["DiffuseColor"];
-      Texture2D DiffuseMap = Content.Load<Texture2D>( "Textures/glassDiffuse" );
-      Texture2D NormalMap = Content.Load<Texture2D>( "Textures/glassNormal" );
-      effect.Parameters["DiffuseMap"].SetValue( DiffuseMap );
-      effect.Parameters["NormalMap"].SetValue( NormalMap );
-
-      effectParameterWorld = effect.Parameters["World"];
-      effectParameterView = effect.Parameters["View"];
-      effectParameterProjection = effect.Parameters["Projection"];
-      effectParameterEye = effect.Parameters["Eye"];
-      effectParameterVertexCount = effect.Parameters["VertexCount"];
-      effectParameterTransforms = effect.Parameters["InstanceTransforms"];
-      blockModel = Content.Load<Model>( "Models/block" );
-
       ScreenManager.Game.ResetElapsedTime();
     }
 
@@ -161,9 +154,9 @@ namespace AvatarHamsterPanic.Objects
     /// </summary>
     public override void UnloadContent()
     {
-      // if bodies aren't cleared, objects containing them won't be destroyed
       PhysBody.AllBodies.Clear();
       ObjectTable.Clear();
+      ScreenManager.Game.Components.Remove( ParticleManager );
       Content.Unload();
     }
 
@@ -181,20 +174,22 @@ namespace AvatarHamsterPanic.Objects
                                                     bool coveredByOtherScreen )
     {
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
+      Performance.Update( gameTime.ElapsedGameTime );
+
+      ParticleManager.Enabled = IsActive;
 
       if ( IsActive )
       {
-        double elapsed = /**/gameTime.ElapsedGameTime.TotalSeconds/*/1.0 / 60.0/**/;
+        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
 
         // Update physics
-        long tick = Stopwatch.GetTimestamp();
         PhysicsManager.Instance.Update( elapsed );
-        double physElapsed = ( (double)( Stopwatch.GetTimestamp() - tick ) / (double)Stopwatch.Frequency );
-        if ( physElapsed > longestPhysUpdate )
-          longestPhysUpdate = physElapsed;
-        totalPhysTime += physElapsed;
-        nFrames++;
-        avgPhysUpdate = totalPhysTime / (double)nFrames;
+
+        Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
+                                                          Camera.Near, Camera.Far );
+        View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
+
+        ParticleManager.UpdateDrawParameters( Camera.Position, View, Projection );
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
@@ -203,8 +198,9 @@ namespace AvatarHamsterPanic.Objects
           {
             float warpDuration = CountdownEnd - CountdownTime;
             ReadOnlyCollection<Basket> baskets = ObjectTable.GetObjects<Basket>();
-            foreach ( Basket basket in baskets )
-              basket.WarpOut( warpDuration );
+            int nBaskets = baskets.Count;
+            for ( int i = 0; i < nBaskets; ++i )
+              baskets[i].WarpOut( warpDuration );
           }
 
           CountdownTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -220,13 +216,14 @@ namespace AvatarHamsterPanic.Objects
         ObjectTable.EmptyTrash();
 
         // Update objects
-        foreach ( GameObject obj in ObjectTable.AllObjects )
-          obj.Update( gameTime );
+        ReadOnlyCollection<GameObject> objects = ObjectTable.AllObjects;
+        int nObjects = objects.Count;
+        for ( int i = 0; i < nObjects; ++i )
+          objects[i].Update( gameTime );
 
-        Performance.Update( gameTime.ElapsedGameTime );
+        Pool.CleanUpAll();
       }
     }
-
 
     /// <summary>
     /// Lets the game respond to player input. Unlike the Update method,
@@ -264,20 +261,12 @@ namespace AvatarHamsterPanic.Objects
       }
       else
       {
-        foreach ( Player player in ObjectTable.GetObjects<Player>() )
-          player.HandleInput( input );
+        ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
+        int nPlayers = players.Count;
+        for ( int i = 0; i < nPlayers; ++i )
+          players[i].HandleInput( input );
       }
     }
-
-    Matrix[] blockTransforms = new Matrix[59];
-    Effect effect;
-    EffectParameter effectParameterWorld;
-    EffectParameter effectParameterView;
-    EffectParameter effectParameterProjection;
-    EffectParameter effectParameterEye;
-    EffectParameter effectParameterVertexCount;
-    EffectParameter effectParameterTransforms;
-    Model blockModel;
 
 
     /// <summary>
@@ -288,62 +277,22 @@ namespace AvatarHamsterPanic.Objects
       ScreenManager.GraphicsDevice.Clear( ClearOptions.Target,
                                           Color.CornflowerBlue, 0, 0 );
 
-      Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
-                                                        Camera.Near, Camera.Far );
-      View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
-
       GraphicsDevice device = ScreenManager.GraphicsDevice;
-      VertexElement[] elements = VertexPositionNormalTextureTangentBinormal.VertexElements;
-      device.VertexDeclaration = new VertexDeclaration( device, elements );
 
-      // draw non-particles
-      foreach ( GameObject obj in ObjectTable.AllObjects )
-      {
-        if ( !( obj is ParticleEmitter ) )
-          obj.Draw();
-      }
+      // Basket
+      // Boundary
+      // Powerup
+      // FloorBlock
+      // Player
+      // TubeMaze
 
-      //// DRAW FLOORBLOCKSEN
-      //ReadOnlyCollection<FloorBlock> blocks = ObjectTable.GetObjects<FloorBlock>();
-      //int nBlocks = blocks.Count;
-      //for ( int i = 0; i < nBlocks; ++i )
-      //  blocks[i].GetTransform( out blockTransforms[i] );
+      // skip particles
+      ReadOnlyCollection<GameObject> objects = ObjectTable.AllObjects;
+      int nObjects = objects.Count;
+      for ( int i = 0; i < nObjects; ++i )
+        objects[i].Draw();
 
-      //effectParameterEye.SetValue( Camera.Position );
-      //effectParameterView.SetValue( View );
-      //effectParameterProjection.SetValue( Projection );
-      //effectParameterTransforms.SetValue( blockTransforms );
-
-      //effect.Begin();
-      //foreach ( EffectPass pass in effect.CurrentTechnique.Passes )
-      //{
-      //  pass.Begin();
-      //  foreach ( ModelMesh mesh in blockModel.Meshes )
-      //  {
-      //    foreach ( ModelMeshPart part in mesh.MeshParts )
-      //    {
-      //      device.Vertices[0].SetSource( mesh.VertexBuffer, part.StreamOffset, part.VertexStride );
-      //      device.Indices = mesh.IndexBuffer;
-
-      //      effectParameterVertexCount.SetValue( part.NumVertices );
-      //      effect.CommitChanges();
-
-      //      device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,
-      //                                    2 * part.NumVertices, 0, part.PrimitiveCount * 2 );
-      //    }
-      //  }
-      //  pass.End();
-      //}
-      //effect.End();
-
-      //// DRAW FLOORBLOCKSEN
-
-      // draw particles
-      ReadOnlyCollection<ParticleEmitter> emitters = ObjectTable.GetObjects<ParticleEmitter>();
-      foreach ( ParticleEmitter emitter in emitters )
-        emitter.Draw();
-
-      DrawSafeRect( device );
+      //DrawSafeRect( device );
 
       // 2D elements drawn here
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
@@ -351,18 +300,14 @@ namespace AvatarHamsterPanic.Objects
 
       // player HUDs
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
-      foreach ( Player player in players )
-        player.HUD.Draw();
+      int nPlayers = players.Count;
+      for ( int i = 0; i < nPlayers; ++i )
+        players[i].HUD.Draw();
 
-      //// debugging stuff for physics
-      //string physString = "Physics Debug\n";
-      //physString += "Slowest: " + ( 1.0 / longestPhysUpdate ).ToString() + "\n";
-      //physString += "Average: " + ( 1.0 / avgPhysUpdate ).ToString() + "\n";
-      //spriteBatch.DrawString( gameFont, physString, new Vector2( 100, 100 ), Color.Black );
-      //spriteBatch.DrawString( gameFont, debug, new Vector2( 100, 100 ), Color.AntiqueWhite );
-      string fps = "FrameRate: " + Performance.FrameRate.ToString();
-      spriteBatch.DrawString( gameFont, fps + "\n" + DebugString, new Vector2( 20, 20 ), Color.Black );
-
+      // debugging stuff
+      DebugString.Clear();
+      spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
+      //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, new Vector2( 20, 20 ), Color.Black );
       spriteBatch.End();
 
       // If the game is transitioning on or off, fade it out to black.
@@ -403,8 +348,7 @@ namespace AvatarHamsterPanic.Objects
     {
       // create side boundaries
       float leftBoundX = -.5f * stageWidth;
-      ObjectTable.Add( new Boundary( this,  leftBoundX ) );
-      ObjectTable.Add( new Boundary( this, -leftBoundX ) );
+      ObjectTable.Add( new Boundary( this, leftBoundX, -leftBoundX ) );
 
       // trap doors and players
       float doorPosY = FloorBlock.DeathLine - 2f * Player.Size;
@@ -465,12 +409,12 @@ namespace AvatarHamsterPanic.Objects
       int nBits = nSpaces;
       for ( int i = 0; i < nBits && nBlocks > 0; ++i )
       {
-        if ( random.Next( 10 ) < 7 )
-          ObjectTable.Add( Powerup.CreatePowerup( this, blockPos + new Vector2( 0f, 1f ), PowerupType.ScoreCoin ) );
+        if ( random.Next( 10 ) < 3 )
+          ObjectTable.Add( Powerup.CreatePowerup( blockPos + new Vector2( 0, 1f ), PowerupType.ScoreCoin ) );
 
         if ( ( lastRowPattern & ( 1 << i ) ) == 0 )
         {
-          ObjectTable.Add( new FloorBlock( this, blockPos ) );
+          ObjectTable.Add( FloorBlock.CreateFloorBlock( blockPos ) );
           curPattern |= ( 1 << i );
           nBlocks--;
           nSpaces--;
@@ -489,7 +433,7 @@ namespace AvatarHamsterPanic.Objects
 
         if ( RandomBag.PullNext() < nBlocks )
         {
-          ObjectTable.Add( new FloorBlock( this, blockPos ) );
+          ObjectTable.Add( FloorBlock.CreateFloorBlock( blockPos ) );
           curPattern |= ( 1 << ( j - 1 ) );
         }
 
@@ -511,9 +455,10 @@ namespace AvatarHamsterPanic.Objects
       // get the body of the lowest player
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
       PhysCircle lowestPlayer = null;
-      foreach ( Player player in players )
+      int nPlayers = players.Count;
+      for ( int i = 0; i < nPlayers; ++i )
       {
-        PhysCircle playerCircle = player.BoundingCircle;
+        PhysCircle playerCircle = players[i].BoundingCircle;
         if ( lowestPlayer == null || playerCircle.Position.Y < lowestPlayer.Position.Y )
           lowestPlayer = playerCircle;
       }
