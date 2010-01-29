@@ -18,7 +18,6 @@ namespace AvatarHamsterPanic.Objects
     PhysPolygon polyLeft, polyRight;
     float deathLine;
     int nTransforms;
-    int nCages = 0, nTees = 0, nCups = 0;
     float rowSpacing;
     float minHoleDist;
     float lastTopY;
@@ -26,10 +25,13 @@ namespace AvatarHamsterPanic.Objects
     int highestRow = 0;
     int rows;
 
+    int nCages = 0, nCageHoles = 0, nTees = 0, nCups = 0;
     InstancedModel cageModel;
+    InstancedModel cageHoleModel;
     InstancedModel teeModel;
     InstancedModel cupModel;
-    Matrix[] cageTransform;
+    Matrix[] cageTransforms;
+    Matrix[] cageHoleTransforms;
     Matrix[] teeTransforms;
     Matrix[] cupTransforms;
     SidePiece[] sidePieces;
@@ -73,8 +75,9 @@ namespace AvatarHamsterPanic.Objects
 
       // model
       cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );
-      teeModel  = Screen.Content.Load<InstancedModel>( "Models/tubeTee" );
-      cupModel  = Screen.Content.Load<InstancedModel>( "Models/tubeCup" );
+      cageHoleModel = Screen.Content.Load<InstancedModel>( "Models/cageHole" );
+      teeModel = Screen.Content.Load<InstancedModel>( "Models/tubeTee" );
+      cupModel = Screen.Content.Load<InstancedModel>( "Models/tubeCup" );
 
       Camera camera = screen.Camera;
 
@@ -87,7 +90,8 @@ namespace AvatarHamsterPanic.Objects
 
       rows = (int)Math.Ceiling( 2f * deathLine / Size );
       nTransforms = rows * 2;
-      cageTransform = new Matrix[nTransforms];
+      cageTransforms = new Matrix[nTransforms];
+      cageHoleTransforms = new Matrix[nTransforms];
       cupTransforms = new Matrix[nTransforms];
       teeTransforms = new Matrix[nTransforms];
 
@@ -136,6 +140,7 @@ namespace AvatarHamsterPanic.Objects
       Camera camera = Screen.Camera;
 
       nCages = 0;
+      nCageHoles = 0;
       nCups = 0;
       nTees = 0;
 
@@ -153,10 +158,13 @@ namespace AvatarHamsterPanic.Objects
       foreach ( SidePiece piece in sidePieces )
       {
         if ( !piece.Hole )
-          cageTransform[nCages++] = piece.CageTransform;
+          cageTransforms[nCages++] = piece.CageTransform;
+        else
+          cageHoleTransforms[nCageHoles++] = piece.CageTransform;
+
         if ( piece.Tube == TubePattern.Cup )
           cupTransforms[nCups++] = piece.TubeTransform;
-        else if ( piece.Tube == TubePattern.Tee )
+        else
           teeTransforms[nTees++] = piece.TubeTransform;
       }
     }
@@ -205,7 +213,8 @@ namespace AvatarHamsterPanic.Objects
       Matrix proj = Screen.Projection;
       Vector3 eye = Screen.Camera.Position;
 
-      cageModel.DrawInstances( cageTransform, nCages, view, proj, eye );
+      cageModel.DrawInstances( cageTransforms, nCages, view, proj, eye );
+      cageHoleModel.DrawInstances( cageHoleTransforms, nCageHoles, view, proj, eye );
 
       renderState.AlphaBlendEnable = true;
       renderState.CullMode = CullMode.CullClockwiseFace;
