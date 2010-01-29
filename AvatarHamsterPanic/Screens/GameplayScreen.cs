@@ -27,6 +27,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using InstancedModelSample;
 using System.Text;
+using Particle3DSample;
 #endregion
 
 namespace AvatarHamsterPanic.Objects
@@ -48,6 +49,7 @@ namespace AvatarHamsterPanic.Objects
     public Rectangle SafeRect { get; private set; }
     public ParticleManager ParticleManager { get; private set; }
     public static StringBuilder DebugString { get; set; }
+    public SparkleParticleSystem SparkleParticleSystem { get; set; }
 
     TubeMaze tubeMaze;
     SpriteFont gameFont;
@@ -59,6 +61,8 @@ namespace AvatarHamsterPanic.Objects
     SlotState[] initSlotInfo;
     bool firstFrame;
     float camScrollSpeed = -1.25f;
+    Rectangle backgroundRect;
+    Texture2D backgroundTexture;
 
     Random random = new Random();
 
@@ -81,7 +85,7 @@ namespace AvatarHamsterPanic.Objects
       TransitionOffTime = TimeSpan.FromSeconds( 0.5 );
       initSlotInfo = slots;
     }
-
+    
     /// <summary>
     /// Load graphics content for the game.
     /// </summary>
@@ -94,9 +98,14 @@ namespace AvatarHamsterPanic.Objects
       gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
       Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
+      // model explosion particles
       ParticleManager = new ParticleManager( ScreenManager.Game, Content );
       ParticleManager.Initialize();
       ScreenManager.Game.Components.Add( ParticleManager );
+
+      // other particles
+      SparkleParticleSystem = new SparkleParticleSystem( ScreenManager.Game, Content );
+      ScreenManager.Game.Components.Add( SparkleParticleSystem );
 
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
@@ -106,6 +115,13 @@ namespace AvatarHamsterPanic.Objects
       Content.Load<Model>( "Models/block_broken" );
       Content.Load<Model>( "Models/basket" );
       Content.Load<Effect>( "Effects/warp" );
+      backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
+      int left = -( backgroundTexture.Width - ScreenManager.GraphicsDevice.Viewport.Width ) / 2;
+      Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
+      if ( left > 0 )
+        backgroundRect = new Rectangle( 0, 0, viewport.Width, viewport.Height );
+      else
+        backgroundRect = new Rectangle( left, 0, backgroundTexture.Width, viewport.Height );
 
       // init game stuff
       ObjectTable = new ObjectTable<GameObject>();
@@ -114,15 +130,13 @@ namespace AvatarHamsterPanic.Objects
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
       Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
 
+      //ObjectTable.Add( new OneByOneByOne( this ) );
+
       FloorBlock.Initialize( this );
       Powerup.Initialize( this );
 
       InitSafeRectangle();
       InitStage();
-
-      // the background tube-maze
-      tubeMaze = new TubeMaze( this, -5f, 2.3f );
-      ObjectTable.Add( tubeMaze );
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
@@ -157,6 +171,7 @@ namespace AvatarHamsterPanic.Objects
       PhysBody.AllBodies.Clear();
       ObjectTable.Clear();
       ScreenManager.Game.Components.Remove( ParticleManager );
+      ScreenManager.Game.Components.Remove( SparkleParticleSystem );
       Content.Unload();
     }
 
@@ -177,6 +192,7 @@ namespace AvatarHamsterPanic.Objects
       Performance.Update( gameTime.ElapsedGameTime );
 
       ParticleManager.Enabled = IsActive;
+      SparkleParticleSystem.Enabled = IsActive;
 
       if ( IsActive )
       {
@@ -189,7 +205,8 @@ namespace AvatarHamsterPanic.Objects
                                                           Camera.Near, Camera.Far );
         View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
 
-        ParticleManager.UpdateDrawParameters( Camera.Position, View, Projection );
+        ParticleManager.SetCamera( Camera.Position, View, Projection );
+        SparkleParticleSystem.SetCamera( View, Projection );
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
@@ -278,6 +295,12 @@ namespace AvatarHamsterPanic.Objects
                                           Color.CornflowerBlue, 0, 0 );
 
       GraphicsDevice device = ScreenManager.GraphicsDevice;
+      SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+
+      // draw background texture
+      spriteBatch.Begin();
+      spriteBatch.Draw( backgroundTexture, backgroundRect, Color.White );
+      spriteBatch.End();
 
       // Basket
       // Boundary
@@ -295,7 +318,6 @@ namespace AvatarHamsterPanic.Objects
       //DrawSafeRect( device );
 
       // 2D elements drawn here
-      SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
       spriteBatch.Begin();
 
       // player HUDs
@@ -346,9 +368,13 @@ namespace AvatarHamsterPanic.Objects
 
     private void InitStage()
     {
+      // add tube maze first
+      tubeMaze = new TubeMaze( this, -5f, 2.3f );
+      ObjectTable.Add( tubeMaze );
+
       // create side boundaries
       float leftBoundX = -.5f * stageWidth;
-      ObjectTable.Add( new Boundary( this, leftBoundX, -leftBoundX ) );
+      ObjectTable.Add( new Boundary( this, leftBoundX, -leftBoundX, rowSpacing ) );
 
       // trap doors and players
       float doorPosY = FloorBlock.DeathLine - 2f * Player.Size;

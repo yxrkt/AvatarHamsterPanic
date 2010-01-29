@@ -54,6 +54,7 @@ namespace InstancedModelSample
 
     public EffectParameter EffectParameterColor { get; private set; }
     public EffectParameter EffectParameterDiffuseMap { get; private set; }
+    public EffectParameter EffectParameterSpecularPower { get; private set; }
 
     // Track whether effect.CurrentTechnique is dirty.
     bool techniqueChanged;
@@ -101,6 +102,7 @@ namespace InstancedModelSample
         // convenience stuff
         EffectParameterColor = effect.Parameters["Color"];
         EffectParameterDiffuseMap = effect.Parameters["DiffuseMap"];
+        EffectParameterSpecularPower = effect.Parameters["SpecularPower"];
       } );
 
       // Work out how many shader instances we can fit into a single batch.

@@ -6,6 +6,8 @@ using Microsoft.Xna.Framework;
 using AvatarHamsterPanic.Objects;
 using Physics;
 using Microsoft.Xna.Framework.Graphics;
+using Particle3DSample;
+using Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -35,6 +37,8 @@ namespace AvatarHamsterPanic.Objects
     public float Size { get; private set; }
 
     public static float DeathLine { get; private set; }
+
+    static Random rand = new Random();
 
     public static void Initialize( GameplayScreen screen )
     {
@@ -159,6 +163,19 @@ namespace AvatarHamsterPanic.Objects
         result.BodyA.Release();
         Screen.ObjectTable.MoveToTrash( this );
         alive = false;
+
+        // make sparkle particles
+        SparkleParticleSystem system = Screen.SparkleParticleSystem;
+        for ( int i = 0; i < 20; ++i )
+        {
+          Vector3 pos = rand.NextVector3();
+          if ( pos != Vector3.Zero )
+          {
+            pos.Normalize();
+            pos *= ( Body.Radius * (float)rand.NextDouble() );
+          }
+          system.AddParticle( new Vector3( Body.Position, 0 ) + pos, .5f * pos );
+        }
       }
 
       return true;

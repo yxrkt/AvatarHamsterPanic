@@ -60,10 +60,10 @@ namespace AvatarHamsterPanic.Objects
     {
       colors = new Vector4[]
       {
-        new Vector4( 1f, .7f, .7f, .3f ),
-        new Vector4( .7f, 1f, .7f, .3f ),
-        new Vector4( .7f, .7f, 1f, .3f ),
-        new Vector4( 1f, 1f, .7f, .3f )
+        new Vector4( 1f, .7f, .7f, .2f ),
+        new Vector4( .7f, 1f, .7f, .2f ),
+        new Vector4( .7f, .7f, 1f, .2f ),
+        new Vector4( 1f, 1f, .7f, .2f )
       };
 
       ContentManager content = screen.Content;
@@ -168,12 +168,13 @@ namespace AvatarHamsterPanic.Objects
 
       // set color for tubes
       Vector4 color = colors[a] + t * ( colors[b] - colors[a] );
-      int nModels = tubeModels.Length;
-      for ( int i = 0; i < nModels; ++i )
+      foreach ( InstancedModel model in tubeModels )
       {
-        int nParts = tubeModels[i].ModelParts.Count;
-        for ( int j = 0; j < nParts; ++j )
-          tubeModels[i].ModelParts[j].EffectParameterColor.SetValue( color );
+        foreach ( InstancedModelPart part in model.ModelParts )
+        {
+          part.EffectParameterColor.SetValue( color );
+          part.EffectParameterSpecularPower.SetValue( 200 );
+        }
       }
 
       while ( topLeft.Y > Screen.Camera.Position.Y + DeathLine )

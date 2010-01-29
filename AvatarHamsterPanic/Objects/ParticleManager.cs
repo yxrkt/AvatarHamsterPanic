@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {
-  public class ParticleManager : DrawableGameComponent
+  public sealed class ParticleManager : DrawableGameComponent
   {
     ContentManager content;
     Matrix viewMatrix, projectionMatrix;
@@ -42,6 +42,11 @@ namespace AvatarHamsterPanic.Objects
 
     protected override void LoadContent()
     {
+      LoadModelEffect();
+    }
+
+    void LoadModelEffect()
+    {
       modelEffect = content.Load<Effect>( "Effects/basic" ).Clone( GraphicsDevice );
       modelEffect.CurrentTechnique = modelEffect.Techniques["Color"];
       modelEffectParamWorld = modelEffect.Parameters["World"];
@@ -65,7 +70,7 @@ namespace AvatarHamsterPanic.Objects
       modelExplosions.RemoveAll( e => !e.Valid );
     }
 
-    public void UpdateDrawParameters( Vector3 eye, Matrix viewMatrix, Matrix projectionMatrix )
+    public void SetCamera( Vector3 eye, Matrix viewMatrix, Matrix projectionMatrix )
     {
       this.eye = eye;
       this.viewMatrix = viewMatrix;

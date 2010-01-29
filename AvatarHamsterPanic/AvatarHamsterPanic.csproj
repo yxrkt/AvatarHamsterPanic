@@ -73,7 +73,12 @@
     <Compile Include="InstancedModel.cs" />
     <Compile Include="InstancedModelPart.cs" />
     <Compile Include="InstancedModelReader.cs" />
+    <Compile Include="Objects\OneByOneByOne.cs" />
     <Compile Include="Objects\ParticleManager.cs" />
+    <Compile Include="Objects\ParticleSettings.cs" />
+    <Compile Include="Objects\ParticleSystem.cs" />
+    <Compile Include="Objects\ParticleVertex.cs" />
+    <Compile Include="Objects\SparkleParticleSystem.cs" />
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />

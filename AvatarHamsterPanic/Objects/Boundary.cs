@@ -18,9 +18,27 @@ namespace AvatarHamsterPanic.Objects
     PhysPolygon polyLeft, polyRight;
     float deathLine;
     int nTransforms;
+    int nCages = 0, nTees = 0, nCups = 0;
+    float rowSpacing;
+    float minHoleDist;
+    float lastTopY;
+    float topLine;
+    int highestRow = 0;
+    int rows;
 
     InstancedModel cageModel;
-    Matrix[] transforms;
+    InstancedModel teeModel;
+    InstancedModel cupModel;
+    Matrix[] cageTransform;
+    Matrix[] teeTransforms;
+    Matrix[] cupTransforms;
+    SidePiece[] sidePieces;
+
+    Matrix rotateL, rotateR;
+    Matrix scale;
+    Matrix flip;
+
+    static Random rand = new Random();
 
     public static float Size { get; private set; }
 
@@ -32,11 +50,14 @@ namespace AvatarHamsterPanic.Objects
     public float Left { get; private set; }
     public float Right { get; private set; }
 
-    public Boundary( GameplayScreen screen, float left, float right )
+    public Boundary( GameplayScreen screen, float left, float right, float rowSpacing )
       : base( screen )
     {
       Left  = left;
       Right = right;
+
+      this.rowSpacing = rowSpacing;
+      minHoleDist = ( FloorBlock.Height + Size ) / 2f;
 
       // left polygon
       polyLeft = new PhysPolygon( polyWidth, 100f, new Vector2( left - halfPolyWidth, 0f ), 1f );
@@ -52,6 +73,8 @@ namespace AvatarHamsterPanic.Objects
 
       // model
       cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );
+      teeModel  = Screen.Content.Load<InstancedModel>( "Models/tubeTee" );
+      cupModel  = Screen.Content.Load<InstancedModel>( "Models/tubeCup" );
 
       Camera camera = screen.Camera;
 
@@ -59,9 +82,45 @@ namespace AvatarHamsterPanic.Objects
       float tanFovyOverTwo = (float)Math.Tan( camera.Fov / 2f );
       deathLine = dist * tanFovyOverTwo + Size / 2f;
 
-      int rows = (int)Math.Ceiling( 2f * deathLine / Size );
+      topLine = camera.Position.Y + deathLine - Size;
+      lastTopY = camera.Position.Y + deathLine;
+
+      rows = (int)Math.Ceiling( 2f * deathLine / Size );
       nTransforms = rows * 2;
-      transforms = new Matrix[nTransforms];
+      cageTransform = new Matrix[nTransforms];
+      cupTransforms = new Matrix[nTransforms];
+      teeTransforms = new Matrix[nTransforms];
+
+      rotateL = new Matrix( 0, 0,-1, 0,
+                            0, 1, 0, 0,
+                            1, 0, 0, 0,
+                            0, 0, 0, 1 );
+      rotateR = new Matrix( 0, 0, 1, 0,
+                            0, 1, 0, 0,
+                           -1, 0, 0, 0,
+                            0, 0, 0, 1 );
+      flip = new Matrix(-1, 0, 0, 0,
+                         0,-1, 0, 0,
+                         0, 0, 1, 0,
+                         0, 0, 0, 1 );
+      scale = Matrix.CreateScale( Size );
+
+      sidePieces = new SidePiece[nTransforms];
+      for ( int i = 0; i < nTransforms; ++i )
+      {
+        sidePieces[i] = new SidePiece();
+        SidePiece piece = sidePieces[i];
+
+        int row = i % rows;
+        bool onLeftSide = i / rows == 0;
+        piece.Hole = false;
+        piece.CagePosition = new Vector3( onLeftSide ? Left : Right, topLine - row * Size, 0f );
+        Matrix scaleRotate = scale * ( onLeftSide ? rotateL : rotateR );
+        piece.CageTransform = scaleRotate * Matrix.CreateTranslation( piece.CagePosition );
+        piece.TubePosition = piece.CagePosition + new Vector3( onLeftSide ? -Size / 2 : Size / 2, 0, 0 );
+        piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+        piece.Tube = TubePattern.Cup;
+      }
     }
 
     public override void Update( GameTime gameTime )
@@ -73,44 +132,99 @@ namespace AvatarHamsterPanic.Objects
       Vector2 rightPos = new Vector2( polyRight.Position.X, Screen.Camera.Position.Y );
       polyRight.Position = rightPos;
 
-      // update model transforms
+      // update side pieces and transforms
       Camera camera = Screen.Camera;
-      // get y height of top transform
-      float yTop = deathLine - Size + camera.Position.Y - camera.Position.Y % Size;
 
-      Matrix rotateL = new Matrix( 0, 0,-1, 0,
-                                   0, 1, 0, 0,
-                                   1, 0, 0, 0,
-                                   0, 0, 0, 1 );
-      Matrix rotateR = new Matrix( 0, 0, 1, 0,
-                                   0, 1, 0, 0,
-                                  -1, 0, 0, 0,
-                                   0, 0, 0, 1 );
-      Matrix scale = Matrix.CreateScale( Size );
+      nCages = 0;
+      nCups = 0;
+      nTees = 0;
 
-      float y = yTop;
-      for ( int i = 0; i < nTransforms; i += 2 )
+      while ( topLine > Screen.Camera.Position.Y + deathLine )
       {
-        transforms[i] = scale * rotateL * Matrix.CreateTranslation( new Vector3( Left, y, 0 ) );
-        transforms[i + 1] = scale * rotateR * Matrix.CreateTranslation( new Vector3( Right, y, 0 ) );
-        y -= Size;
+        float yPos = sidePieces[( highestRow + rows - 1 ) % rows].CagePosition.Y - Size;
+
+        ConfigurePiece( sidePieces[highestRow], yPos, true );
+        ConfigurePiece( sidePieces[highestRow + rows], yPos, false );
+
+        highestRow = ( highestRow + 1 ) % rows;
+        topLine -= Size;
       }
+
+      foreach ( SidePiece piece in sidePieces )
+      {
+        if ( !piece.Hole )
+          cageTransform[nCages++] = piece.CageTransform;
+        if ( piece.Tube == TubePattern.Cup )
+          cupTransforms[nCups++] = piece.TubeTransform;
+        else if ( piece.Tube == TubePattern.Tee )
+          teeTransforms[nTees++] = piece.TubeTransform;
+      }
+    }
+
+    private void ConfigurePiece( SidePiece piece, float height, bool leftSide )
+    {
+      piece.CagePosition.Y = height;
+      piece.CageTransform.M42 = height;
+      piece.Hole = IsHoleHere( height );
+      piece.TubePosition.Y = height;
+
+      if ( piece.Hole )
+      {
+        piece.Tube = TubePattern.Tee;
+        if ( leftSide )
+          piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+        else
+          piece.TubeTransform = scale * flip * Matrix.CreateTranslation( piece.TubePosition );
+      }
+      else
+      {
+        piece.Tube = TubePattern.Cup;
+        piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+      }
+    }
+
+    private bool IsHoleHere( float y )
+    {
+      bool holeHere = rand.Next( 100 ) < 50;
+      float quotient = Math.Abs( y / rowSpacing );
+      float remainder = quotient - (float)Math.Floor( quotient );
+      return ( holeHere && minHoleDist <= remainder * rowSpacing && minHoleDist <= ( 1 - remainder ) * rowSpacing );
     }
 
     public override void Draw()
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
-      SetRenderState( device.RenderState );
+      RenderState renderState = device.RenderState;
 
-      cageModel.DrawInstances( transforms, nTransforms, Screen.View, Screen.Projection, Screen.Camera.Position );
-    }
-
-    private void SetRenderState( RenderState renderState )
-    {
       renderState.AlphaBlendEnable = false;
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
       renderState.DepthBufferEnable = true;
       renderState.DepthBufferWriteEnable = true;
+
+      Matrix view = Screen.View;
+      Matrix proj = Screen.Projection;
+      Vector3 eye = Screen.Camera.Position;
+
+      cageModel.DrawInstances( cageTransform, nCages, view, proj, eye );
+
+      renderState.AlphaBlendEnable = true;
+      renderState.CullMode = CullMode.CullClockwiseFace;
+      cupModel.DrawInstances( cupTransforms, nCups, view, proj, eye );
+      teeModel.DrawInstances( teeTransforms, nTees, view, proj, eye );
+
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+      cupModel.DrawInstances( cupTransforms, nCups, view, proj, eye );
+      teeModel.DrawInstances( teeTransforms, nTees, view, proj, eye );
     }
+  }
+
+  class SidePiece
+  {
+    public bool Hole;
+    public Vector3 CagePosition;
+    public Matrix CageTransform;
+    public Vector3 TubePosition;
+    public Matrix TubeTransform;
+    public TubePattern Tube;
   }
 }
