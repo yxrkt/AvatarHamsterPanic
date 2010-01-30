@@ -64,6 +64,8 @@ namespace AvatarHamsterPanic.Objects
     {
       if ( time > expiration )
       {
+        foreach ( MeshParticle particle in particles )
+          particle.Alpha = 0; // this invalidates the particle, removing it from the pool
         Valid = false;
       }
       else

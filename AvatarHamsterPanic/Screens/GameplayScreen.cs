@@ -41,6 +41,7 @@ namespace AvatarHamsterPanic.Objects
 
     public ContentManager Content { get; private set; }
     public Camera Camera { get; private set; }
+    public float CameraScrollSpeed { get { return camScrollSpeed; } }
     public Matrix View { get; private set; }
     public Matrix Projection { get; private set; }
     public ObjectTable<GameObject> ObjectTable { get; private set; }
@@ -61,8 +62,10 @@ namespace AvatarHamsterPanic.Objects
     SlotState[] initSlotInfo;
     bool firstFrame;
     float camScrollSpeed = -1.25f;
+    bool camIsScrolling = false;
     Rectangle backgroundRect;
     Texture2D backgroundTexture;
+    InstancedModel cageModel;
 
     Random random = new Random();
 
@@ -115,6 +118,7 @@ namespace AvatarHamsterPanic.Objects
       Content.Load<Model>( "Models/block_broken" );
       Content.Load<Model>( "Models/basket" );
       Content.Load<Effect>( "Effects/warp" );
+      cageModel = Content.Load<InstancedModel>( "Models/cage" );
       backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
       int left = -( backgroundTexture.Width - ScreenManager.GraphicsDevice.Viewport.Width ) / 2;
       Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
@@ -126,6 +130,9 @@ namespace AvatarHamsterPanic.Objects
       // init game stuff
       ObjectTable = new ObjectTable<GameObject>();
 
+      // ready, go!
+      ObjectTable.Add( new ReadyGo( this, new Vector2( viewport.Width / 2, viewport.Height / 2 ) ) );
+
       float fov = MathHelper.ToRadians( 30f );
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
       Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
@@ -135,13 +142,14 @@ namespace AvatarHamsterPanic.Objects
       FloorBlock.Initialize( this );
       Powerup.Initialize( this );
 
+      lastRowY = rowSpacing - Player.Size * 1.5f;
+
       InitSafeRectangle();
       InitStage();
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
 
-      lastRowY = 0f;
       lastCamY = Camera.Position.Y;
       SpawnRows(); // spawn additional rows before loading screen is over
 
@@ -189,7 +197,6 @@ namespace AvatarHamsterPanic.Objects
                                                     bool coveredByOtherScreen )
     {
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
-      Performance.Update( gameTime.ElapsedGameTime );
 
       ParticleManager.Enabled = IsActive;
       SparkleParticleSystem.Enabled = IsActive;
@@ -210,22 +217,9 @@ namespace AvatarHamsterPanic.Objects
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
-        {
-          if ( CountdownTime >= .75f * CountdownEnd )
-          {
-            float warpDuration = CountdownEnd - CountdownTime;
-            ReadOnlyCollection<Basket> baskets = ObjectTable.GetObjects<Basket>();
-            int nBaskets = baskets.Count;
-            for ( int i = 0; i < nBaskets; ++i )
-              baskets[i].WarpOut( warpDuration );
-          }
-
           CountdownTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
-        }
-        else
-        {
-          UpdateCamera( (float)elapsed );
-        }
+
+        UpdateCamera( (float)elapsed );
 
         SpawnRows();
 
@@ -302,18 +296,16 @@ namespace AvatarHamsterPanic.Objects
       spriteBatch.Draw( backgroundTexture, backgroundRect, Color.White );
       spriteBatch.End();
 
-      // Basket
-      // Boundary
-      // Powerup
-      // FloorBlock
-      // Player
-      // TubeMaze
+      // draw all the stuff
+      List<GameObject> objects = ObjectTable.AllObjectsList;
+      objects.Sort( ( a, b ) => a.DrawOrder.CompareTo( b.DrawOrder ) );
+      foreach ( GameObject obj in objects )
+        obj.Draw();
 
-      // skip particles
-      ReadOnlyCollection<GameObject> objects = ObjectTable.AllObjects;
-      int nObjects = objects.Count;
-      for ( int i = 0; i < nObjects; ++i )
-        objects[i].Draw();
+      // draw some instanced models here
+      device.RenderState.AlphaBlendEnable = false;
+      device.RenderState.DepthBufferEnable = true;
+      cageModel.DrawInstances( View, Projection, Camera.Position );
 
       //DrawSafeRect( device );
 
@@ -326,9 +318,14 @@ namespace AvatarHamsterPanic.Objects
       for ( int i = 0; i < nPlayers; ++i )
         players[i].HUD.Draw();
 
+      ReadOnlyCollection<ReadyGo> readyGoes = ObjectTable.GetObjects<ReadyGo>();
+      if ( readyGoes != null && readyGoes.Count != 0 )
+        readyGoes[0].Draw2D();
+
       // debugging stuff
       DebugString.Clear();
-      spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
+      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
+      spriteBatch.DrawString( gameFont, DebugString.Append( ObjectTable.GetObjects<Boundary>()[0].FirstObjPos ), new Vector2( 20, 20 ), Color.Black );
       //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, new Vector2( 20, 20 ), Color.Black );
       spriteBatch.End();
 
@@ -336,6 +333,7 @@ namespace AvatarHamsterPanic.Objects
       if ( TransitionPosition > 0 )
         ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
 
+      Performance.Update( gameTime.ElapsedGameTime );
       Performance.CountFrame();
     }
 
@@ -372,45 +370,18 @@ namespace AvatarHamsterPanic.Objects
       tubeMaze = new TubeMaze( this, -5f, 2.3f );
       ObjectTable.Add( tubeMaze );
 
-      // create side boundaries
+      // side boundaries
       float leftBoundX = -.5f * stageWidth;
-      ObjectTable.Add( new Boundary( this, leftBoundX, -leftBoundX, rowSpacing ) );
+      Boundary boundary = new Boundary( this, leftBoundX, -leftBoundX, lastRowY, rowSpacing );
+      boundary.DrawOrder = 2;
+      ObjectTable.Add( boundary );
 
-      // trap doors and players
-      float doorPosY = FloorBlock.DeathLine - 2f * Player.Size;
-      float doorPosX = leftBoundX;
-      float doorPosXStep = stageWidth / 3f - FloorBlock.Size / 3f;
+      // starting shelves
+      Shelves shelves = new Shelves( this );
+      ObjectTable.Add( shelves );
 
-      Vector2 doorPos = new Vector2( doorPosX, 0f );
-      for ( int i = 0; i < 4; ++i )
-      {
-        if ( initSlotInfo == null )
-        {
-          if ( i < Gamer.SignedInGamers.Count )
-          {
-            Vector2 playerPos = doorPos;
-            playerPos.X += Basket.Scale / 2f;
-            playerPos.Y += Player.Size;
-            Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
-                                        Player.Size, Vector3.UnitX, new Vector3( doorPos, 0f ) );
-            Player player = new Player( this, i, (PlayerIndex)i, avatar, playerPos );
-            ObjectTable.Add( player );
-          }
-        }
-        else if ( i < initSlotInfo.Length && initSlotInfo[i].Avatar != null )
-        {
-          Vector2 playerPos = doorPos;
-          playerPos.X += Basket.Scale / 2f;
-          playerPos.Y += Player.Size;
-          initSlotInfo[i].Avatar.Scale = Player.Size;
-          Player player = new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar, playerPos );
-          ObjectTable.Add( player );
-        }
-
-        ObjectTable.Add( new Basket( this, doorPos ) );
-
-        doorPos.X += doorPosXStep;
-      }
+      // players
+      AddPlayers( shelves );
     }
 
     private void SpawnRow( float yPos, int lowPct, int hiPct )
@@ -469,10 +440,32 @@ namespace AvatarHamsterPanic.Objects
       lastRowPattern = curPattern;
     }
 
+    private void AddPlayers( Shelves shelf )
+    {
+      for ( int i = 0; i < 4; ++i )
+      {
+        if ( initSlotInfo == null )
+        {
+          if ( i < Gamer.SignedInGamers.Count )
+          {
+            Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
+                                        Player.Size, Vector3.UnitX, Vector3.Zero );
+            ObjectTable.Add( new Player( this, i, (PlayerIndex)i, avatar, shelf.GetPlayerPos( i ) ) );
+          }
+        }
+        else if ( i < initSlotInfo.Length && initSlotInfo[i].Avatar != null )
+        {
+          initSlotInfo[i].Avatar.Scale = Player.Size;
+          ObjectTable.Add( new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar, 
+                                       shelf.GetPlayerPos( i ) ) );
+        }
+      }
+    }
+
     private void UpdateCamera( float elapsed )
     {
       if ( elapsed == 0f ) return;
-    
+
       float scrollLine  = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
       float scrollLine2 = .7f * FloorBlock.BirthLine;  // camera will be snapped down
 
@@ -488,6 +481,10 @@ namespace AvatarHamsterPanic.Objects
         if ( lowestPlayer == null || playerCircle.Position.Y < lowestPlayer.Position.Y )
           lowestPlayer = playerCircle;
       }
+
+      // start scrolling camera if needed
+      if ( !camIsScrolling && lowestPlayer != null && lowestPlayer.Position.Y < 0f )
+        camIsScrolling = true;
 
       // scroll camera
       float begCamPos = Camera.Position.Y;
@@ -510,16 +507,12 @@ namespace AvatarHamsterPanic.Objects
           Camera.Translate( new Vector3( 0f, lowestPlayer.Position.Y - ( begCamPos + scrollLine2 ), 0f ) );
         }
       }
-      else
+      else if ( camIsScrolling )
       {
         Camera.Translate( new Vector3( 0f, camScrollSpeed * (float)elapsed, 0f ) );
       }
     
       lastCamY = begCamPos;
-    }
-
-    private void BeginCountdown()
-    {
     }
 
 #if DEBUG

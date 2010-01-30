@@ -8,13 +8,13 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using System.Diagnostics;
 using InstancedModelSample;
+using System.Collections.ObjectModel;
 
 namespace AvatarHamsterPanic.Objects
 {
   class TubeMaze : GameObject
   {
     TubePiece[,] tubes;
-    Matrix[][] worldBuffer;
     int rows, cols;
     Vector3 topLeft;
     int highestRow;
@@ -22,7 +22,6 @@ namespace AvatarHamsterPanic.Objects
     bool cupRow;
 
     InstancedModel[] tubeModels;
-    int[] nTubes;
     Vector4[] colors;
 
     static Random rand;
@@ -93,10 +92,6 @@ namespace AvatarHamsterPanic.Objects
 
       tubes = new TubePiece[rows, cols];
       int maxPipes = rows * cols;
-      worldBuffer = new Matrix[4][];
-      for ( int i = 0; i < 4; ++i )
-        worldBuffer[i] = new Matrix[maxPipes];
-      nTubes = new int[4];
       cupRow = ( rows % 2 == 1 );
 
       scaleMatrix = Matrix.CreateScale( tubeSize );
@@ -170,8 +165,11 @@ namespace AvatarHamsterPanic.Objects
       Vector4 color = colors[a] + t * ( colors[b] - colors[a] );
       foreach ( InstancedModel model in tubeModels )
       {
-        foreach ( InstancedModelPart part in model.ModelParts )
+        ReadOnlyCollection<InstancedModelPart> parts = model.ModelParts;
+        int nParts = parts.Count;
+        for ( int i = 0; i < nParts; ++i )
         {
+          InstancedModelPart part = parts[i];
           part.EffectParameterColor.SetValue( color );
           part.EffectParameterSpecularPower.SetValue( 200 );
         }
@@ -226,28 +224,16 @@ namespace AvatarHamsterPanic.Objects
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
 
-      SetRenderState( device.RenderState );
-      device.RenderState.CullMode = CullMode.CullClockwiseFace;
-
       GetWorldTransforms();
 
-      for ( int i = 0; i < 4; ++i )
-      {
-        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View,
-                                     Screen.Projection, Screen.Camera.Position );
-      }
+      device.RenderState.DepthBufferEnable = true;
 
-      device.RenderState.CullMode = CullMode.CullCounterClockwiseFace;
       for ( int i = 0; i < 4; ++i )
-      {
-        tubeModels[i].DrawInstances( worldBuffer[i], nTubes[i], Screen.View,
-                                     Screen.Projection, Screen.Camera.Position );
-      }
+        tubeModels[i].DrawTranslucentInstances( Screen.View, Screen.Projection, Screen.Camera.Position );
     }
 
     private void GetWorldTransforms()
     {
-      nTubes[0] = nTubes[1] = nTubes[2] = nTubes[3] = 0;
       Vector3 position = topLeft;
 
       for ( int r = 0; r < rows; ++r )
@@ -261,24 +247,12 @@ namespace AvatarHamsterPanic.Objects
           {
             int typeIndex = (int)tube.Pattern;
             Matrix translation = Matrix.CreateTranslation( position );
-            worldBuffer[typeIndex][nTubes[typeIndex]++] = scaleMatrix * rotations[tube.Rotation] * translation;
+            tubeModels[typeIndex].AddInstance( scaleMatrix * rotations[tube.Rotation] * translation );
           }
           position.X += TubeSize;
         }
         position.Y -= TubeSize;
       }
-    }
-
-    private void SetRenderState( RenderState renderState )
-    {
-      renderState.CullMode = CullMode.None;
-
-      renderState.AlphaBlendEnable = true;
-      //renderState.SourceBlend = Blend.SourceAlpha;
-      //renderState.DestinationBlend = Blend.InverseSourceAlpha;
-
-      renderState.DepthBufferEnable = true;
-      renderState.DepthBufferWriteEnable = true;
     }
   }
 

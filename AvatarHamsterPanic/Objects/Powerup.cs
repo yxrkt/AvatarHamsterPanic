@@ -14,6 +14,10 @@ namespace AvatarHamsterPanic.Objects
   enum PowerupType
   {
     ScoreCoin,
+    Hammer,
+    Laser,
+    Shrimp,
+    Lightning
   }
 
   class Powerup : GameObject
@@ -35,6 +39,7 @@ namespace AvatarHamsterPanic.Objects
     public PhysCircle Body { get; private set; }
     public Model Model { get; private set; }
     public float Size { get; private set; }
+    public bool InTube { get; set; }
 
     public static float DeathLine { get; private set; }
 
@@ -105,7 +110,7 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Update( GameTime gameTime )
     {
-      if ( Body.Position.Y > Screen.Camera.Position.Y + DeathLine )
+      if ( !InTube && Body.Position.Y > Screen.Camera.Position.Y + DeathLine )
       {
         Body.Release();
         Screen.ObjectTable.MoveToTrash( this );
@@ -150,6 +155,7 @@ namespace AvatarHamsterPanic.Objects
       device.VertexDeclaration = vertexDeclaration;
       renderState.AlphaBlendEnable = false;
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
+      renderState.DepthBufferEnable = true;
     }
 
     public bool HandleCoinCollision( CollisResult result )

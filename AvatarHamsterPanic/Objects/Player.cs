@@ -55,6 +55,9 @@ namespace AvatarHamsterPanic.Objects
     {
       WheelModel = screen.Content.Load<Model>( "Models/wheel" );
 
+      float depth = screen.Camera.Position.Z - Size / 2;
+      DeathLine = depth * (float)Math.Tan( screen.Camera.Fov / 2f );
+
       RespawnTime = float.MaxValue;
 
       Scale = 1f;
@@ -144,11 +147,13 @@ namespace AvatarHamsterPanic.Objects
       if ( !Respawning )
       {
         // check if player should be pwnt
-        if ( pos.Y >= Screen.Camera.Position.Y + DeathLine )
+        if ( pos.Y >= Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f )
         {
           RespawnTime = 0f;
           HUD.AddPoints( -5 );
-          //BoundingCircle.Velocity += new Vector2( 0f, -3f );
+          Vector2 velocity = BoundingCircle.Velocity;
+          velocity.Y = Math.Min( velocity.Y, Screen.CameraScrollSpeed );
+          BoundingCircle.Velocity = velocity;
         }
       }
       else

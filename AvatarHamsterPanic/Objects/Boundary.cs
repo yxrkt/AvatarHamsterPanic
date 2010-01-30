@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using InstancedModelSample;
+using System.Collections.ObjectModel;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -19,26 +20,35 @@ namespace AvatarHamsterPanic.Objects
     float deathLine;
     int nTransforms;
     float rowSpacing;
+    float rowStart;
     float minHoleDist;
     float lastTopY;
     float topLine;
     int highestRow = 0;
     int rows;
 
-    int nCages = 0, nCageHoles = 0, nTees = 0, nCups = 0;
     InstancedModel cageModel;
     InstancedModel cageHoleModel;
     InstancedModel teeModel;
     InstancedModel cupModel;
-    Matrix[] cageTransforms;
-    Matrix[] cageHoleTransforms;
-    Matrix[] teeTransforms;
-    Matrix[] cupTransforms;
     SidePiece[] sidePieces;
+    GameTime oneFrame;
 
     Matrix rotateL, rotateR;
     Matrix scale;
     Matrix flip;
+
+    List<BoundaryTubeObject> objects;
+    public int NumObjectsInTubes { get; private set; }
+    public Vector2 FirstObjPos
+    {
+      get
+      {
+        if ( objects[0].Object == null )
+          return Vector2.Zero;
+        return objects[0].Body.Position;
+      }
+    }
 
     static Random rand = new Random();
 
@@ -52,14 +62,23 @@ namespace AvatarHamsterPanic.Objects
     public float Left { get; private set; }
     public float Right { get; private set; }
 
-    public Boundary( GameplayScreen screen, float left, float right, float rowSpacing )
+    public Boundary( GameplayScreen screen, float left, float right, float rowStart, float rowSpacing )
       : base( screen )
     {
       Left  = left;
       Right = right;
 
+      oneFrame = new GameTime( TimeSpan.FromSeconds( 0 ), TimeSpan.FromSeconds( 0 ),
+                               TimeSpan.FromSeconds( 1f / 60f ), TimeSpan.FromSeconds( 1f / 60 ) );
+
       this.rowSpacing = rowSpacing;
+      this.rowStart = rowStart;
       minHoleDist = ( FloorBlock.Height + Size ) / 2f;
+
+      // this is for objects, such as powerups and players, so they can travel through the tubes
+      objects = new List<BoundaryTubeObject>( 10 );
+      for ( int i = 0; i < 10; ++i )
+        objects.Add( new BoundaryTubeObject() );
 
       // left polygon
       polyLeft = new PhysPolygon( polyWidth, 100f, new Vector2( left - halfPolyWidth, 0f ), 1f );
@@ -90,10 +109,6 @@ namespace AvatarHamsterPanic.Objects
 
       rows = (int)Math.Ceiling( 2f * deathLine / Size );
       nTransforms = rows * 2;
-      cageTransforms = new Matrix[nTransforms];
-      cageHoleTransforms = new Matrix[nTransforms];
-      cupTransforms = new Matrix[nTransforms];
-      teeTransforms = new Matrix[nTransforms];
 
       rotateL = new Matrix( 0, 0,-1, 0,
                             0, 1, 0, 0,
@@ -139,11 +154,6 @@ namespace AvatarHamsterPanic.Objects
       // update side pieces and transforms
       Camera camera = Screen.Camera;
 
-      nCages = 0;
-      nCageHoles = 0;
-      nCups = 0;
-      nTees = 0;
-
       while ( topLine > Screen.Camera.Position.Y + deathLine )
       {
         float yPos = sidePieces[( highestRow + rows - 1 ) % rows].CagePosition.Y - Size;
@@ -155,18 +165,8 @@ namespace AvatarHamsterPanic.Objects
         topLine -= Size;
       }
 
-      foreach ( SidePiece piece in sidePieces )
-      {
-        if ( !piece.Hole )
-          cageTransforms[nCages++] = piece.CageTransform;
-        else
-          cageHoleTransforms[nCageHoles++] = piece.CageTransform;
-
-        if ( piece.Tube == TubePattern.Cup )
-          cupTransforms[nCups++] = piece.TubeTransform;
-        else
-          teeTransforms[nTees++] = piece.TubeTransform;
-      }
+      // update objects
+      UpdateObjects( (float)gameTime.ElapsedGameTime.TotalSeconds );
     }
 
     private void ConfigurePiece( SidePiece piece, float height, bool leftSide )
@@ -176,6 +176,11 @@ namespace AvatarHamsterPanic.Objects
       piece.Hole = IsHoleHere( height );
       piece.TubePosition.Y = height;
 
+      if ( first && piece.Hole )
+        first = true;
+      else
+        piece.Hole = false;
+
       if ( piece.Hole )
       {
         piece.Tube = TubePattern.Tee;
@@ -183,6 +188,9 @@ namespace AvatarHamsterPanic.Objects
           piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
         else
           piece.TubeTransform = scale * flip * Matrix.CreateTranslation( piece.TubePosition );
+
+        if ( rand.Next( 100 ) < 100 )
+          ShootRandomPowerup( piece );
       }
       else
       {
@@ -191,12 +199,86 @@ namespace AvatarHamsterPanic.Objects
       }
     }
 
+    bool first = true;
     private bool IsHoleHere( float y )
     {
-      bool holeHere = rand.Next( 100 ) < 50;
-      float quotient = Math.Abs( y / rowSpacing );
+      bool holeHere = first && rand.Next( 100 ) < 100;
+      float quotient = Math.Abs( ( y + rowStart ) / rowSpacing );
       float remainder = quotient - (float)Math.Floor( quotient );
       return ( holeHere && minHoleDist <= remainder * rowSpacing && minHoleDist <= ( 1 - remainder ) * rowSpacing );
+    }
+
+    private void ShootRandomPowerup( SidePiece piece )
+    {
+      BoundaryTubeObject tubeObject = objects.Find( o => o.Object == null );
+      if ( tubeObject == null )
+      {
+        tubeObject = new BoundaryTubeObject();
+        objects.Add( tubeObject );
+      }
+      else
+      {
+        tubeObject.Path.Clear();
+        tubeObject.Time = 0f;
+      }
+
+      Vector2 startPos = new Vector2( piece.TubePosition.X, deathLine + Screen.Camera.Position.Y );
+      Powerup powerup = Powerup.CreatePowerup( startPos, PowerupType.ScoreCoin );
+      powerup.InTube = true;
+      powerup.Update( oneFrame );
+      Screen.ObjectTable.Add( powerup );
+      tubeObject.Object = powerup;
+      tubeObject.Body = powerup.Body;
+
+      Vector2 tubePos = new Vector2( piece.TubePosition.X, piece.TubePosition.Y );
+      Vector2 finalPos = new Vector2( Math.Sign( tubePos.X ) == -1 ? Left : Right, tubePos.Y );
+      tubeObject.Path.Add( startPos );
+      tubeObject.Path.Add( tubePos );
+      tubeObject.Path.Add( finalPos );
+    }
+
+    private void UpdateObjects( float elapsed )
+    {
+      foreach ( BoundaryTubeObject tubeObject in objects )
+      {
+        if ( tubeObject.Object == null ) continue;
+
+        Vector2 position;
+        if ( tubeObject.Path.GetPosition( tubeObject.Time * tubeObject.Speed, out position ) )
+        {
+          tubeObject.Body.Position = position;
+          tubeObject.Time += elapsed;
+        }
+        else
+        {
+          Powerup powerup = tubeObject.Object as Powerup;
+          if ( powerup != null )
+          {
+            NumObjectsInTubes--;
+            powerup.InTube = false;
+            //powerup.Body.Flags ^= PhysBodyFlags.Anchored;
+          }
+
+          tubeObject.Object = null;
+          tubeObject.Body = null;
+        }
+      }
+    }
+
+    private void GetModelTransforms()
+    {
+      foreach ( SidePiece piece in sidePieces )
+      {
+        if ( !piece.Hole )
+          cageModel.AddInstance( piece.CageTransform );
+        else
+          cageHoleModel.AddInstance( piece.CageTransform );
+
+        if ( piece.Tube == TubePattern.Cup )
+          cupModel.AddInstance( piece.TubeTransform );
+        else
+          teeModel.AddInstance( piece.TubeTransform );
+      }
     }
 
     public override void Draw()
@@ -204,26 +286,20 @@ namespace AvatarHamsterPanic.Objects
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
       RenderState renderState = device.RenderState;
 
-      renderState.AlphaBlendEnable = false;
-      renderState.CullMode = CullMode.CullCounterClockwiseFace;
-      renderState.DepthBufferEnable = true;
-      renderState.DepthBufferWriteEnable = true;
+      GetModelTransforms();
 
       Matrix view = Screen.View;
       Matrix proj = Screen.Projection;
       Vector3 eye = Screen.Camera.Position;
 
-      cageModel.DrawInstances( cageTransforms, nCages, view, proj, eye );
-      cageHoleModel.DrawInstances( cageHoleTransforms, nCageHoles, view, proj, eye );
-
-      renderState.AlphaBlendEnable = true;
-      renderState.CullMode = CullMode.CullClockwiseFace;
-      cupModel.DrawInstances( cupTransforms, nCups, view, proj, eye );
-      teeModel.DrawInstances( teeTransforms, nTees, view, proj, eye );
-
+      renderState.AlphaBlendEnable = false;
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
-      cupModel.DrawInstances( cupTransforms, nCups, view, proj, eye );
-      teeModel.DrawInstances( teeTransforms, nTees, view, proj, eye );
+      renderState.DepthBufferEnable = true;
+
+      cageHoleModel.DrawInstances( view, proj, eye );
+
+      cupModel.DrawTranslucentInstances( view, proj, eye );
+      teeModel.DrawTranslucentInstances( view, proj, eye );
     }
   }
 
@@ -235,5 +311,67 @@ namespace AvatarHamsterPanic.Objects
     public Vector3 TubePosition;
     public Matrix TubeTransform;
     public TubePattern Tube;
+  }
+
+  class BoundaryTubeObject
+  {
+    public PhysBody Body;
+    public GameObject Object;
+    public Path Path;
+    public float Speed;
+    public float Time;
+
+    public BoundaryTubeObject()
+    {
+      Body = null;
+      Object = null;
+      Path = new Path();
+      Speed = 3f;
+      Time = 0f;
+    }
+  }
+
+  class Path
+  {
+    List<Vector2> points = new List<Vector2>( 4 );
+    List<float> lengths = new List<float>( 3 );
+
+    public Path() { }
+
+    public void Add( Vector2 point )
+    {
+      points.Add( point );
+      if ( points.Count > 1 )
+        lengths.Add( ( point - points[points.Count - 2] ).Length() );
+    }
+
+    public bool GetPosition( float dist, out Vector2 position )
+    {
+      position = Vector2.Zero;
+
+      int pointIndex = 0;
+      foreach ( float length in lengths )
+      {
+        if ( dist > length )
+        {
+          dist -= length;
+          pointIndex++;
+        }
+        else
+        {
+          float t = dist / length;
+          position = points[pointIndex] + t * ( points[pointIndex + 1] - points[pointIndex] );
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    public void Clear()
+    {
+      points.Clear();
+      lengths.Clear();
+    }
   }
 }

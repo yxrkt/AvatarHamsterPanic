@@ -11,6 +11,7 @@ namespace AvatarHamsterPanic.Objects
   public abstract class GameObject
   {
     public GameplayScreen Screen { get; private set; }
+    public int DrawOrder { get; set; }
 
     public GameObject( GameplayScreen screen )
     {

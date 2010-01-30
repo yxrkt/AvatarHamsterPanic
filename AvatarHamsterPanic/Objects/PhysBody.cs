@@ -449,6 +449,13 @@ namespace Physics
       Convex = Geometry.PolyIsConvex( m_verts );
     }
 
+    public void SetPivotPoint( Vector2 origin )
+    {
+      m_pos += origin;
+      for ( int i = 0; i < m_verts.Length; ++i )
+        m_verts[i] -= origin;
+    }
+
     private static float GetMomentOfInertia( PhysPolygon poly )
     {
       float sum = 0f;

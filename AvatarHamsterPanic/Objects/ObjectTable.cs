@@ -25,6 +25,8 @@ namespace AvatarHamsterPanic.Objects
       get { return ( (ReadOnlyCollection<BaseType>)readOnlyTable[typeof( BaseType )] ); }
     }
 
+    public List<BaseType> AllObjectsList { get { return (List<BaseType>)table[typeof( BaseType )]; } }
+
     public ObjectTable()
     {
       List<BaseType> commonList = new List<BaseType>( 100 );

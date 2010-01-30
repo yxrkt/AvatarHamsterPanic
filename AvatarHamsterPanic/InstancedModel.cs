@@ -46,6 +46,8 @@ namespace InstancedModelSample
     ReadOnlyCollection<InstancedModelPart> readOnlyParts;
     internal ReadOnlyCollection<InstancedModelPart> ModelParts { get { return readOnlyParts; } }
 
+    TransformArray instanceTransforms = new TransformArray( 100 );
+
     // Keep track of what graphics device we are using.
     GraphicsDevice graphicsDevice;
 
@@ -124,12 +126,48 @@ namespace InstancedModelSample
 
     #endregion
 
+    /// <summary>
+    /// Adds an instance transform of the model to draw.
+    /// </summary>
+    public void AddInstance( Matrix transform )
+    {
+      instanceTransforms.Add( transform );
+    }
+
+    /// <summary>
+    /// Draws all the added instances of the model and clears all transforms.
+    /// </summary>
+    public void DrawInstances( Matrix view, Matrix projection, Vector3 eye )
+    {
+      DrawInstances( instanceTransforms.Transforms, instanceTransforms.Count, view, projection, eye );
+      instanceTransforms.Clear();
+    }
+
+    /// <summary>
+    /// Draws the backfaces and then the front faces of each instance of the model.
+    /// </summary>
+    public void DrawTranslucentInstances( Matrix view, Matrix projection, Vector3 eye )
+    {
+      RenderState renderState = graphicsDevice.RenderState;
+      renderState.AlphaBlendEnable = true;
+      renderState.AlphaSourceBlend = Blend.SourceAlpha;
+      renderState.AlphaDestinationBlend = Blend.InverseSourceAlpha;
+      renderState.CullMode = CullMode.CullClockwiseFace;
+
+      DrawInstances( instanceTransforms.Transforms, instanceTransforms.Count, view, projection, eye );
+
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+
+      DrawInstances( instanceTransforms.Transforms, instanceTransforms.Count, view, projection, eye );
+
+      instanceTransforms.Clear();
+    }
 
     /// <summary>
     /// Draws a batch of instanced models.
     /// </summary>
-    public void DrawInstances( Matrix[] instanceTransforms, int nTransforms,
-                               Matrix view, Matrix projection, Vector3 eye )
+    private void DrawInstances( Matrix[] instanceTransforms, int nTransforms,
+                                Matrix view, Matrix projection, Vector3 eye )
     {
       if ( nTransforms == 0 )
         return;
@@ -140,5 +178,45 @@ namespace InstancedModelSample
                         view, projection, eye );
       }
     }
+
+    private class TransformArray
+    {
+      #region Field and Properties
+
+      int count = 0;
+      public int Count { get { return count; } }
+
+      int length;
+      public int Length { get { return length; } }
+
+      Matrix[] transforms;
+      public Matrix[] Transforms { get { return transforms; } }
+
+      #endregion
+
+      public TransformArray( int initialSize )
+      {
+        length = initialSize;
+        transforms = new Matrix[length];
+      }
+
+      public void Add( Matrix transform )
+      {
+        if ( count == length )
+        {
+          length <<= 1;
+          Array.Resize( ref transforms, length );
+        }
+
+        transforms[count++] = transform;
+      }
+
+      public void Clear()
+      {
+        count = 0;
+      }
+    }
   }
+
+
 }
