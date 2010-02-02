@@ -66,7 +66,6 @@ namespace AvatarHamsterPanic.Objects
     bool camIsScrolling = false;
     Rectangle backgroundRect;
     Texture2D backgroundTexture;
-    InstancedModel cageModel;
 
     Random random = new Random();
 
@@ -114,7 +113,6 @@ namespace AvatarHamsterPanic.Objects
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
-      cageModel = Content.Load<InstancedModel>( "Models/cage" );
       backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
       int left = -( backgroundTexture.Width - ScreenManager.GraphicsDevice.Viewport.Width ) / 2;
       Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
@@ -297,11 +295,6 @@ namespace AvatarHamsterPanic.Objects
       objects.Sort( ( a, b ) => a.DrawOrder.CompareTo( b.DrawOrder ) );
       foreach ( GameObject obj in objects )
         obj.Draw();
-
-      // draw some instanced models here
-      device.RenderState.AlphaBlendEnable = false;
-      device.RenderState.DepthBufferEnable = true;
-      cageModel.DrawInstances( View, Projection, Camera.Position );
 
       //DrawSafeRect( device );
 

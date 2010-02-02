@@ -158,10 +158,7 @@ namespace AvatarHamsterPanic.Objects
       foreach ( CagePiece piece in cagePieces )
         cageModel.AddInstance( piece.Transform );
 
-      renderState.AlphaBlendEnable = false;
-      renderState.DepthBufferEnable = true;
-
-      //cageModel.DrawInstances( Screen.View, Screen.Projection, Screen.Camera.Position );
+      // draw is called in the boundary
     }
   }
 

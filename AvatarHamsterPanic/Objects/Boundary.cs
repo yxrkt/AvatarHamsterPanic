@@ -322,6 +322,7 @@ namespace AvatarHamsterPanic.Objects
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
       renderState.DepthBufferEnable = true;
 
+      cageModel.DrawInstances( view, proj, eye );
       cageHoleModel.DrawInstances( view, proj, eye );
 
       cupModel.DrawTranslucentInstances( view, proj, eye );

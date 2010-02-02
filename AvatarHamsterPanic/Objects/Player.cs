@@ -58,10 +58,10 @@ namespace AvatarHamsterPanic.Objects
       foreach ( CustomModelSample.CustomModel.ModelPart part in WheelModel.ModelParts )
       {
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
-        part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .2f ) );
+        part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .3f ) );
         part.Effect.Parameters["SpecularPower"].SetValue( 400 );
       }
-      DrawOrder = 2;
+      DrawOrder = 3;
 
       float depth = screen.Camera.Position.Z - Size / 2;
       DeathLine = depth * (float)Math.Tan( screen.Camera.Fov / 2f );
