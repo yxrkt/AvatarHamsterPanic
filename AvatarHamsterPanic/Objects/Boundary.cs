@@ -24,6 +24,8 @@ namespace AvatarHamsterPanic.Objects
     float minHoleDist;
     float lastTopY;
     float topLine;
+    float lastHole;
+    float minHoleSpacing = 12;
     int highestRow = 0;
     int rows;
 
@@ -32,23 +34,14 @@ namespace AvatarHamsterPanic.Objects
     InstancedModel teeModel;
     InstancedModel cupModel;
     SidePiece[] sidePieces;
-    GameTime oneFrame;
+    GameTime lastFrame;
 
-    Matrix rotateL, rotateR;
+    Matrix rotateL, rotateR, rotateZ;
     Matrix scale;
     Matrix flip;
 
     List<BoundaryTubeObject> objects;
     public int NumObjectsInTubes { get; private set; }
-    public Vector2 FirstObjPos
-    {
-      get
-      {
-        if ( objects[0].Object == null )
-          return Vector2.Zero;
-        return objects[0].Body.Position;
-      }
-    }
 
     static Random rand = new Random();
 
@@ -68,12 +61,13 @@ namespace AvatarHamsterPanic.Objects
       Left  = left;
       Right = right;
 
-      oneFrame = new GameTime( TimeSpan.FromSeconds( 0 ), TimeSpan.FromSeconds( 0 ),
+      lastFrame = new GameTime( TimeSpan.FromSeconds( 0 ), TimeSpan.FromSeconds( 0 ),
                                TimeSpan.FromSeconds( 1f / 60f ), TimeSpan.FromSeconds( 1f / 60 ) );
 
       this.rowSpacing = rowSpacing;
       this.rowStart = rowStart;
       minHoleDist = ( FloorBlock.Height + Size ) / 2f;
+      lastHole = rowStart;
 
       // this is for objects, such as powerups and players, so they can travel through the tubes
       objects = new List<BoundaryTubeObject>( 10 );
@@ -118,6 +112,10 @@ namespace AvatarHamsterPanic.Objects
                             0, 1, 0, 0,
                            -1, 0, 0, 0,
                             0, 0, 0, 1 );
+      rotateZ = new Matrix( 0, 1, 0, 0,
+                           -1, 0, 0, 0,
+                            0, 0, 1, 0,
+                            0, 0, 0, 1 );
       flip = new Matrix(-1, 0, 0, 0,
                          0,-1, 0, 0,
                          0, 0, 1, 0,
@@ -144,12 +142,11 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Update( GameTime gameTime )
     {
-      // update physics bodies
-      Vector2 leftPos = new Vector2( polyLeft.Position.X, Screen.Camera.Position.Y );
-      polyLeft.Position = leftPos;
+      lastFrame = gameTime;
 
-      Vector2 rightPos = new Vector2( polyRight.Position.X, Screen.Camera.Position.Y );
-      polyRight.Position = rightPos;
+      // update physics bodies
+      polyLeft.Position.Y  = Screen.Camera.Position.Y;
+      polyRight.Position.Y = Screen.Camera.Position.Y;
 
       // update side pieces and transforms
       Camera camera = Screen.Camera;
@@ -171,44 +168,56 @@ namespace AvatarHamsterPanic.Objects
 
     private void ConfigurePiece( SidePiece piece, float height, bool leftSide )
     {
+      float midLine;
       piece.CagePosition.Y = height;
       piece.CageTransform.M42 = height;
-      piece.Hole = IsHoleHere( height );
+      piece.Hole = IsHoleHere( height, out midLine );
       piece.TubePosition.Y = height;
-
-      if ( first && piece.Hole )
-        first = true;
-      else
-        piece.Hole = false;
 
       if ( piece.Hole )
       {
+        lastHole = height;
         piece.Tube = TubePattern.Tee;
         if ( leftSide )
           piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
         else
           piece.TubeTransform = scale * flip * Matrix.CreateTranslation( piece.TubePosition );
 
-        if ( rand.Next( 100 ) < 100 )
-          ShootRandomPowerup( piece );
+        ShootRandomPowerup( piece, midLine );
       }
       else
       {
-        piece.Tube = TubePattern.Cup;
-        piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+        if ( rand.Next( 100 ) < 50 )
+        {
+          piece.Tube = TubePattern.Cup;
+          piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+        }
+        else
+        {
+          piece.Tube = TubePattern.Tee;
+          if ( leftSide )
+            piece.TubeTransform = scale * flip * Matrix.CreateTranslation( piece.TubePosition );
+          else
+            piece.TubeTransform = scale * Matrix.CreateTranslation( piece.TubePosition );
+        }
       }
     }
 
-    bool first = true;
-    private bool IsHoleHere( float y )
+    private bool IsHoleHere( float y, out float midLine )
     {
-      bool holeHere = first && rand.Next( 100 ) < 100;
+      midLine = ( (float)Math.Floor( ( y - rowStart ) / rowSpacing ) + .5f ) * rowSpacing + rowStart;
+
+      if ( Math.Abs( lastHole - y ) < minHoleSpacing )
+        return false;
+
+      bool holeHere = rand.Next( 100 ) < 30;
       float quotient = Math.Abs( ( y + rowStart ) / rowSpacing );
-      float remainder = quotient - (float)Math.Floor( quotient );
+      float floor = (float)Math.Floor( quotient );
+      float remainder = quotient - floor;
       return ( holeHere && minHoleDist <= remainder * rowSpacing && minHoleDist <= ( 1 - remainder ) * rowSpacing );
     }
 
-    private void ShootRandomPowerup( SidePiece piece )
+    private void ShootRandomPowerup( SidePiece piece, float midLine )
     {
       BoundaryTubeObject tubeObject = objects.Find( o => o.Object == null );
       if ( tubeObject == null )
@@ -223,18 +232,24 @@ namespace AvatarHamsterPanic.Objects
       }
 
       Vector2 startPos = new Vector2( piece.TubePosition.X, deathLine + Screen.Camera.Position.Y );
-      Powerup powerup = Powerup.CreatePowerup( startPos, PowerupType.ScoreCoin );
+      Powerup powerup = Powerup.CreateRandomPowerup( startPos );
       powerup.InTube = true;
-      powerup.Update( oneFrame );
+      powerup.Update( lastFrame );
       Screen.ObjectTable.Add( powerup );
       tubeObject.Object = powerup;
       tubeObject.Body = powerup.Body;
 
       Vector2 tubePos = new Vector2( piece.TubePosition.X, piece.TubePosition.Y );
-      Vector2 finalPos = new Vector2( Math.Sign( tubePos.X ) == -1 ? Left : Right, tubePos.Y );
+      float finalX = Math.Sign( tubePos.X ) == -1 ? Left + powerup.Size / 2 : Right - powerup.Size / 2;
+      Vector2 finalPos = new Vector2( finalX, tubePos.Y );
       tubeObject.Path.Add( startPos );
       tubeObject.Path.Add( tubePos );
       tubeObject.Path.Add( finalPos );
+
+      powerup.Oscillator.SetSource( finalPos.Y );
+      powerup.Oscillator.SetDest( midLine );
+      powerup.SizeSpring.SetSource( powerup.Size );
+      powerup.SizeSpring.SetDest( 1f );
     }
 
     private void UpdateObjects( float elapsed )
@@ -244,7 +259,8 @@ namespace AvatarHamsterPanic.Objects
         if ( tubeObject.Object == null ) continue;
 
         Vector2 position;
-        if ( tubeObject.Path.GetPosition( tubeObject.Time * tubeObject.Speed, out position ) )
+        //if ( tubeObject.Path.GetPosition( tubeObject.Time * tubeObject.StartSpeed, out position ) )
+        if ( tubeObject.Path.GetPosition( tubeObject.GetDist(), out position ) )
         {
           tubeObject.Body.Position = position;
           tubeObject.Time += elapsed;
@@ -256,7 +272,7 @@ namespace AvatarHamsterPanic.Objects
           {
             NumObjectsInTubes--;
             powerup.InTube = false;
-            //powerup.Body.Flags ^= PhysBodyFlags.Anchored;
+            powerup.Update( lastFrame );
           }
 
           tubeObject.Object = null;
@@ -275,9 +291,19 @@ namespace AvatarHamsterPanic.Objects
           cageHoleModel.AddInstance( piece.CageTransform );
 
         if ( piece.Tube == TubePattern.Cup )
+        {
           cupModel.AddInstance( piece.TubeTransform );
+        }
         else
+        {
           teeModel.AddInstance( piece.TubeTransform );
+          if ( !piece.Hole )
+          {
+            Matrix cupTrans = Matrix.CreateTranslation( piece.TubePosition );
+            cupTrans.M41 += ( Math.Sign( cupTrans.M41 ) * Size );
+            cupModel.AddInstance( scale * rotateZ * cupTrans );
+          }
+        }
       }
     }
 
@@ -318,7 +344,8 @@ namespace AvatarHamsterPanic.Objects
     public PhysBody Body;
     public GameObject Object;
     public Path Path;
-    public float Speed;
+    public float StartSpeed;
+    public float FinalSpeed;
     public float Time;
 
     public BoundaryTubeObject()
@@ -326,8 +353,20 @@ namespace AvatarHamsterPanic.Objects
       Body = null;
       Object = null;
       Path = new Path();
-      Speed = 3f;
+      StartSpeed = 10f;
+      FinalSpeed = 3.5f;
       Time = 0f;
+    }
+
+    public float GetDist()
+    {
+      //float avgSpeed = ( StartSpeed + FinalSpeed ) / 2f;
+      //float u = ( avgSpeed * Time / Path.Length );
+
+      //return StartSpeed * u * Time - u * Time * u * Time * ( StartSpeed - FinalSpeed ) / 2f;
+      float avgSpeed = ( StartSpeed + FinalSpeed ) / 2f;
+      float totalTime = Path.Length / avgSpeed;
+      return StartSpeed * Time - Time * Time * ( StartSpeed - FinalSpeed ) / ( 2 * totalTime );
     }
   }
 
@@ -335,6 +374,8 @@ namespace AvatarHamsterPanic.Objects
   {
     List<Vector2> points = new List<Vector2>( 4 );
     List<float> lengths = new List<float>( 3 );
+
+    public float Length { get { return lengths.Sum(); } }
 
     public Path() { }
 

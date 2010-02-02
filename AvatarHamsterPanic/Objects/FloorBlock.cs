@@ -50,7 +50,7 @@ namespace AvatarHamsterPanic.Objects
     {
       alive = true;
       BoundingPolygon.Position = pos;
-      BoundingPolygon.released = false;
+      BoundingPolygon.Released = false;
       BoundingPolygon.Flags = PhysBodyFlags.Anchored;
       PhysBody.AllBodies.Add( BoundingPolygon );
     }

@@ -8,6 +8,9 @@ using Physics;
 using Microsoft.Xna.Framework.Graphics;
 using Particle3DSample;
 using Utilities;
+using Microsoft.Xna.Framework.Content;
+using CustomModelSample;
+using System.Diagnostics;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -28,18 +31,34 @@ namespace AvatarHamsterPanic.Objects
     Matrix world;
     int owner;
     bool alive;
+    float rotateTime;
+    float nonTubeTime;
 
     static VertexDeclaration vertexDeclaration;
     static GameplayScreen screen;
-    static Model scoreCoinModel;
+    static CustomModel shakeModel;
+    static CustomModel shrimpModel;
+    static CustomModel hammerModel;
+    static CustomModel boltModel;
+
     static Powerup[] pool;
+
 
     event UpdateMethod UpdateSelf;
 
     public PhysCircle Body { get; private set; }
-    public Model Model { get; private set; }
+    public CustomModel Model { get; private set; }
     public float Size { get; private set; }
-    public bool InTube { get; set; }
+
+    bool inTube;
+    Vector2 exitTubePos;
+    public bool InTube 
+    {
+      get { return inTube; }
+      set { inTube = value; if ( !inTube ) exitTubePos = Body.Position; }
+    }
+    public SpringInterpolater Oscillator { get; private set; }
+    public SpringInterpolater SizeSpring { get; private set; }
 
     public static float DeathLine { get; private set; }
 
@@ -51,7 +70,13 @@ namespace AvatarHamsterPanic.Objects
       GraphicsDevice device = screen.ScreenManager.GraphicsDevice;
       vertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
 
-      scoreCoinModel = screen.Content.Load<Model>( "Models/collectible" );
+      ContentManager content = screen.Content;
+
+      shakeModel = content.Load<CustomModel>( "Models/milkshake" );
+      InitializeShakeColors();
+      shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
+      hammerModel = content.Load<CustomModel>( "Models/hammer" );
+      boltModel = content.Load<CustomModel>( "Models/bolt" );
 
       float maxPowerupSize = 2f;
       Camera camera = screen.Camera;
@@ -63,6 +88,31 @@ namespace AvatarHamsterPanic.Objects
       pool = new Powerup[poolSize];
       for ( int i = 0; i < poolSize; ++i )
         pool[i] = new Powerup( screen );
+    }
+
+    private static void InitializeShakeColors()
+    {
+      Vector4[] colors = new Vector4[]
+      {
+        new Color( 0x5C, 0x44, 0x80, 0xFF ).ToVector4(), // straw
+        new Color( 0xFF, 0xC2, 0xD1, 0xFF ).ToVector4(), // shake
+        new Color( 0xD7, 0xD7, 0xD7, 0xFF ).ToVector4(), // cream
+        new Color( 0x80, 0x02, 0x0E, 0xFF ).ToVector4(), // cherry
+        new Color( 0x80, 0x02, 0x0E, 0xFF ).ToVector4(), // stem
+        new Color( 0xEC, 0xEC, 0xF8, 0x19 ).ToVector4(), // glass
+      };
+
+      int i = 0;
+      foreach ( CustomModel.ModelPart part in shakeModel.ModelParts )
+      {
+        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
+        part.Effect.Parameters["Color"].SetValue( colors[i++] );
+      }
+    }
+
+    public static Powerup CreateRandomPowerup( Vector2 pos )
+    {
+      return CreatePowerup( pos, (PowerupType)rand.Next( (int)PowerupType.Hammer, (int)PowerupType.Lightning + 1 ) );
     }
 
     public static Powerup CreatePowerup( Vector2 pos, PowerupType type )
@@ -82,21 +132,56 @@ namespace AvatarHamsterPanic.Objects
     private void Initialize( Vector2 pos, PowerupType type )
     {
       Body.Position = pos;
-      Body.released = false;
+      Body.Released = false;
+      Body.ClearEvents();
       PhysBody.AllBodies.Add( Body );
+      UpdateSelf = null;
       alive = true;
       owner = -1;
+      rotateTime = 0f;
+      nonTubeTime = 0f;
 
       switch ( type )
       {
         case PowerupType.ScoreCoin:
-          Size = .6f;
-          Body.Radius = Size / 2f;
-          Model = scoreCoinModel;
-          UpdateSelf += UpdateScoreCoin;
+          Size = .8f;
+          Model = shakeModel;
+          UpdateSelf += Rotate;
           Body.Collided += HandleCoinCollision;
           break;
+        case PowerupType.Hammer:
+          Size = .8f;
+          Model = hammerModel;
+          UpdateSelf += Rotate;
+          UpdateSelf += SineWave;
+          Body.Collided += HandleCoinCollision;
+          break;
+        case PowerupType.Laser:
+          Size = .8f;
+          Model = shakeModel;
+          UpdateSelf += Rotate;
+          UpdateSelf += SineWave;
+          Body.Collided += HandleCoinCollision;
+          break;
+        case PowerupType.Shrimp:
+          Size = .7f;
+          Model = shrimpModel;
+          UpdateSelf += Rotate;
+          UpdateSelf += SineWave;
+          Body.Collided += HandleCoinCollision;
+          break;
+        case PowerupType.Lightning:
+          Size = .8f;
+          Model = boltModel;
+          UpdateSelf += Rotate;
+          UpdateSelf += SineWave;
+          Body.Collided += HandleCoinCollision;
+          break;
+        default:
+          throw new ArgumentOutOfRangeException( "powerup" );
       }
+
+      Body.Radius = Size / 2f;
     }
 
     private Powerup( GameplayScreen screen )
@@ -106,6 +191,11 @@ namespace AvatarHamsterPanic.Objects
       Body.Flags = PhysBodyFlags.Anchored | PhysBodyFlags.Ghost;
       Body.Parent = this;
       Body.Release();
+
+      Oscillator = new SpringInterpolater( 1, 10, 0 );
+      SizeSpring = new SpringInterpolater( 1, 200, .15f * SpringInterpolater.GetCriticalDamping( 200 ) );
+      Oscillator.Active = true;
+      SizeSpring.Active = true;
     }
 
     public override void Update( GameTime gameTime )
@@ -120,42 +210,53 @@ namespace AvatarHamsterPanic.Objects
         UpdateSelf( gameTime );
     }
 
-    private void UpdateScoreCoin( GameTime gameTime )
+    private void Rotate( GameTime gameTime )
     {
-      float angle = .25f * MathHelper.TwoPi * (float)gameTime.TotalGameTime.TotalSeconds;
+      float angle = .25f * MathHelper.TwoPi * /*/rotateTime/*/(float)gameTime.TotalGameTime.TotalSeconds/**/;
       world = Matrix.CreateScale( Size ) * Matrix.CreateRotationY( angle );
       world *= Matrix.CreateTranslation( new Vector3( Body.Position, 0f ) );
+      rotateTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
 
-    public override void Draw()
+    private void SineWave( GameTime gameTime )
     {
-      SetupRendering();
-
-      foreach ( ModelMesh mesh in Model.Meshes )
+      if ( !InTube )
       {
-        ModelEffectCollection effects = mesh.Effects;
-        int nEffects = effects.Count;
-        for ( int i = 0; i < nEffects; ++i )
-        {
-          BasicEffect effect = (BasicEffect)effects[i];
-          effect.EnableDefaultLighting();
-          effect.View = Screen.View;
-          effect.Projection = Screen.Projection;
-          effect.World = world;
-        }
-        mesh.Draw();
+        float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        Oscillator.Update( elapsed );
+        SizeSpring.Update( elapsed );
+
+        float horizontalSpeed = 1.75f * Math.Sign( -exitTubePos.X );
+        float horizontalDist = horizontalSpeed * nonTubeTime;
+        if ( Math.Abs( horizontalDist ) > .85f * Math.Abs( 2 * exitTubePos.X ) )
+          Oscillator.SetDest( exitTubePos.Y + 2.5f );
+        Body.Position.X = exitTubePos.X + horizontalDist;
+        Body.Position.Y = Oscillator.GetSource()[0];
+
+        Size = SizeSpring.GetSource()[0];
+
+        nonTubeTime += elapsed;
       }
     }
 
-    void SetupRendering()
+    public override void Draw()
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
       RenderState renderState = device.RenderState;
 
       device.VertexDeclaration = vertexDeclaration;
-      renderState.AlphaBlendEnable = false;
-      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+      renderState.AlphaBlendEnable = true;
       renderState.DepthBufferEnable = true;
+
+      if ( Model == shakeModel )
+      {
+        renderState.CullMode = CullMode.CullClockwiseFace;
+        Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
+      }
+
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+      Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
     }
 
     public bool HandleCoinCollision( CollisResult result )

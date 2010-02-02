@@ -28,6 +28,7 @@ using System.Diagnostics;
 using InstancedModelSample;
 using System.Text;
 using Particle3DSample;
+using CustomModelSample;
 #endregion
 
 namespace AvatarHamsterPanic.Objects
@@ -113,11 +114,6 @@ namespace AvatarHamsterPanic.Objects
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
-      Content.Load<Model>( "Models/wheel" );
-      Content.Load<Model>( "Models/block" );
-      Content.Load<Model>( "Models/block_broken" );
-      Content.Load<Model>( "Models/basket" );
-      Content.Load<Effect>( "Effects/warp" );
       cageModel = Content.Load<InstancedModel>( "Models/cage" );
       backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
       int left = -( backgroundTexture.Width - ScreenManager.GraphicsDevice.Viewport.Width ) / 2;
@@ -324,8 +320,7 @@ namespace AvatarHamsterPanic.Objects
 
       // debugging stuff
       DebugString.Clear();
-      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
-      spriteBatch.DrawString( gameFont, DebugString.Append( ObjectTable.GetObjects<Boundary>()[0].FirstObjPos ), new Vector2( 20, 20 ), Color.Black );
+      spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
       //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, new Vector2( 20, 20 ), Color.Black );
       spriteBatch.End();
 

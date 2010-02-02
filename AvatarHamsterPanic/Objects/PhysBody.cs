@@ -58,19 +58,25 @@ namespace Physics
     // Static list available 
     private static List<PhysBody> s_bodies = new List<PhysBody>();
 
-    // Initialized in the constructor
-    protected Vector2 m_pos, m_vel;
-    protected float m_mass;
+    // Public fields
+    public Vector2 Position;
+    public Vector2 Velocity;
+    public Vector2 Force;
+    public float Mass;
+    public float Angle;
+    public float AngularVelocity;
+    public float Torque;
+    public float MomentOfInertia;
+    public PhysBodyFlags Flags;
+    public float Elasticity;
+    public float Friction;
+    public Vector2 TouchNormal;
+    public PhysBody Touching;
+    public object Parent;
 
-    // Default values
-    protected Vector2 m_touchN = Vector2.Zero;
-    protected PhysBody m_touching = null;
-    protected float m_angle = 0.0f, m_angVel = 0.0f;
-    protected float m_torque = 0f;
-    protected Vector2 m_force = Vector2.Zero;
-    protected PhysBodyFlags m_flags = PhysBodyFlags.None;
-    protected float m_elasticity = .5f;
-    protected float m_friction = .5f;
+    // Properties
+    public static List<PhysBody> AllBodies { get { return s_bodies; } }
+    public List<PhysBody> CollisionList { get; private set; }
 
     public delegate bool CollisionEvent( CollisResult data );
     public event CollisionEvent Collided = null;
@@ -80,43 +86,41 @@ namespace Physics
     public CollisResult LastResult = new CollisResult();
     public bool Moved = false;
 
-    public bool released = false;
+    public bool Released = false;
 
-    // Construct PhysBody and add it to the list
+    // Constructor
     public PhysBody( Vector2 pos, Vector2 vel, float mass )
     {
-      m_pos  = pos;
-      m_vel  = vel;
-      m_mass = mass;
-      MomentOfIntertia = 1f;
+      Position        = pos;
+      Velocity        = vel;
+      Mass            = mass;
+
+      MomentOfInertia = 1f;
+      Force           = Vector2.Zero;
+      Angle           = 0.0f;
+      AngularVelocity = 0.0f;
+      Torque          = 0f;
+      Flags           = PhysBodyFlags.None;
+      Elasticity      = .5f;
+      Friction        = .5f;
+      TouchNormal     = Vector2.Zero;
+      Touching        = null;
+      Parent          = null;
 
       CollisionList = new List<PhysBody>( 4 );
 
       s_bodies.Add( this );
     }
 
-    // Properties
-    public static List<PhysBody> AllBodies { get { return s_bodies; } }
-    public Vector2 Position { get { return m_pos; } set { m_pos = value; } }
-    public Vector2 Velocity { get { return m_vel; } set { m_vel = value; } }
-    public Vector2 Force { get { return m_force; } set { m_force = value; } }
-    public Vector2 TouchNormal { get { return m_touchN; } set { m_touchN = value; } }
-    public PhysBody Touching { get { return m_touching; } set { m_touching = value; } }
-    public float Angle { get { return m_angle; } set { m_angle = value; } }
-    public float AngularVelocity { get { return m_angVel; } set { m_angVel = value; } }
-    public float Torque { get { return m_torque; } set { m_torque = value; } }
-    public PhysBodyFlags Flags { get { return m_flags; } set { m_flags = value; } }
-    public float Mass { get { return m_mass; } set { m_mass = value; } }
-    public float Elasticity { get { return m_elasticity; } set { m_elasticity = value; } }
-    public float Friction { get { return m_friction; } set { m_friction = value; } }
-    public bool Released { get { return released; } }
-    public float MomentOfIntertia { get; set; }
-    public object Parent { get; set; }
-    public List<PhysBody> CollisionList { get; private set; }
-
     public void Release()
     {
-      released = true;
+      Released = true;
+    }
+
+    public void ClearEvents()
+    {
+      Collided = null;
+      Responded = null;
     }
 
     public CollisResult TestVsBody( PhysBody body, float t )
@@ -133,11 +137,11 @@ namespace Physics
     {
       PhysBody body = result.BodyB;
 
-      this.m_touching = body;
-      body.m_touching = this;
+      this.Touching = body;
+      body.Touching = this;
 
-      this.m_touchN = result.Normal;
-      body.m_touchN = -result.Normal;
+      this.TouchNormal = result.Normal;
+      body.TouchNormal = -result.Normal;
 
       bool ignoreResponse = false;
       if ( this.Collided != null && !this.CollisionList.Contains( body ) )
@@ -170,8 +174,8 @@ namespace Physics
 
       float oneByMassA = 1f / Mass;
       float oneByMassB = 1f / body.Mass;
-      float oneByIA = 1f / MomentOfIntertia;
-      float oneByIB = 1f / body.MomentOfIntertia;
+      float oneByIA = 1f / MomentOfInertia;
+      float oneByIB = 1f / body.MomentOfInertia;
 
       if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
       {
@@ -220,13 +224,15 @@ namespace Physics
     public void GetTransform( out Matrix transform )
     {
       Matrix matTrans;
-      Matrix.CreateRotationZ( m_angle, out transform );
-      Matrix.CreateTranslation( m_pos.X, m_pos.Y, 0f, out matTrans );
+      Matrix.CreateRotationZ( Angle, out transform );
+      Matrix.CreateTranslation( Position.X, Position.Y, 0f, out matTrans );
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
     public static float GetForceRequired( float targetVel, float curVel, float curForce, float mass, float t )
     {
+      if ( t <= 0 )
+        return 0f;
       return ( ( ( mass * ( targetVel - curVel ) ) / t ) - curForce );
     }
 
@@ -250,7 +256,7 @@ namespace Physics
       : base( pos, Vector2.Zero, mass )
     {
       m_radius = radius;
-      MomentOfIntertia = .5f * Mass * ( radius * radius );
+      MomentOfInertia = .5f * Mass * ( radius * radius );
     }
 
     public float Radius { get { return m_radius; } set { m_radius = value; } }
@@ -266,12 +272,12 @@ namespace Physics
       bool popout = false;
 
       float totalRadius = m_radius + circle.m_radius;
-      if ( Vector2.DistanceSquared( m_pos, circle.m_pos ) < .95f * ( totalRadius * totalRadius ) )
+      if ( Vector2.DistanceSquared( Position, circle.Position ) < .95f * ( totalRadius * totalRadius ) )
       {
-        if ( !m_flags.HasFlags( PhysBodyFlags.Ghost ) && !circle.m_flags.HasFlags( PhysBodyFlags.Ghost ) )
+        if ( !Flags.HasFlags( PhysBodyFlags.Ghost ) && !circle.Flags.HasFlags( PhysBodyFlags.Ghost ) )
         {
-          normal = Vector2.Normalize( m_pos - circle.m_pos );
-          popoutPos = circle.m_pos + 1.0001f * totalRadius * normal - m_vel * t;
+          normal = Vector2.Normalize( Position - circle.Position );
+          popoutPos = circle.Position + 1.0001f * totalRadius * normal - Velocity * t;
           popout = true;
         }
         else
@@ -281,12 +287,12 @@ namespace Physics
       }
 
       // if not intersecting at t = 0
-      Vector2 relVel    = Vector2.Subtract( m_vel, circle.m_vel );
+      Vector2 relVel    = Vector2.Subtract( Velocity, circle.Velocity );
       Vector2 relVelByT = Vector2.Multiply( relVel, t );
-      Vector2 posAtT    = Vector2.Add( m_pos, relVelByT );
+      Vector2 posAtT    = Vector2.Add( Position, relVelByT );
 
       float time;
-      if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, circle.m_pos, m_radius + circle.m_radius ) )
+      if ( Geometry.SegmentVsCircle( out time, out normal, Position, posAtT, circle.Position, m_radius + circle.m_radius ) )
       {
         float timeStep = Math.Max( 0f, time * t );
         result.Time = timeStep;
@@ -295,12 +301,12 @@ namespace Physics
         result.BodyA = this;
         result.BodyB = circle;
 
-        Vector2 dispAtCollision = ( circle.m_pos + circle.m_vel * timeStep ) - ( m_pos + m_vel * timeStep );
-        result.Intersection = m_pos + ( m_radius / ( m_radius + circle.m_radius ) ) * dispAtCollision;
+        Vector2 dispAtCollision = ( circle.Position + circle.Velocity * timeStep ) - ( Position + Velocity * timeStep );
+        result.Intersection = Position + ( m_radius / ( m_radius + circle.m_radius ) ) * dispAtCollision;
       }
 
       if ( popout && !result.Collision )
-        m_pos = popoutPos;
+        Position = popoutPos;
       return result;
     }
 
@@ -310,9 +316,9 @@ namespace Physics
       Matrix transform;
       poly.GetTransform( out transform );
 
-      Vector2 relVel    = Vector2.Subtract( m_vel, poly.Velocity );
+      Vector2 relVel    = Vector2.Subtract( Velocity, poly.Velocity );
       Vector2 relVelByT = Vector2.Multiply( relVel, t );
-      Vector2 posAtT    = Vector2.Add( m_pos, relVelByT );
+      Vector2 posAtT    = Vector2.Add( Position, relVelByT );
 
       Vector2[] verts = poly.Vertices;
       Vector2 lastVert = verts.Last();
@@ -343,43 +349,43 @@ namespace Physics
           Vector2 q1 = transfVert + offset;
 
           // check if intersecting segment at t = 0
-          if ( Geometry.SegmentVsCircle( out time, out normal, lastVert, transfVert, m_pos, m_radius ) )
+          if ( Geometry.SegmentVsCircle( out time, out normal, lastVert, transfVert, Position, m_radius ) )
           {
             if ( time < .95f && popoutPriority != 1 )
             {
               float dot = Vector2.Dot( normal, -n );
               if ( dot > 0f )
               {
-                popoutPos = m_pos + n * 1.0001f * m_radius * ( 1f - dot ) - m_vel * t;
+                popoutPos = Position + n * 1.0001f * m_radius * ( 1f - dot ) - Velocity * t;
                 popoutPriority = 1;
               }
             }
           }
 
-          if ( Geometry.SegmentVsSegment( out time, m_pos, posAtT, q0, q1 ) )
+          if ( Geometry.SegmentVsSegment( out time, Position, posAtT, q0, q1 ) )
           {
             // if collision with segment (and polygon is convex), we're done
             if ( poly.Convex )
-              return new CollisResult( true, time * t, this, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
+              return new CollisResult( true, time * t, this, poly, n, Position + t * time * ( Velocity ) - n * m_radius );
             else if ( time * t < bestResult.Time )
-              bestResult = new CollisResult( true, time * t, this, poly, n, m_pos + t * time * ( m_vel ) - n * m_radius );
+              bestResult = new CollisResult( true, time * t, this, poly, n, Position + t * time * ( Velocity ) - n * m_radius );
           }
         }
 
         // CHECK CORNER
         // inside circle?
-        if ( Vector2.DistanceSquared( m_pos, transfVert ) < ( m_radius * m_radius ) )
+        if ( Vector2.DistanceSquared( Position, transfVert ) < ( m_radius * m_radius ) )
         {
           if ( popoutPriority == 0 )
           {
             popoutPriority = 2;
-            normal = Vector2.Normalize( m_pos - transfVert );
+            normal = Vector2.Normalize( Position - transfVert );
             popoutPos = transfVert + m_radius * normal;
           }
         }
 
         // intersecting circle
-        if ( Geometry.SegmentVsCircle( out time, out normal, m_pos, posAtT, transfVert, m_radius ) )
+        if ( Geometry.SegmentVsCircle( out time, out normal, Position, posAtT, transfVert, m_radius ) )
         {
           // additional checks to see if hitting correct sector of circle
           if ( Vector2.Dot( normal, edge ) > 0.0f )
@@ -401,10 +407,10 @@ namespace Physics
       }
 
       // hack to keep objects from penetrating in rare cases
-      if ( !this.m_flags.HasFlags( PhysBodyFlags.Ghost ) && !poly.Flags.HasFlags( PhysBodyFlags.Ghost ) )
+      if ( !this.Flags.HasFlags( PhysBodyFlags.Ghost ) && !poly.Flags.HasFlags( PhysBodyFlags.Ghost ) )
       {
         if ( !bestResult.Collision && popoutPriority != 0 )
-          m_pos = popoutPos;
+          Position = popoutPos;
       }
 
       return bestResult;
@@ -425,7 +431,7 @@ namespace Physics
       m_verts = new Vector2[nVerts];
       Array.Copy( verts, m_verts, nVerts );
 
-      MomentOfIntertia = GetMomentOfInertia( this );
+      MomentOfInertia = GetMomentOfInertia( this );
 
       Convex = Geometry.PolyIsConvex( m_verts );
     }
@@ -444,14 +450,14 @@ namespace Physics
         new Vector2(  widthByTwo, -heightByTwo )
       };
 
-      MomentOfIntertia = GetMomentOfInertia( this );
+      MomentOfInertia = GetMomentOfInertia( this );
 
       Convex = Geometry.PolyIsConvex( m_verts );
     }
 
     public void SetPivotPoint( Vector2 origin )
     {
-      m_pos += origin;
+      Position += origin;
       for ( int i = 0; i < m_verts.Length; ++i )
         m_verts[i] -= origin;
     }
@@ -460,9 +466,9 @@ namespace Physics
     {
       float sum = 0f;
       foreach ( Vector2 vert in poly.m_verts )
-        sum += ( vert - poly.m_pos ).LengthSquared();
+        sum += ( vert - poly.Position ).LengthSquared();
 
-      return ( ( poly.m_mass / poly.m_verts.Length ) * sum );
+      return ( ( poly.Mass / poly.m_verts.Length ) * sum );
     }
 
     public Vector2[] Vertices { get { return m_verts; } }

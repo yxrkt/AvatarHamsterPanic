@@ -47,7 +47,7 @@
     <Compile Include="Models\wheel.X">
       <Name>wheel</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>CustomModelProcessor</Processor>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -62,6 +62,10 @@
       <Project>{A6D980EB-170D-4302-97C2-19693FC7B63A}</Project>
       <Name>CustomAvatarAnimationPipeline</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\CustomModelPipeline\CustomModelPipeline.csproj">
+      <Project>{8C4AEEAC-D4C6-4C94-BB37-E1904945769D}</Project>
+      <Name>CustomModelPipeline</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\InstancedModelPipeline\InstancedModelPipeline.csproj">
       <Project>{5201E245-0736-4146-AA6B-3F7A86513F00}</Project>
       <Name>InstancedModelPipeline</Name>
@@ -72,20 +76,6 @@
       <Name>Walk</Name>
       <Importer>FbxImporter</Importer>
       <Processor>CustomAvatarAnimationProcessor</Processor>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Models\basket.X">
-      <Name>basket</Name>
-      <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Effects\warp.fx">
-      <Name>warp</Name>
-      <Importer>EffectImporter</Importer>
-      <Processor>EffectProcessor</Processor>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -202,7 +192,7 @@
     <Compile Include="Models\collectible.X">
       <Name>collectible</Name>
       <Importer>XImporter</Importer>
-      <Processor>ModelProcessor</Processor>
+      <Processor>CustomModelProcessor</Processor>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -264,6 +254,41 @@
       <Name>readyGoFont</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\shrimp.FBX">
+      <Name>shrimp</Name>
+      <Importer>FbxImporter</Importer>
+      <Processor>CustomModelProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\hammer.FBX">
+      <Name>hammer</Name>
+      <Importer>FbxImporter</Importer>
+      <Processor>CustomModelProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\bolt.FBX">
+      <Name>bolt</Name>
+      <Importer>FbxImporter</Importer>
+      <Processor>CustomModelProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\hamsterBall.fbx">
+      <Name>hamsterBall</Name>
+      <Importer>FbxImporter</Importer>
+      <Processor>CustomModelProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\milkshake.fbx">
+      <Name>milkshake</Name>
+      <Importer>FbxImporter</Importer>
+      <Processor>CustomModelProcessor</Processor>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\$(XnaFrameworkVersion)\Microsoft.Xna.GameStudio.ContentPipeline.targets" />

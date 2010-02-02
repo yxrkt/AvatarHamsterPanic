@@ -39,6 +39,7 @@ namespace AvatarHamsterPanic.Objects
 
     CagePiece[] cagePieces;
     SpringInterpolater angleSpring;
+    float spacing;
 
     static Shelves()
     {
@@ -68,7 +69,7 @@ namespace AvatarHamsterPanic.Objects
       if ( boundary == null )
         throw new InvalidOperationException( "boundary must be initialized before shelf" );
       float totalLength = boundary.Right - boundary.Left - size - 2f * offsetFromWall;
-      float cageSpacing = totalLength / 3f;
+      spacing = totalLength / 3f;
 
       Camera camera = Screen.Camera;
       
@@ -84,7 +85,7 @@ namespace AvatarHamsterPanic.Objects
       // cage bottoms stored in first four indices
       for ( int i = 0; i < nMaxPlayers; ++i )
       {
-        Vector3 pos = new Vector3( boundary.Left + offsetFromWall + i * cageSpacing, topLine - size / 2f, 0f );
+        Vector3 pos = new Vector3( boundary.Left + offsetFromWall + i * spacing, topLine - size / 2f, 0f );
         cagePieces[i].Translation = Matrix.CreateTranslation( pos );
         cagePieces[i].Rotation = bottomStart;
         cagePieces[i].Transform = scale * bottomStart * cagePieces[i].Translation;
@@ -99,7 +100,7 @@ namespace AvatarHamsterPanic.Objects
         int box = ( i - nMaxPlayers ) / 2;
         int side = i % 2;
 
-        float x = boundary.Left + offsetFromWall + box * cageSpacing + side * size;
+        float x = boundary.Left + offsetFromWall + box * spacing + side * size;
         Vector3 pos = new Vector3( x, topLine, 0f );
         Matrix translation = Matrix.CreateTranslation( pos );
         Matrix rotation = side == 0 ? rotateL : rotateR;
@@ -113,7 +114,7 @@ namespace AvatarHamsterPanic.Objects
 
     public Vector2 GetPlayerPos( int playerNumber )
     {
-      float x = boundary.Left + offsetFromWall + size / 2f;
+      float x = boundary.Left + offsetFromWall + size / 2f + playerNumber * spacing;
       return new Vector2( x, topLine );
     }
 

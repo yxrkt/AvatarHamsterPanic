@@ -12,7 +12,7 @@ namespace AvatarHamsterPanic.Objects
     readonly string readyString = "Ready";
     readonly string goString = "Go!";
     readonly SpringInterpolater spring =
-      new SpringInterpolater( 1, 500, .5f * SpringInterpolater.GetCriticalDamping( 500 ) );
+      new SpringInterpolater( 1, 200, .5f * SpringInterpolater.GetCriticalDamping( 200 ) );
     readonly SpriteFont font;
     readonly Vector2 position;
 

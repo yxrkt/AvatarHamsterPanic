@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.GamerServices;
 using CustomAvatarAnimationFramework;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Input;
+using CustomModelSample;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -37,7 +38,7 @@ namespace AvatarHamsterPanic.Objects
     public int PlayerNumber { get; private set; }
     public PlayerIndex PlayerIndex { get; private set; }
     public PhysCircle BoundingCircle { get; private set; }
-    public Model WheelModel { get; private set; }
+    public CustomModel WheelModel { get; private set; }
     public Avatar Avatar { get; set; }
     public double RespawnTime { get; private set; }
     public bool Respawning { get { return RespawnTime < RespawnLength; } }
@@ -45,7 +46,7 @@ namespace AvatarHamsterPanic.Objects
 
     static Player()
     {
-      Size = 1.3f;
+      Size = 1.4f;
       DeathLine = 3.5f;
       RespawnLength = 1f;
     }
@@ -53,7 +54,14 @@ namespace AvatarHamsterPanic.Objects
     public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
       : base( screen )
     {
-      WheelModel = screen.Content.Load<Model>( "Models/wheel" );
+      WheelModel = screen.Content.Load<CustomModel>( "Models/hamsterBall" );
+      foreach ( CustomModelSample.CustomModel.ModelPart part in WheelModel.ModelParts )
+      {
+        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
+        part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .2f ) );
+        part.Effect.Parameters["SpecularPower"].SetValue( 400 );
+      }
+      DrawOrder = 2;
 
       float depth = screen.Camera.Position.Z - Size / 2;
       DeathLine = depth * (float)Math.Tan( screen.Camera.Fov / 2f );
@@ -142,18 +150,14 @@ namespace AvatarHamsterPanic.Objects
       UpdateAvatar( gameTime );
       HUD.Update( gameTime );
 
-      Vector2 pos = BoundingCircle.Position;
-
       if ( !Respawning )
       {
         // check if player should be pwnt
-        if ( pos.Y >= Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f )
+        if ( BoundingCircle.Position.Y >= Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f )
         {
           RespawnTime = 0f;
           HUD.AddPoints( -5 );
-          Vector2 velocity = BoundingCircle.Velocity;
-          velocity.Y = Math.Min( velocity.Y, Screen.CameraScrollSpeed );
-          BoundingCircle.Velocity = velocity;
+          BoundingCircle.Velocity.Y = Math.Min( BoundingCircle.Velocity.Y, Screen.CameraScrollSpeed );
         }
       }
       else
@@ -227,13 +231,13 @@ namespace AvatarHamsterPanic.Objects
       if ( circle.AngularVelocity < 0f && torque < 0f )
       {
         float reqTorque = PhysBody.GetForceRequired( -maxAngVel, circle.AngularVelocity,
-                                                     circle.Torque, circle.MomentOfIntertia, elapsed );
+                                                     circle.Torque, circle.MomentOfInertia, elapsed );
         torque = Math.Max( torque, reqTorque );
       }
       else if ( circle.AngularVelocity > 0f && torque > 0f )
       {
         float reqTorque = PhysBody.GetForceRequired( maxAngVel, circle.AngularVelocity,
-                                                     circle.Torque, circle.MomentOfIntertia, elapsed );
+                                                     circle.Torque, circle.MomentOfInertia, elapsed );
         torque = Math.Min( torque, reqTorque );
       }
       circle.Torque += torque;
@@ -288,54 +292,38 @@ namespace AvatarHamsterPanic.Objects
         return;
 
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = vertexDeclaration;
-      SetRenderState( graphics.RenderState );
+      RenderState renderState = graphics.RenderState;
+      renderState.CullMode = CullMode.CullCounterClockwiseFace;
+      renderState.AlphaBlendEnable = false;
 
-      Matrix transform;
-
-      // draw wheel
-      foreach ( ModelMesh mesh in WheelModel.Meshes )
-      {
-        ModelEffectCollection effects = mesh.Effects;
-        int nEffects = effects.Count;
-        for ( int i = 0; i < nEffects; ++i )
-        {
-          BasicEffect effect = (BasicEffect)effects[i];
-          effect.EnableDefaultLighting();
-
-          GetWheelTransform( out transform );
-          effect.World = transform;
-          effect.View = Screen.View;
-          effect.Projection = Screen.Projection;
-        }
-
-        mesh.Draw();
-      }
-
-      // draw avatar
+      // draw avatar first, so the ball doesn't cover it
       Avatar.Renderer.View = Screen.View;
       Avatar.Renderer.Projection = Screen.Projection;
 
       Matrix matRot = Matrix.CreateWorld( Vector3.Zero, Avatar.Direction, Screen.Camera.Up );
       Matrix matTrans = Matrix.CreateTranslation( Avatar.Position );
-      Avatar.Renderer.World = Matrix.CreateScale( .45f * Size * Scale ) * matRot * matTrans;
+      Avatar.Renderer.World = Matrix.CreateScale( .5f * Size * Scale ) * matRot * matTrans;
       Avatar.Renderer.Draw( Avatar.BoneTransforms, Avatar.Expression );
-    }
 
-    private void SetRenderState( RenderState renderState )
-    {
+      // draw the ball
+      Matrix transform;
+      GetWheelTransform( out transform );
+
+      renderState.AlphaBlendEnable = true;
+      renderState.AlphaSourceBlend = Blend.SourceAlpha;
+      renderState.AlphaDestinationBlend = Blend.InverseSourceAlpha;
+
+      renderState.CullMode = CullMode.CullClockwiseFace;
+      WheelModel.Draw( Screen.Camera.Position, transform, Screen.View, Screen.Projection );
+
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
-
-      renderState.AlphaBlendEnable = false;
-
-      renderState.DepthBufferEnable = true;
-      renderState.DepthBufferWriteEnable = true;
+      WheelModel.Draw( Screen.Camera.Position, transform, Screen.View, Screen.Projection );
     }
 
     private void UpdateAvatar( GameTime gameTime )
     {
       PhysCircle circle = BoundingCircle;
-      Avatar.Position = new Vector3( circle.Position.X, circle.Position.Y - ( Scale * Size ) / 2.5f, 0f );
+      Avatar.Position = new Vector3( circle.Position.X, circle.Position.Y - ( Scale * Size ) / 2.3f, 0f );
 
       double absAngVel = Math.Abs( (double)circle.AngularVelocity );
 

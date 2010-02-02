@@ -35,4 +35,27 @@ namespace AvatarHamsterPanic.Objects
 
     public static int SizeInBytes { get { return sizeof( float ) * 14; } }
   }
+
+  public struct VertexPositionNormalColor
+  {
+    public Vector3 Position;
+    public Vector3 Normal;
+    public Vector4 Color;
+
+    public static readonly VertexElement[] VertexElements =
+    {
+      new VertexElement(0, 0, VertexElementFormat.Vector3, VertexElementMethod.Default, VertexElementUsage.Position, 0),
+      new VertexElement(0, sizeof(float) * 3, VertexElementFormat.Vector3, VertexElementMethod.Default, VertexElementUsage.Normal, 0),
+      new VertexElement(0, sizeof(float) * 6, VertexElementFormat.Vector4, VertexElementMethod.Default, VertexElementUsage.Color, 0)
+    };
+
+    public VertexPositionNormalColor( Vector3 position, Vector3 normal, Vector4 color )
+    {
+      Position = position;
+      Normal = normal;
+      Color = color;
+    }
+
+    public static int SizeInBytes { get { return sizeof( float ) * 10; } }
+  }
 }

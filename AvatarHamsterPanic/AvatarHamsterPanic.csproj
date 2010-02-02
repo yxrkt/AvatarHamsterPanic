@@ -13,7 +13,7 @@
     <XnaCrossPlatformGroupID>74a02f62-84db-423c-ab53-ca2461c89c83</XnaCrossPlatformGroupID>
     <ApplicationIcon>
     </ApplicationIcon>
-    <Thumbnail>GameStateSample.PNG</Thumbnail>
+    <Thumbnail>Thumbnail.png</Thumbnail>
     <XnaUpgrade>
     </XnaUpgrade>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
@@ -66,10 +66,11 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CustomModel.cs" />
+    <Compile Include="CustomModelReader.cs" />
     <Compile Include="CustomVertex.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="Geometry.cs" />
-    <Compile Include="IMessageDisplay.cs" />
     <Compile Include="InstancedModel.cs" />
     <Compile Include="InstancedModelPart.cs" />
     <Compile Include="InstancedModelReader.cs" />
@@ -124,9 +125,6 @@
     <Compile Include="Utilities\XFileUtils.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="GameStateSample.PNG" />
-  </ItemGroup>
-  <ItemGroup>
     <NestedContentProject Include="Content\Content.contentproj">
       <Project>3b1153c5-e30c-42b2-829e-90b58d3a6efe</Project>
       <Visible>False</Visible>
@@ -176,6 +174,9 @@
       <Project>{B0C6D416-83AC-4F2F-92A6-D73342D699C1}</Project>
       <Name>CustomAvatarAnimationXbox</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Thumbnail.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" Condition="" />

@@ -60,7 +60,7 @@ namespace Physics
         body.Velocity += ( accel * (float)elapsed );
 
         // factor in torque
-        float angAccel = body.Torque / body.MomentOfIntertia;
+        float angAccel = body.Torque / body.MomentOfInertia;
         body.Torque = 0f;
         body.AngularVelocity += ( angAccel * (float)elapsed );
       }
