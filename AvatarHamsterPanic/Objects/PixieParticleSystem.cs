@@ -1,6 +1,6 @@
 #region File Description
 //-----------------------------------------------------------------------------
-// SmokePlumeParticleSystem.cs
+// ExplosionParticleSystem.cs
 //
 // Microsoft XNA Community Game Platform
 // Copyright (C) Microsoft Corporation. All rights reserved.
@@ -17,23 +17,23 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Particle3DSample
 {
   /// <summary>
-  /// Custom particle system for creating sparkle feedback.
+  /// Custom particle system for creating the fiery part of the explosions.
   /// </summary>
-  public class SparkleParticleSystem : ParticleSystem
+  public class PixieParticleSystem : ParticleSystem
   {
-    public SparkleParticleSystem( Game game, ContentManager content )
+    public PixieParticleSystem( Game game, ContentManager content )
       : base( game, content )
     { }
 
 
     protected override void InitializeSettings( ParticleSettings settings )
     {
-      settings.TextureName = "Textures/particleSparkle";
+      settings.TextureName = "pixieParticle";
 
-      settings.MaxParticles = 300;
+      settings.MaxParticles = 200;
 
-      settings.Duration = TimeSpan.FromSeconds( 1 );
-      settings.DurationRandomness = .5f;
+      settings.Duration = TimeSpan.FromSeconds( 1.25f );
+      settings.DurationRandomness = 1;
 
       settings.MinHorizontalVelocity = 0;
       settings.MaxHorizontalVelocity = 0;
@@ -41,19 +41,21 @@ namespace Particle3DSample
       settings.MinVerticalVelocity = 0;
       settings.MaxVerticalVelocity = 0;
 
-      settings.EndVelocity = 0f;
+      settings.EndVelocity = 1;
 
       settings.MinRotateSpeed = -2;
       settings.MaxRotateSpeed = 2;
 
-      settings.MinStartSize = .1f;
-      settings.MaxStartSize = .4f;
+      settings.FadePower = 10;
+
+      settings.MinStartSize = 0f;
+      settings.MaxStartSize = .1f;
+
+      settings.MinMidSize = .1f;
+      settings.MaxMidSize = .35f;
 
       settings.MinEndSize = 0;
       settings.MaxEndSize = 0;
-
-      settings.MinColor = Color.Gold;
-      settings.MaxColor = Color.Gold;
     }
   }
 }

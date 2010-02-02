@@ -11,6 +11,8 @@ using CustomAvatarAnimationFramework;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Input;
 using CustomModelSample;
+using Particle3DSample;
+using Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -31,6 +33,8 @@ namespace AvatarHamsterPanic.Objects
     public static float DeathLine { get; set; }
     public static double RespawnLength { get; private set; }
 
+    static Random random = new Random();
+
     public float Scale { get; private set; }
     public bool Boosting { get; private set; }
     public float BoostBurnRate { get; set; }
@@ -43,6 +47,7 @@ namespace AvatarHamsterPanic.Objects
     public double RespawnTime { get; private set; }
     public bool Respawning { get { return RespawnTime < RespawnLength; } }
     public PlayerHUD HUD { get; private set; }
+    public Powerup Powerup { get; set; }
 
     static Player()
     {
@@ -84,8 +89,6 @@ namespace AvatarHamsterPanic.Objects
       walkAnim = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
       runAnim  = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );
 
-      Texture2D particleTex = screen.Content.Load<Texture2D>( "Textures/particleRound" );
-
       if ( playerIndex >= PlayerIndex.One )
         HUD = new PlayerHUD( this, SignedInGamer.SignedInGamers[playerIndex] );
       else
@@ -113,32 +116,32 @@ namespace AvatarHamsterPanic.Objects
       // keep track of last time of collision (for jumping)
       lastCollision = (float)lastGameTime.TotalGameTime.TotalSeconds;
 
-      //// set emitter position
-      //Vector3 position = new Vector3( data.Intersection, FloorBlock.Size / 2f - .2f );
+      // set emitter position
+      SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
+
+      Vector3 position = new Vector3( data.Intersection, 0f );
       //emitter.Position = position;
 
-      //// spit some particles
-      //Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
-      //Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
-      //Vector2 dir = circle.Velocity;
+      // spit some particles
+      Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
+      Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
+      Vector2 dir = circle.Velocity;
 
-      //Vector2 vpn = Vector2.Normalize( vp );
+      Vector2 vpn = Vector2.Normalize( vp );
+      Vector3 direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
       //factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
 
-      //Vector2 sum = vp + dir;
-      //if ( sum != Vector2.Zero )
-      //{
-      //  float sumLength = sum.Length();
-      //  if ( sumLength > .05f )
-      //  {
-      //    float numToSpit = .5f * sumLength;
-      //    //emitter.Position += new Vector3( ( vpn * .1f ), 0f );
-      //    emitter.Spit( numToSpit );
-      //    position.Z = -position.Z;
-      //    emitter.Position = position;
-      //    emitter.Spit( numToSpit );
-      //  }
-      //}
+      Vector2 sum = vp + dir;
+      if ( sum != Vector2.Zero )
+      {
+        float sumLength = sum.Length();
+        if ( sumLength > .25f )
+        {
+          float coneAngle = MathHelper.ToRadians( 30 );
+          Vector3 velocity = random.NextConeDirection( random.NextFloat( 2, 4 ) * direction, coneAngle );
+          sparkSystem.AddParticle( position, velocity );
+        }
+      }
 
       return true;
     }
@@ -174,24 +177,33 @@ namespace AvatarHamsterPanic.Objects
       PhysCircle circle = BoundingCircle;
       GamePadState gamePadState = input.CurrentGamePadStates[(int)PlayerIndex];
 
-      // == testing garbage ==
-      PlayerIndex trash;
-      if ( input.IsNewButtonPress( Buttons.B, null, out trash ) )
-        HUD.Place = ( HUD.Place ) % 4 + 1;
+      //// == testing garbage ==
+      //PlayerIndex trash;
+      //if ( input.IsNewButtonPress( Buttons.B, null, out trash ) )
+      //  HUD.Place = ( HUD.Place ) % 4 + 1;
 
+      //PlayerIndex playerIndex = PlayerIndex;
+      //if ( input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex ) )
+      //{
+      //  Scale = .5f;
+      //  BoundingCircle.Radius = ( Scale * Size ) / 2f;
+      //}
+      //else if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
+      //{
+      //  Scale = 1f;
+      //  BoundingCircle.Radius = Size / 2f;
+      //}
+      //// == testing garbage ==
+
+      // powerups
       PlayerIndex playerIndex = PlayerIndex;
       if ( input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex ) )
       {
-        Scale = .5f;
-        BoundingCircle.Radius = ( Scale * Size ) / 2f;
+        if ( Powerup != null )
+          Powerup.Use();
       }
-      else if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
-      {
-        Scale = 1f;
-        BoundingCircle.Radius = Size / 2f;
-      }
-      // == testing garbage ==
 
+      // movement
       float forceY = 0f;
       float forceX = 0f;
       float maxVelX = 4f;

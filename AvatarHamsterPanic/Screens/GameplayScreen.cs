@@ -51,7 +51,9 @@ namespace AvatarHamsterPanic.Objects
     public Rectangle SafeRect { get; private set; }
     public ParticleManager ParticleManager { get; private set; }
     public static StringBuilder DebugString { get; set; }
-    public SparkleParticleSystem SparkleParticleSystem { get; set; }
+    public PixieParticleSystem PixieParticleSystem { get; set; }
+    public SparkParticleSystem SparkParticleSystem { get; set; }
+    public PinkPixieParticleSystem PinkPixieParticleSystem { get; set; }
 
     TubeMaze tubeMaze;
     SpriteFont gameFont;
@@ -101,14 +103,20 @@ namespace AvatarHamsterPanic.Objects
       gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
       Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
+      Game game = ScreenManager.Game;
+
       // model explosion particles
-      ParticleManager = new ParticleManager( ScreenManager.Game, Content );
+      ParticleManager = new ParticleManager( game, Content );
       ParticleManager.Initialize();
       ScreenManager.Game.Components.Add( ParticleManager );
 
       // other particles
-      SparkleParticleSystem = new SparkleParticleSystem( ScreenManager.Game, Content );
-      ScreenManager.Game.Components.Add( SparkleParticleSystem );
+      PixieParticleSystem = new PixieParticleSystem( game, Content );
+      SparkParticleSystem = new SparkParticleSystem( game, Content );
+      PinkPixieParticleSystem = new PinkPixieParticleSystem( game, Content );
+      game.Components.Add( PixieParticleSystem );
+      game.Components.Add( SparkParticleSystem );
+      game.Components.Add( PinkPixieParticleSystem );
 
       // pre-load
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
@@ -172,8 +180,11 @@ namespace AvatarHamsterPanic.Objects
     {
       PhysBody.AllBodies.Clear();
       ObjectTable.Clear();
-      ScreenManager.Game.Components.Remove( ParticleManager );
-      ScreenManager.Game.Components.Remove( SparkleParticleSystem );
+      Game game = ScreenManager.Game;
+      game.Components.Remove( ParticleManager );
+      game.Components.Remove( PixieParticleSystem );
+      game.Components.Remove( SparkParticleSystem );
+      game.Components.Remove( PinkPixieParticleSystem );
       Content.Unload();
     }
 
@@ -193,7 +204,9 @@ namespace AvatarHamsterPanic.Objects
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
 
       ParticleManager.Enabled = IsActive;
-      SparkleParticleSystem.Enabled = IsActive;
+      PixieParticleSystem.Enabled = IsActive;
+      SparkParticleSystem.Enabled = IsActive;
+      PinkPixieParticleSystem.Enabled = IsActive;
 
       if ( IsActive )
       {
@@ -207,7 +220,9 @@ namespace AvatarHamsterPanic.Objects
         View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
 
         ParticleManager.SetCamera( Camera.Position, View, Projection );
-        SparkleParticleSystem.SetCamera( View, Projection );
+        PixieParticleSystem.SetCamera( View, Projection );
+        SparkParticleSystem.SetCamera( View, Projection );
+        PinkPixieParticleSystem.SetCamera( View, Projection );
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
@@ -313,7 +328,7 @@ namespace AvatarHamsterPanic.Objects
 
       // debugging stuff
       DebugString.Clear();
-      spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
+      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
       //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, new Vector2( 20, 20 ), Color.Black );
       spriteBatch.End();
 

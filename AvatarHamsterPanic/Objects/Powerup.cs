@@ -27,24 +27,31 @@ namespace AvatarHamsterPanic.Objects
   {
     // event delegates
     private delegate void UpdateMethod( GameTime gameTime );
+    private delegate void ActivateMethod();
 
     Matrix world;
-    int owner;
+    Player owner;
     bool alive;
-    float rotateTime;
+    //float rotateTime;
     float nonTubeTime;
+    float rotationAngle;
 
     static VertexDeclaration vertexDeclaration;
     static GameplayScreen screen;
     static CustomModel shakeModel;
     static CustomModel shrimpModel;
     static CustomModel hammerModel;
+    static CustomModel laserModel;
     static CustomModel boltModel;
+
+    static Dictionary<CustomModel, Matrix> initialTransforms = 
+      new Dictionary<CustomModel, Matrix>( 4 );
 
     static Powerup[] pool;
 
 
     event UpdateMethod UpdateSelf;
+    event ActivateMethod Activate;
 
     public PhysCircle Body { get; private set; }
     public CustomModel Model { get; private set; }
@@ -59,6 +66,8 @@ namespace AvatarHamsterPanic.Objects
     }
     public SpringInterpolater Oscillator { get; private set; }
     public SpringInterpolater SizeSpring { get; private set; }
+    public SpringInterpolater LockToPlayerSpring { get; private set; }
+    public SpringInterpolater RotationSpring { get; private set; }
 
     public static float DeathLine { get; private set; }
 
@@ -76,7 +85,16 @@ namespace AvatarHamsterPanic.Objects
       InitializeShakeColors();
       shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
       hammerModel = content.Load<CustomModel>( "Models/hammer" );
+      laserModel = content.Load<CustomModel>( "Models/gun" );
+      foreach ( CustomModelSample.CustomModel.ModelPart part in laserModel.ModelParts )
+        part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
       boltModel = content.Load<CustomModel>( "Models/bolt" );
+
+      initialTransforms.Add( shakeModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 15 ) ) );
+      initialTransforms.Add( shrimpModel, Matrix.CreateRotationY( MathHelper.PiOver2 ) );
+      initialTransforms.Add( hammerModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 30 ) ) );
+      initialTransforms.Add( laserModel, Matrix.CreateRotationZ( MathHelper.ToRadians( -20 ) ) );
+      initialTransforms.Add( boltModel, Matrix.Identity );
 
       float maxPowerupSize = 2f;
       Camera camera = screen.Camera;
@@ -99,7 +117,7 @@ namespace AvatarHamsterPanic.Objects
         new Color( 0xD7, 0xD7, 0xD7, 0xFF ).ToVector4(), // cream
         new Color( 0x80, 0x02, 0x0E, 0xFF ).ToVector4(), // cherry
         new Color( 0x80, 0x02, 0x0E, 0xFF ).ToVector4(), // stem
-        new Color( 0xEC, 0xEC, 0xF8, 0x19 ).ToVector4(), // glass
+        new Color( 0xEC, 0xEC, 0xF8, 0x50 ).ToVector4(), // glass
       };
 
       int i = 0;
@@ -136,15 +154,17 @@ namespace AvatarHamsterPanic.Objects
       Body.ClearEvents();
       PhysBody.AllBodies.Add( Body );
       UpdateSelf = null;
+      Activate = null;
       alive = true;
-      owner = -1;
-      rotateTime = 0f;
+      owner = null;
+      //rotateTime = 0f;
       nonTubeTime = 0f;
+      rotationAngle = 0f;
 
       switch ( type )
       {
         case PowerupType.ScoreCoin:
-          Size = .8f;
+          Size = 1f;
           Model = shakeModel;
           UpdateSelf += Rotate;
           Body.Collided += HandleCoinCollision;
@@ -154,28 +174,32 @@ namespace AvatarHamsterPanic.Objects
           Model = hammerModel;
           UpdateSelf += Rotate;
           UpdateSelf += SineWave;
-          Body.Collided += HandleCoinCollision;
+          Activate += ActivateCrush;
+          Body.Collided += HandlePowerupCollision;
           break;
         case PowerupType.Laser:
           Size = .8f;
-          Model = shakeModel;
+          Model = laserModel;
           UpdateSelf += Rotate;
           UpdateSelf += SineWave;
-          Body.Collided += HandleCoinCollision;
+          Activate += ActivateLaser;
+          Body.Collided += HandlePowerupCollision;
           break;
         case PowerupType.Shrimp:
-          Size = .7f;
+          Size = .8f;
           Model = shrimpModel;
           UpdateSelf += Rotate;
           UpdateSelf += SineWave;
-          Body.Collided += HandleCoinCollision;
+          Activate += ActivateShrink;
+          Body.Collided += HandlePowerupCollision;
           break;
         case PowerupType.Lightning:
           Size = .8f;
           Model = boltModel;
           UpdateSelf += Rotate;
           UpdateSelf += SineWave;
-          Body.Collided += HandleCoinCollision;
+          Activate += ActivateLightning;
+          Body.Collided += HandlePowerupCollision;
           break;
         default:
           throw new ArgumentOutOfRangeException( "powerup" );
@@ -194,28 +218,50 @@ namespace AvatarHamsterPanic.Objects
 
       Oscillator = new SpringInterpolater( 1, 10, 0 );
       SizeSpring = new SpringInterpolater( 1, 200, .15f * SpringInterpolater.GetCriticalDamping( 200 ) );
+      LockToPlayerSpring = new SpringInterpolater( 2, 100, SpringInterpolater.GetCriticalDamping( 100 ) );
+      RotationSpring = new SpringInterpolater( 1, 15, SpringInterpolater.GetCriticalDamping( 15 ) );
       Oscillator.Active = true;
       SizeSpring.Active = true;
+      LockToPlayerSpring.Active = true;
+      RotationSpring.Active = true;
     }
 
     public override void Update( GameTime gameTime )
     {
       if ( !InTube && Body.Position.Y > Screen.Camera.Position.Y + DeathLine )
-      {
-        Body.Release();
-        Screen.ObjectTable.MoveToTrash( this );
-        alive = false;
-      }
+        Die();
       else if ( UpdateSelf != null )
         UpdateSelf( gameTime );
+
+      world = initialTransforms[Model] * Matrix.CreateScale( Size ) * Matrix.CreateRotationY( rotationAngle );
+      world *= Matrix.CreateTranslation( Body.Position.X, Body.Position.Y, 0f );
+    }
+
+    public void Use()
+    {
+      if ( owner != null )
+        owner.Powerup = null;
+
+      if ( Activate != null )
+        Activate();
+      UpdateSelf += ShrivelUpAndDie;
+      SizeSpring.SetDest( 0 );
+      SizeSpring.SetSource( SizeSpring.GetSource()[0] * 1.25f );
+      SizeSpring.B = SpringInterpolater.GetCriticalDamping( SizeSpring.K );
+      owner.Powerup = null;
+    }
+
+    private void Die()
+    {
+      Body.Release();
+      Screen.ObjectTable.MoveToTrash( this );
+      alive = false;
     }
 
     private void Rotate( GameTime gameTime )
     {
-      float angle = .25f * MathHelper.TwoPi * /*/rotateTime/*/(float)gameTime.TotalGameTime.TotalSeconds/**/;
-      world = Matrix.CreateScale( Size ) * Matrix.CreateRotationY( angle );
-      world *= Matrix.CreateTranslation( new Vector3( Body.Position, 0f ) );
-      rotateTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+      rotationAngle = .25f * MathHelper.TwoPi * /*/rotateTime/*/(float)gameTime.TotalGameTime.TotalSeconds/**/;
+      //rotateTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
 
     private void SineWave( GameTime gameTime )
@@ -226,6 +272,14 @@ namespace AvatarHamsterPanic.Objects
 
         Oscillator.Update( elapsed );
         SizeSpring.Update( elapsed );
+
+        // leave some pixie dust behind
+        for ( int i = 0; i < 3; ++i )
+        {
+          Vector3 offset = .75f * Body.Radius * Vector3.Normalize( rand.NextVector3() );
+          Vector3 position = new Vector3( Body.Position, 0 );
+          Screen.PinkPixieParticleSystem.AddParticle( position + offset, -offset );
+        }
 
         float horizontalSpeed = 1.75f * Math.Sign( -exitTubePos.X );
         float horizontalDist = horizontalSpeed * nonTubeTime;
@@ -240,6 +294,55 @@ namespace AvatarHamsterPanic.Objects
       }
     }
 
+    private void LockToPlayer( GameTime gameTime )
+    {
+      // update position
+      float[] sourcePos = LockToPlayerSpring.GetSource();
+      Vector2 relativePos = new Vector2( sourcePos[0], sourcePos[1] );
+      Body.Position = owner.BoundingCircle.Position + relativePos;
+
+      // update scale
+      Size = SizeSpring.GetSource()[0];
+
+      if ( owner.Powerup != this )
+        return;
+
+      // update angle
+      if ( RotationSpring.Active )
+        rotationAngle = RotationSpring.GetSource()[0];
+
+      // scale up the size if the powerup has reached its destination position
+      float[] destPos = LockToPlayerSpring.GetDest();
+      if ( SizeSpring.GetDest()[0] != .5f )
+      {
+        if ( Vector2.DistanceSquared( relativePos, new Vector2( destPos[0], destPos[1] ) ) < ( .125f * .125f ) )
+        {
+          SizeSpring.SetDest( .5f );
+          RotationSpring.SetSource( MathHelper.WrapAngle( rotationAngle ) );
+          RotationSpring.SetDest( MathHelper.TwoPi * 3f );
+          RotationSpring.Active = true;
+        }
+      }
+
+      // update springs
+      float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+      LockToPlayerSpring.Update( elapsed );
+      SizeSpring.Update( elapsed );
+      RotationSpring.Update( elapsed );
+    }
+
+    private void ShrivelUpAndDie( GameTime gameTime )
+    {
+      if ( Size < .125f )
+      {
+        Die();
+        return;
+      }
+
+      float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+      SizeSpring.Update( elapsed );
+    }
+
     public override void Draw()
     {
       GraphicsDevice device = Screen.ScreenManager.GraphicsDevice;
@@ -249,11 +352,12 @@ namespace AvatarHamsterPanic.Objects
       renderState.AlphaBlendEnable = true;
       renderState.DepthBufferEnable = true;
 
-      if ( Model == shakeModel )
-      {
-        renderState.CullMode = CullMode.CullClockwiseFace;
-        Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
-      }
+      ////yeah...
+      //if ( Model == shakeModel )
+      //{
+      //  renderState.CullMode = CullMode.CullClockwiseFace;
+      //  Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
+      //}
 
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
       Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
@@ -261,31 +365,72 @@ namespace AvatarHamsterPanic.Objects
 
     public bool HandleCoinCollision( CollisResult result )
     {
-      if ( owner == -1 && result.BodyB.Parent is Player )
+      if ( owner == null && result.BodyB.Parent is Player )
       {
-        Player player = (Player)result.BodyB.Parent;
-        owner = player.PlayerNumber;
-        player.HUD.AddPoints( 1 );
+        owner = (Player)result.BodyB.Parent;
+        owner.HUD.AddPoints( 1 );
 
         result.BodyA.Release();
         Screen.ObjectTable.MoveToTrash( this );
         alive = false;
 
         // make sparkle particles
-        SparkleParticleSystem system = Screen.SparkleParticleSystem;
+        PixieParticleSystem system = Screen.PixieParticleSystem;
         for ( int i = 0; i < 20; ++i )
         {
           Vector3 pos = rand.NextVector3();
           if ( pos != Vector3.Zero )
           {
             pos.Normalize();
-            pos *= ( Body.Radius * (float)rand.NextDouble() );
+            pos *= ( 1.25f * Body.Radius * (float)rand.NextDouble() );
           }
-          system.AddParticle( new Vector3( Body.Position, 0 ) + pos, .5f * pos );
+          system.AddParticle( new Vector3( Body.Position, Player.Size ) + pos, Vector3.Zero/*.5f * pos*/ );
         }
       }
 
       return true;
+    }
+
+    public bool HandlePowerupCollision( CollisResult result )
+    {
+      if ( owner != null ) return true; // maybe have the powerup avoid the player?
+
+      Player player = result.BodyB.Parent as Player;
+      if ( player != null && player.Powerup == null )
+      {
+        UpdateSelf -= SineWave;
+        UpdateSelf += LockToPlayer;
+
+        owner = player;
+        LockToPlayerSpring.SetSource( Body.Position - player.BoundingCircle.Position );
+        LockToPlayerSpring.SetDest( new Vector2( 0f, .75f * Player.Size ) );
+        SizeSpring.SetDest( .3f );
+        RotationSpring.Active = false;
+
+        player.Powerup = this;
+      }
+
+      return true;
+    }
+
+    public void ActivateShrink()
+    {
+      Debug.WriteLine( "Shrink!" );
+    }
+
+    public void ActivateCrush()
+    {
+      Debug.WriteLine( "Crush!" );
+    }
+
+    public void ActivateLaser()
+    {
+      Debug.WriteLine( "Laser!" );
+    }
+
+    public void ActivateLightning()
+    {
+      Debug.WriteLine( "Lightning!" );
     }
   }
 }

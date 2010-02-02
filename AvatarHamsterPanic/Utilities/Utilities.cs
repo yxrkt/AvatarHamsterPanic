@@ -19,6 +19,15 @@ namespace Utilities
     {
       return MathHelper.Lerp( min, max, (float)rand.NextDouble() );
     }
+
+    public static Vector3 NextConeDirection( this Random rand, Vector3 axis, float angle )
+    {
+      Vector3 randomDirection = rand.NextVector3();
+
+      Vector3 radiusDirection = Vector3.Normalize( Vector3.Cross( axis, randomDirection ) );
+      float radius = (float)Math.Tan( angle / 2 );
+      return ( axis + radiusDirection * radius * (float)rand.NextDouble() );
+    }
   }
 
   public static class StringBuilderExtention

@@ -250,6 +250,8 @@ namespace AvatarHamsterPanic.Objects
       powerup.Oscillator.SetDest( midLine );
       powerup.SizeSpring.SetSource( powerup.Size );
       powerup.SizeSpring.SetDest( 1f );
+      powerup.SizeSpring.K = 200;
+      powerup.SizeSpring.B = .15f * SpringInterpolater.GetCriticalDamping( 200 );
     }
 
     private void UpdateObjects( float elapsed )

@@ -13,6 +13,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using AvatarHamsterPanic.Objects;
+using System.Diagnostics;
 #endregion
 
 namespace CustomModelSample

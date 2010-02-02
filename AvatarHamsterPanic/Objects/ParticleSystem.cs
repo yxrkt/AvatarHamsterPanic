@@ -229,20 +229,26 @@ namespace Particle3DSample
       parameters["DurationRandomness"].SetValue( settings.DurationRandomness );
       parameters["Gravity"].SetValue( settings.Gravity );
       parameters["EndVelocity"].SetValue( settings.EndVelocity );
-      parameters["MinColor"].SetValue( settings.MinColor.ToVector4() );
-      parameters["MaxColor"].SetValue( settings.MaxColor.ToVector4() );
+      parameters["StretchVelocity"].SetValue( settings.StretchVelocity );
+      parameters["StretchFactor"].SetValue( settings.StretchFactor );
+      parameters["FadePower"].SetValue( settings.FadePower );
+      parameters["AlignWithVelocity"].SetValue( settings.AlignWithVelocity );
+      parameters["Colors"].SetValue( settings.Colors );
 
       parameters["RotateSpeed"].SetValue(
-          new Vector2( settings.MinRotateSpeed, settings.MaxRotateSpeed ) );
+        new Vector2( settings.MinRotateSpeed, settings.MaxRotateSpeed ) );
 
       parameters["StartSize"].SetValue(
-          new Vector2( settings.MinStartSize, settings.MaxStartSize ) );
+        new Vector2( settings.MinStartSize, settings.MaxStartSize ) );
+
+      parameters["MidSize"].SetValue(
+        new Vector2( settings.MinMidSize, settings.MaxMidSize ) );
 
       parameters["EndSize"].SetValue(
-          new Vector2( settings.MinEndSize, settings.MaxEndSize ) );
+        new Vector2( settings.MinEndSize, settings.MaxEndSize ) );
 
       // Load the particle texture, and set it onto the effect.
-      Texture2D texture = content.Load<Texture2D>( settings.TextureName );
+      Texture2D texture = content.Load<Texture2D>( "Textures/" + settings.TextureName );
 
       parameters["Texture"].SetValue( texture );
 
@@ -250,7 +256,7 @@ namespace Particle3DSample
       // rotate, we can use a simpler pixel shader that requires less GPU power.
       string techniqueName;
 
-      if ( ( settings.MinRotateSpeed == 0 ) && ( settings.MaxRotateSpeed == 0 ) )
+      if ( ( settings.MinRotateSpeed == 0 ) && ( settings.MaxRotateSpeed == 0 ) && !settings.AlignWithVelocity )
         techniqueName = "NonRotatingParticles";
       else
         techniqueName = "RotatingParticles";
@@ -537,8 +543,8 @@ namespace Particle3DSample
 
       // Add in some random amount of horizontal velocity.
       float horizontalVelocity = MathHelper.Lerp( settings.MinHorizontalVelocity,
-                                                 settings.MaxHorizontalVelocity,
-                                                 (float)random.NextDouble() );
+                                                  settings.MaxHorizontalVelocity,
+                                                  (float)random.NextDouble() );
 
       double horizontalAngle = random.NextDouble() * MathHelper.TwoPi;
 
@@ -547,15 +553,15 @@ namespace Particle3DSample
 
       // Add in some random amount of vertical velocity.
       velocity.Y += MathHelper.Lerp( settings.MinVerticalVelocity,
-                                    settings.MaxVerticalVelocity,
-                                    (float)random.NextDouble() );
+                                     settings.MaxVerticalVelocity,
+                                     (float)random.NextDouble() );
 
       // Choose four random control values. These will be used by the vertex
       // shader to give each particle a different size, rotation, and color.
       Color randomValues = new Color( (byte)random.Next( 255 ),
-                                     (byte)random.Next( 255 ),
-                                     (byte)random.Next( 255 ),
-                                     (byte)random.Next( 255 ) );
+                                      (byte)random.Next( 255 ),
+                                      (byte)random.Next( 255 ),
+                                      (byte)random.Next( 255 ) );
 
       // Fill in the particle vertex structure.
       particles[firstFreeParticle].Position = position;
