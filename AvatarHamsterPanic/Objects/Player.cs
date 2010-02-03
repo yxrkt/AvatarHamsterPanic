@@ -13,6 +13,8 @@ using Microsoft.Xna.Framework.Input;
 using CustomModelSample;
 using Particle3DSample;
 using Utilities;
+using MathLib;
+using System.Diagnostics;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -21,21 +23,31 @@ namespace AvatarHamsterPanic.Objects
     static readonly float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
     static readonly float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
+    public static readonly float Size = 1.4f;
+
+    static readonly float baseMass = 10f;
+    static readonly float density = baseMass / Geometry.SphereVolume( Size / 2 );
+    static readonly float respawnDuration = 1f;
+    static readonly float shrinkDuration = 10f;
+    static readonly float shrinkSize = .35f;
+    //static readonly float squashSize;
+    static readonly float crushDuration = .75f;
+    static readonly float crushMass = 10000f;
+
     float jumpRegistered;
     const float jumpTimeout = .125f;
     GameTime lastGameTime = new GameTime();
     float lastCollision;
+    float shrinkBegin;
+    float crushBegin;
     VertexDeclaration vertexDeclaration;
     CustomAvatarAnimationData walkAnim;
     CustomAvatarAnimationData runAnim;
 
-    public static float Size { get; private set; }
-    public static float DeathLine { get; set; }
-    public static double RespawnLength { get; private set; }
-
     static Random random = new Random();
 
     public float Scale { get; private set; }
+    public SpringInterpolater ScaleSpring { get; private set; }
     public bool Boosting { get; private set; }
     public float BoostBurnRate { get; set; }
     public float BoostRechargeRate { get; set; }
@@ -45,16 +57,11 @@ namespace AvatarHamsterPanic.Objects
     public CustomModel WheelModel { get; private set; }
     public Avatar Avatar { get; set; }
     public double RespawnTime { get; private set; }
-    public bool Respawning { get { return RespawnTime < RespawnLength; } }
+    public bool Respawning { get { return RespawnTime < respawnDuration; } }
     public PlayerHUD HUD { get; private set; }
     public Powerup Powerup { get; set; }
-
-    static Player()
-    {
-      Size = 1.4f;
-      DeathLine = 3.5f;
-      RespawnLength = 1f;
-    }
+    public float DeathLine { get; private set; }
+    public bool Crushing { get { return crushBegin != 0; } }
 
     public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
       : base( screen )
@@ -73,7 +80,13 @@ namespace AvatarHamsterPanic.Objects
 
       RespawnTime = float.MaxValue;
 
+      shrinkBegin = 0;
       Scale = 1f;
+      ScaleSpring = new SpringInterpolater( 1, 200, SpringInterpolater.GetCriticalDamping( 200 ) );
+      ScaleSpring.Active = true;
+      ScaleSpring.SetSource( Scale );
+      ScaleSpring.SetDest( Scale );
+
       PlayerIndex = playerIndex;
       PlayerNumber = playerNumber;
       BoostBurnRate = 2f;
@@ -84,6 +97,7 @@ namespace AvatarHamsterPanic.Objects
       BoundingCircle.Parent = this;
       BoundingCircle.Elasticity = .4f;
       BoundingCircle.Friction = .5f;
+      BoundingCircle.Collided += HandleCollision;
       BoundingCircle.Responded += HandleCollisionResponse;
 
       walkAnim = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
@@ -109,7 +123,22 @@ namespace AvatarHamsterPanic.Objects
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
-    private bool HandleCollisionResponse( CollisResult data )
+    private bool HandleCollision( CollisResult result )
+    {
+      //Player playerB = result.BodyB.Parent as Player;
+      //if ( playerB != null )
+      //{
+      //  // squash him if he's tiny and touching another object
+      //  if ( playerB.Scale < squashSize * Size )//&& result.BodyB.Touching != result.BodyA )
+      //  {
+      //    Debug.WriteLine( "Squash!" );
+      //  }
+      //}
+
+      return true;
+    }
+
+    private bool HandleCollisionResponse( CollisResult result )
     {
       PhysCircle circle = BoundingCircle;
 
@@ -119,11 +148,11 @@ namespace AvatarHamsterPanic.Objects
       // set emitter position
       SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
 
-      Vector3 position = new Vector3( data.Intersection, 0f );
+      Vector3 position = new Vector3( result.Intersection, 0f );
       //emitter.Position = position;
 
       // spit some particles
-      Vector2 r = Vector2.Normalize( data.Intersection - data.BodyA.Position );
+      Vector2 r = Vector2.Normalize( result.Intersection - result.BodyA.Position );
       Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
       Vector2 dir = circle.Velocity;
 
@@ -146,9 +175,65 @@ namespace AvatarHamsterPanic.Objects
       return true;
     }
 
+    public void Shrink()
+    {
+      shrinkBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      ScaleSpring.SetDest( shrinkSize * Size );
+    }
+
+    public void Crush()
+    {
+      crushBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      BoundingCircle.Velocity.Y -= 3f;
+      BoundingCircle.Mass = crushMass;
+    }
+
+    private void UpdateScale( float elapsed )
+    {
+      float currentScale = ScaleSpring.GetSource()[0];
+      if ( Scale != currentScale )
+      {
+        Scale = currentScale;
+        float radius = Size * currentScale / 2f;
+        BoundingCircle.Radius = radius;
+        float volume = Geometry.SphereVolume( radius );
+        BoundingCircle.Mass = density * volume;
+        BoundingCircle.MomentOfInertia = .5f * BoundingCircle.Mass * ( radius * radius );
+      }
+
+      ScaleSpring.Update( elapsed );
+    }
+
+    private void UpdatePowerupEffects( float totalTime )
+    {
+      // unshrink if time is up
+      if ( shrinkBegin != 0 )
+      {
+        if ( totalTime - shrinkBegin > shrinkDuration )
+        {
+          shrinkBegin = 0;
+          ScaleSpring.SetDest( 1 );
+        }
+      }
+
+      // uncrush if time is up
+      if ( crushBegin != 0 )
+      {
+        if ( totalTime - crushBegin > crushDuration )
+        {
+          crushBegin = 0;
+          BoundingCircle.Mass = baseMass;
+        }
+      }
+    }
+
     public override void Update( GameTime gameTime )
     {
       lastGameTime = gameTime;
+
+      UpdatePowerupEffects( (float)gameTime.TotalGameTime.TotalSeconds );
+
+      UpdateScale( (float)gameTime.ElapsedGameTime.TotalSeconds );
 
       UpdateAvatar( gameTime );
       HUD.Update( gameTime );
@@ -156,7 +241,8 @@ namespace AvatarHamsterPanic.Objects
       if ( !Respawning )
       {
         // check if player should be pwnt
-        if ( BoundingCircle.Position.Y >= Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f )
+        float deathLine = Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f;
+        if ( BoundingCircle.Position.Y >= deathLine && !Crushing )
         {
           RespawnTime = 0f;
           HUD.AddPoints( -5 );

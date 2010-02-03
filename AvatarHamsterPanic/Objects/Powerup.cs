@@ -11,6 +11,7 @@ using Utilities;
 using Microsoft.Xna.Framework.Content;
 using CustomModelSample;
 using System.Diagnostics;
+using System.Collections.ObjectModel;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -415,12 +416,19 @@ namespace AvatarHamsterPanic.Objects
 
     public void ActivateShrink()
     {
-      Debug.WriteLine( "Shrink!" );
+      //Debug.WriteLine( "Shrink!" );
+      ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
+      for ( int i = 0; i < players.Count; ++i )
+      {
+        if ( players[i] != owner )
+          players[i].Shrink();
+      }
     }
 
     public void ActivateCrush()
     {
-      Debug.WriteLine( "Crush!" );
+      //Debug.WriteLine( "Crush!" );
+      owner.Crush();
     }
 
     public void ActivateLaser()

@@ -32,7 +32,7 @@ namespace AvatarHamsterPanic.Objects
     bool alive;
     const int maxBlocks = 50;
     static ModelExplosionSettings explosionSettings = new ModelExplosionSettings();
-    public static FloorBlock[] pool = new FloorBlock[maxBlocks];
+    private static FloorBlock[] pool = new FloorBlock[maxBlocks];
 
     FloorBlock( GameplayScreen screen )
       : base( screen )
@@ -183,7 +183,7 @@ namespace AvatarHamsterPanic.Objects
     {
       Player player = result.BodyB.Parent as Player;
 
-      if ( player != null && player.Respawning )
+      if ( player != null && ( player.Respawning || player.Crushing ) )
       {
         if ( !BoundingPolygon.Flags.HasFlags( PhysBodyFlags.Ghost ) )
         {

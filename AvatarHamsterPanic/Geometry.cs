@@ -205,5 +205,10 @@ namespace MathLib
     {
       return new Vector2( v.Y, -v.X );
     }
+
+    public static float SphereVolume( float radius )
+    {
+      return ( ( 4f / 3f ) * MathHelper.Pi * radius * radius * radius );
+    }
   }
 }
