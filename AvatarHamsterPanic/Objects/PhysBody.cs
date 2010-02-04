@@ -327,6 +327,8 @@ namespace Physics
       CollisResult bestResult = new CollisResult();
       bestResult.Time = float.MaxValue;
       Vector2 popoutPos = Vector2.Zero;
+      Vector2 popoutNormal = Vector2.Zero;
+      Vector2 popoutIsect = Vector2.Zero;
       int popoutPriority = 0;
 
       int nVerts = verts.Length;
@@ -356,6 +358,8 @@ namespace Physics
               float dot = Vector2.Dot( normal, -n );
               if ( dot > 0f )
               {
+                popoutNormal = -normal;
+                popoutIsect = edge * time;
                 popoutPos = Position + n * 1.0001f * m_radius * ( 1f - dot ) - Velocity * t;
                 popoutPriority = 1;
               }
@@ -381,6 +385,8 @@ namespace Physics
             popoutPriority = 2;
             normal = Vector2.Normalize( Position - transfVert );
             popoutPos = transfVert + m_radius * normal;
+            popoutNormal = normal;
+            popoutIsect = transfVert;
           }
         }
 
@@ -407,10 +413,11 @@ namespace Physics
       }
 
       // hack to keep objects from penetrating in rare cases
-      if ( !this.Flags.HasFlags( PhysBodyFlags.Ghost ) && !poly.Flags.HasFlags( PhysBodyFlags.Ghost ) )
+      if ( !bestResult.Collision && popoutPriority != 0 )
       {
-        if ( !bestResult.Collision && popoutPriority != 0 )
+        if ( !this.Flags.HasFlags( PhysBodyFlags.Ghost ) && !poly.Flags.HasFlags( PhysBodyFlags.Ghost ) )
           Position = popoutPos;
+        else return new CollisResult( true, 0, this, poly, popoutNormal, popoutIsect );
       }
 
       return bestResult;

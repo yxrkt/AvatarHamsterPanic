@@ -32,6 +32,7 @@ namespace AvatarHamsterPanic.Objects
     static readonly float shrinkSize = .35f;
     //static readonly float squashSize;
     static readonly float crushDuration = .75f;
+    static readonly float seizureDuration = .5f;
     static readonly float crushMass = 10000f;
 
     float jumpRegistered;
@@ -40,6 +41,8 @@ namespace AvatarHamsterPanic.Objects
     float lastCollision;
     float shrinkBegin;
     float crushBegin;
+    float seizureBegin;
+    CollisResult seizureCollision;
     VertexDeclaration vertexDeclaration;
     CustomAvatarAnimationData walkAnim;
     CustomAvatarAnimationData runAnim;
@@ -62,6 +65,7 @@ namespace AvatarHamsterPanic.Objects
     public Powerup Powerup { get; set; }
     public float DeathLine { get; private set; }
     public bool Crushing { get { return crushBegin != 0; } }
+    public bool Seizuring { get { return seizureBegin != 0; } }
 
     public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
       : base( screen )
@@ -188,6 +192,24 @@ namespace AvatarHamsterPanic.Objects
       BoundingCircle.Mass = crushMass;
     }
 
+    public void Laser()
+    {
+      float offset = 1.125f * BoundingCircle.Radius;
+      Vector2 leftPos  = BoundingCircle.Position - new Vector2( offset, 0 );
+      Vector2 rightPos = BoundingCircle.Position + new Vector2( offset, 0 );
+      Screen.ObjectTable.Add( LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true ) );
+      Screen.ObjectTable.Add( LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false ) );
+    }
+
+    public void TakeLaserUpAss( CollisResult result )
+    {
+      seizureBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      seizureCollision = result;
+      BoundingCircle.Flags |= PhysBodyFlags.Anchored;
+      BoundingCircle.Velocity = Vector2.Zero;
+      BoundingCircle.AngularVelocity = 0;
+    }
+
     private void UpdateScale( float elapsed )
     {
       float currentScale = ScaleSpring.GetSource()[0];
@@ -206,7 +228,7 @@ namespace AvatarHamsterPanic.Objects
 
     private void UpdatePowerupEffects( float totalTime )
     {
-      // unshrink if time is up
+      // shrink
       if ( shrinkBegin != 0 )
       {
         if ( totalTime - shrinkBegin > shrinkDuration )
@@ -216,13 +238,30 @@ namespace AvatarHamsterPanic.Objects
         }
       }
 
-      // uncrush if time is up
+      // crush
       if ( crushBegin != 0 )
       {
         if ( totalTime - crushBegin > crushDuration )
         {
           crushBegin = 0;
           BoundingCircle.Mass = baseMass;
+        }
+      }
+
+      // laser
+      if ( seizureBegin != 0 )
+      {
+        if ( totalTime - seizureBegin > seizureDuration )
+        {
+          BoundingCircle.Velocity = ( 200f / BoundingCircle.Mass ) * -seizureCollision.Normal;
+          BoundingCircle.Flags = PhysBodyFlags.None;
+          seizureBegin = 0;
+        }
+        else
+        {
+          // shake player here
+          float quake = .05f;
+          BoundingCircle.Position += new Vector2( random.NextFloat( -quake, quake ), random.NextFloat( -quake, quake ) );
         }
       }
     }

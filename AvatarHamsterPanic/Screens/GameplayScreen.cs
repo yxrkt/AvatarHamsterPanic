@@ -40,6 +40,8 @@ namespace AvatarHamsterPanic.Objects
   {
     #region Fields and Properties
 
+    public static GameplayScreen Instance { get; private set; }
+
     public ContentManager Content { get; private set; }
     public Camera Camera { get; private set; }
     public float CameraScrollSpeed { get { return camScrollSpeed; } }
@@ -89,6 +91,8 @@ namespace AvatarHamsterPanic.Objects
       TransitionOnTime = TimeSpan.FromSeconds( 1.5 );
       TransitionOffTime = TimeSpan.FromSeconds( 0.5 );
       initSlotInfo = slots;
+
+      Instance = this;
     }
     
     /// <summary>
@@ -119,6 +123,7 @@ namespace AvatarHamsterPanic.Objects
       game.Components.Add( PinkPixieParticleSystem );
 
       // pre-load
+      LaserBeam.Initialize();
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
       backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
@@ -179,6 +184,7 @@ namespace AvatarHamsterPanic.Objects
     public override void UnloadContent()
     {
       PhysBody.AllBodies.Clear();
+      LaserBeam.Unload();
       ObjectTable.Clear();
       Game game = ScreenManager.Game;
       game.Components.Remove( ParticleManager );

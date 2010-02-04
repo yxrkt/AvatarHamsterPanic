@@ -85,11 +85,15 @@ namespace AvatarHamsterPanic.Objects
       shakeModel = content.Load<CustomModel>( "Models/milkshake" );
       InitializeShakeColors();
       shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
+      foreach ( CustomModel.ModelPart part in shrimpModel.ModelParts )
+        part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
       hammerModel = content.Load<CustomModel>( "Models/hammer" );
       laserModel = content.Load<CustomModel>( "Models/gun" );
-      foreach ( CustomModelSample.CustomModel.ModelPart part in laserModel.ModelParts )
+      foreach ( CustomModel.ModelPart part in laserModel.ModelParts )
         part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
       boltModel = content.Load<CustomModel>( "Models/bolt" );
+      foreach ( CustomModel.ModelPart part in boltModel.ModelParts )
+        part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
 
       initialTransforms.Add( shakeModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 15 ) ) );
       initialTransforms.Add( shrimpModel, Matrix.CreateRotationY( MathHelper.PiOver2 ) );
@@ -229,7 +233,7 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Update( GameTime gameTime )
     {
-      if ( !InTube && Body.Position.Y > Screen.Camera.Position.Y + DeathLine )
+      if ( !InTube && owner == null && Body.Position.Y > Screen.Camera.Position.Y + DeathLine )
         Die();
       else if ( UpdateSelf != null )
         UpdateSelf( gameTime );
@@ -242,6 +246,8 @@ namespace AvatarHamsterPanic.Objects
     {
       if ( owner != null )
         owner.Powerup = null;
+      else
+        return;
 
       if ( Activate != null )
         Activate();
@@ -433,7 +439,8 @@ namespace AvatarHamsterPanic.Objects
 
     public void ActivateLaser()
     {
-      Debug.WriteLine( "Laser!" );
+      //Debug.WriteLine( "Laser!" );
+      owner.Laser();
     }
 
     public void ActivateLightning()
