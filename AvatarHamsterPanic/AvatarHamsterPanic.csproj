@@ -75,6 +75,7 @@
     <Compile Include="InstancedModelPart.cs" />
     <Compile Include="InstancedModelReader.cs" />
     <Compile Include="Objects\LaserBeam.cs" />
+    <Compile Include="Objects\Lightning.cs" />
     <Compile Include="Objects\PinkPixieParticleSystem.cs" />
     <Compile Include="Objects\PixieParticleSystem.cs" />
     <Compile Include="Objects\Powerup.cs" />

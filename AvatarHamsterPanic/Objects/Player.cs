@@ -32,8 +32,9 @@ namespace AvatarHamsterPanic.Objects
     static readonly float shrinkSize = .35f;
     //static readonly float squashSize;
     static readonly float crushDuration = .75f;
-    static readonly float seizureDuration = .5f;
     static readonly float crushMass = 10000f;
+    static readonly float seizureDuration = .5f;
+    static readonly float lightningStunDuration = 1f;
 
     float jumpRegistered;
     const float jumpTimeout = .125f;
@@ -43,6 +44,8 @@ namespace AvatarHamsterPanic.Objects
     float crushBegin;
     float seizureBegin;
     CollisResult seizureCollision;
+    float lightningStunBegin;
+    int lightningStunFrame;
     VertexDeclaration vertexDeclaration;
     CustomAvatarAnimationData walkAnim;
     CustomAvatarAnimationData runAnim;
@@ -203,9 +206,21 @@ namespace AvatarHamsterPanic.Objects
 
     public void TakeLaserUpAss( CollisResult result )
     {
+      if ( Respawning ) return;
+
       seizureBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
       seizureCollision = result;
       BoundingCircle.Flags |= PhysBodyFlags.Anchored;
+      BoundingCircle.Velocity = Vector2.Zero;
+      BoundingCircle.AngularVelocity = 0;
+    }
+
+    public void GetStunnedByLightning()
+    {
+      if ( Respawning ) return;
+
+      lightningStunBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      BoundingCircle.Flags = PhysBodyFlags.Anchored;
       BoundingCircle.Velocity = Vector2.Zero;
       BoundingCircle.AngularVelocity = 0;
     }
@@ -259,10 +274,42 @@ namespace AvatarHamsterPanic.Objects
         }
         else
         {
-          // shake player here
+          // shake player
           float quake = .05f;
           BoundingCircle.Position += new Vector2( random.NextFloat( -quake, quake ), random.NextFloat( -quake, quake ) );
         }
+      }
+
+      // lightning
+      if ( lightningStunBegin != 0 )
+      {
+        if ( totalTime - lightningStunBegin > lightningStunDuration )
+        {
+          BoundingCircle.Flags = PhysBodyFlags.None;
+          lightningStunBegin = 0;
+        }
+        else
+        {
+          if ( lightningStunFrame++ % 3 == 0 )
+            BoundingCircle.Angle += ( ( lightningStunFrame % 2 ) == 0 ? -.1f : .1f );
+        }
+      }
+    }
+
+    private void ClearPowerupEffects()
+    {
+      //shrinkBegin = 0;
+      crushBegin = 0;
+      seizureBegin = 0;
+      lightningStunBegin = 0;
+
+      //ScaleSpring.SetDest( 1 );
+
+      if ( BoundingCircle.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+      {
+        BoundingCircle.Flags = PhysBodyFlags.None;
+        BoundingCircle.Velocity = Vector2.Zero;
+        BoundingCircle.AngularVelocity = 0;
       }
     }
 
@@ -283,6 +330,7 @@ namespace AvatarHamsterPanic.Objects
         float deathLine = Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f;
         if ( BoundingCircle.Position.Y >= deathLine && !Crushing )
         {
+          ClearPowerupEffects();
           RespawnTime = 0f;
           HUD.AddPoints( -5 );
           BoundingCircle.Velocity.Y = Math.Min( BoundingCircle.Velocity.Y, Screen.CameraScrollSpeed );

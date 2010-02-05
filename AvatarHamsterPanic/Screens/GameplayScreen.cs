@@ -71,6 +71,9 @@ namespace AvatarHamsterPanic.Objects
     Rectangle backgroundRect;
     Texture2D backgroundTexture;
 
+    //RenderTarget2D preprocessTarget;
+    //RenderTarget2D motionBlurTarget;
+
     Random random = new Random();
 
     #endregion

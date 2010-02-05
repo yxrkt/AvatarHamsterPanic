@@ -445,7 +445,13 @@ namespace AvatarHamsterPanic.Objects
 
     public void ActivateLightning()
     {
-      Debug.WriteLine( "Lightning!" );
+      //Debug.WriteLine( "Lightning!" );
+      ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
+      for ( int i = 0; i < players.Count; ++i )
+      {
+        if ( players[i] != owner )
+          players[i].GetStunnedByLightning();
+      }
     }
   }
 }
