@@ -79,6 +79,12 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Draw( GameTime gameTime )
     {
+      RenderState renderState = Game.GraphicsDevice.RenderState;
+
+      renderState.AlphaBlendEnable = true;
+      renderState.AlphaSourceBlend = Blend.SourceAlpha;
+      renderState.AlphaDestinationBlend = Blend.InverseSourceAlpha;
+
       if ( modelExplosions.Count > 0 )
         DrawModelExplosions();
     }

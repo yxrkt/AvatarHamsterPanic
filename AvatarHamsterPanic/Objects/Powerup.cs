@@ -217,7 +217,7 @@ namespace AvatarHamsterPanic.Objects
       : base( screen )
     {
       Body = new PhysCircle( 1f, Vector2.Zero, 1f );
-      Body.Flags = PhysBodyFlags.Anchored | PhysBodyFlags.Ghost;
+      Body.Flags = BodyFlags.Anchored | BodyFlags.Ghost;
       Body.Parent = this;
       Body.Release();
 
@@ -370,7 +370,7 @@ namespace AvatarHamsterPanic.Objects
       Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
     }
 
-    public bool HandleCoinCollision( CollisResult result )
+    public bool HandleCoinCollision( Collision result )
     {
       if ( owner == null && result.BodyB.Parent is Player )
       {
@@ -398,7 +398,7 @@ namespace AvatarHamsterPanic.Objects
       return true;
     }
 
-    public bool HandlePowerupCollision( CollisResult result )
+    public bool HandlePowerupCollision( Collision result )
     {
       if ( owner != null ) return true; // maybe have the powerup avoid the player?
 

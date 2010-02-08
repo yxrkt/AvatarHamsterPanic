@@ -25,7 +25,7 @@ namespace AvatarHamsterPanic.Objects
 
     List<Player> pwntPlayers = new List<Player>( 3 );
 
-    static Model model;
+    static CustomModel model;
 
     Matrix worldTransform;
     PhysPolygon body;
@@ -40,7 +40,17 @@ namespace AvatarHamsterPanic.Objects
 
     public static void Initialize()
     {
-      model = GameplayScreen.Instance.Content.Load<Model>( "Models/cylinder" );
+      model = GameplayScreen.Instance.Content.Load<CustomModel>( "Models/cylinder" );
+
+      Vector4 color = new Color( Color.Green, 1f ).ToVector4();
+      Vector4 maskValue = MaskHelper.Glow( 1f );
+      foreach ( CustomModel.ModelPart part in model.ModelParts )
+      {
+        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
+        part.Effect.Parameters["Color"].SetValue( color );
+        part.Effect.Parameters["Mask"].SetValue( maskValue );
+        //part.Effect.Parameters["LightingEnabled"].SetValue( false );
+      }
     }
 
     public static void Unload()
@@ -84,6 +94,8 @@ namespace AvatarHamsterPanic.Objects
       pwntPlayers.Clear();
 
       age = 0;
+
+      Update( Screen.LastGameTime );
     }
 
     private LaserBeam()
@@ -96,7 +108,7 @@ namespace AvatarHamsterPanic.Objects
     {
       body = new PhysPolygon( 0f, beamThickness, Vector2.Zero, 1f );
       body.Collided += HandlePlayerCollision;
-      body.Flags = PhysBodyFlags.Anchored | PhysBodyFlags.Ghost;
+      body.Flags = BodyFlags.Anchored | BodyFlags.Ghost;
       body.Release();
     }
 
@@ -127,23 +139,14 @@ namespace AvatarHamsterPanic.Objects
       worldTransform *= Matrix.CreateScale( x0 - x1, beamThickness, beamThickness );
       worldTransform *= Matrix.CreateTranslation( x1, startPosition.Y + parentVelocityOffset.Y, 0f );
 
+      body.ComputeBoundingCircle();
+
       age += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
 
     public override void Draw()
     {
-      foreach ( ModelMesh mesh in model.Meshes )
-      {
-        for ( int i = 0; i < mesh.Effects.Count; ++i )
-        {
-          BasicEffect effect = (BasicEffect)mesh.Effects[i];
-          effect.EnableDefaultLighting();
-          effect.World = worldTransform;
-          effect.View = Screen.View;
-          effect.Projection = Screen.Projection;
-        }
-        mesh.Draw();
-      }
+      model.Draw( Screen.Camera.Position, worldTransform, Screen.View, Screen.Projection );
     }
 
     private void Die()
@@ -153,7 +156,7 @@ namespace AvatarHamsterPanic.Objects
       valid = false;
     }
 
-    private bool HandlePlayerCollision( CollisResult result )
+    private bool HandlePlayerCollision( Collision result )
     {
       Player player = result.BodyB.Parent as Player;
       if ( player != null && player != parent && !player.Seizuring && !pwntPlayers.Contains( player ) )

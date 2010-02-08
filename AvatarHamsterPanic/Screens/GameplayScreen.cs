@@ -56,6 +56,7 @@ namespace AvatarHamsterPanic.Objects
     public PixieParticleSystem PixieParticleSystem { get; set; }
     public SparkParticleSystem SparkParticleSystem { get; set; }
     public PinkPixieParticleSystem PinkPixieParticleSystem { get; set; }
+    public GameTime LastGameTime { get; private set; }
 
     TubeMaze tubeMaze;
     SpriteFont gameFont;
@@ -66,13 +67,18 @@ namespace AvatarHamsterPanic.Objects
     int lastRowPattern = int.MaxValue;
     SlotState[] initSlotInfo;
     bool firstFrame;
-    float camScrollSpeed = -1.25f;
+    float camScrollSpeed = 0;//-1.25f;
     bool camIsScrolling = false;
     Rectangle backgroundRect;
     Texture2D backgroundTexture;
 
-    //RenderTarget2D preprocessTarget;
-    //RenderTarget2D motionBlurTarget;
+    long physicsTicks;
+    long updateTicks;
+
+    RenderTarget2D basicSceneRenderTarget;
+    RenderTarget2D maskRenderTarget;
+    Rectangle screenRectangle;
+    GameComponentCollection components = new GameComponentCollection();
 
     Random random = new Random();
 
@@ -106,7 +112,19 @@ namespace AvatarHamsterPanic.Objects
       if ( Content == null )
         Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
+      // render targets
+      GraphicsDevice device = ScreenManager.GraphicsDevice;
+      PostProcessor.Initialize( device, ScreenManager.SpriteBatch, Content );
+      PresentationParameters pars = device.PresentationParameters;
+      basicSceneRenderTarget = new RenderTarget2D( device, pars.BackBufferWidth, pars.BackBufferHeight, 1, pars.BackBufferFormat );
+      maskRenderTarget = new RenderTarget2D( device, pars.BackBufferWidth, pars.BackBufferHeight, 1, SurfaceFormat.Bgr32 );
+
+      screenRectangle = new Rectangle( 0, 0, pars.BackBufferWidth, pars.BackBufferHeight );
+
+      // this prevents the game from pausing after the player presses start to exit the loading screen
       firstFrame = true;
+
+      // load fonts
       gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
       Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
@@ -115,15 +133,22 @@ namespace AvatarHamsterPanic.Objects
       // model explosion particles
       ParticleManager = new ParticleManager( game, Content );
       ParticleManager.Initialize();
-      ScreenManager.Game.Components.Add( ParticleManager );
+      //game.Components.Add( ParticleManager );
+      components.Add( ParticleManager );
 
       // other particles
       PixieParticleSystem = new PixieParticleSystem( game, Content );
       SparkParticleSystem = new SparkParticleSystem( game, Content );
       PinkPixieParticleSystem = new PinkPixieParticleSystem( game, Content );
-      game.Components.Add( PixieParticleSystem );
-      game.Components.Add( SparkParticleSystem );
-      game.Components.Add( PinkPixieParticleSystem );
+      //game.Components.Add( PixieParticleSystem );
+      //game.Components.Add( SparkParticleSystem );
+      //game.Components.Add( PinkPixieParticleSystem );
+      components.Add( PixieParticleSystem );
+      components.Add( SparkParticleSystem );
+      components.Add( PinkPixieParticleSystem );
+
+      foreach ( DrawableGameComponent component in components )
+        component.Initialize();
 
       // pre-load
       LaserBeam.Initialize();
@@ -147,8 +172,6 @@ namespace AvatarHamsterPanic.Objects
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
       Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
 
-      //ObjectTable.Add( new OneByOneByOne( this ) );
-
       FloorBlock.Initialize( this );
       Powerup.Initialize( this );
 
@@ -159,15 +182,14 @@ namespace AvatarHamsterPanic.Objects
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
+      //ObjectTable.Add( new OneByOneByOne( this ) );
 
       lastCamY = Camera.Position.Y;
       SpawnRows(); // spawn additional rows before loading screen is over
 
       // set gravity
       PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
-      //PhysicsManager.Instance.Gravity = Vector2.Zero;
 
-      //Thread.Sleep( 5000 );
       ScreenManager.Game.ResetElapsedTime();
     }
 
@@ -212,17 +234,21 @@ namespace AvatarHamsterPanic.Objects
     {
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
 
-      ParticleManager.Enabled = IsActive;
-      PixieParticleSystem.Enabled = IsActive;
-      SparkParticleSystem.Enabled = IsActive;
-      PinkPixieParticleSystem.Enabled = IsActive;
+      LastGameTime = gameTime;
 
       if ( IsActive )
       {
+        long updateBegin = Stopwatch.GetTimestamp();
+
+        foreach ( GameComponent component in components )
+          component.Update( gameTime );
+
         double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
 
+        long begin = Stopwatch.GetTimestamp();
         // Update physics
         PhysicsManager.Instance.Update( elapsed );
+        physicsTicks += Stopwatch.GetTimestamp() - begin;
 
         Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
                                                           Camera.Near, Camera.Far );
@@ -251,6 +277,8 @@ namespace AvatarHamsterPanic.Objects
           objects[i].Update( gameTime );
 
         Pool.CleanUpAll();
+
+        updateTicks += Stopwatch.GetTimestamp() - updateBegin;
       }
     }
 
@@ -303,28 +331,63 @@ namespace AvatarHamsterPanic.Objects
     /// </summary>
     public override void Draw( GameTime gameTime )
     {
-      ScreenManager.GraphicsDevice.Clear( ClearOptions.Target,
-                                          Color.CornflowerBlue, 0, 0 );
-
       GraphicsDevice device = ScreenManager.GraphicsDevice;
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+
+      device.SetRenderTarget( 0, basicSceneRenderTarget );
+      device.SetRenderTarget( 1, maskRenderTarget );
+
+      device.Clear( ClearOptions.Target, Color.TransparentBlack, 0, 0 );
 
       // draw background texture
       spriteBatch.Begin();
       spriteBatch.Draw( backgroundTexture, backgroundRect, Color.White );
       spriteBatch.End();
 
-      // draw all the stuff
+      // draw 3D geometry
       List<GameObject> objects = ObjectTable.AllObjectsList;
       objects.Sort( ( a, b ) => a.DrawOrder.CompareTo( b.DrawOrder ) );
       foreach ( GameObject obj in objects )
         obj.Draw();
 
+      foreach ( DrawableGameComponent component in components )
+        component.Draw( gameTime );
+
       //DrawSafeRect( device );
 
-      // 2D elements drawn here
-      spriteBatch.Begin();
+      device.SetRenderTarget( 0, null );
+      device.SetRenderTarget( 1, null );
 
+      Texture2D scene = basicSceneRenderTarget.GetTexture();
+      Texture2D mask  = maskRenderTarget.GetTexture();
+
+      //post processing here
+      Texture2D glow = PostProcessor.Glow( scene, mask );
+      //Texture2D motionBlur = PostProcessor.MotionBlur( scene, mask );
+
+      // render scene to backbuffer
+      spriteBatch.Begin( SpriteBlendMode.None, SpriteSortMode.Immediate, SaveStateMode.None );
+      spriteBatch.Draw( scene, Vector2.Zero, Color.White );
+      spriteBatch.End();
+
+      Rectangle haxOffset = screenRectangle;
+      haxOffset.Location = new Point( haxOffset.Location.X - 6, haxOffset.Location.Y - 6 );
+      spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
+      spriteBatch.Draw( glow, haxOffset, Color.White );
+      //spriteBatch.Draw( motionBlur, screenRectangle, Color.White );
+      Draw2D( spriteBatch );
+      spriteBatch.End();
+
+      // If the game is transitioning on or off, fade it out to black.
+      if ( TransitionPosition > 0 )
+        ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
+
+      Performance.Update( gameTime.ElapsedGameTime );
+      Performance.CountFrame();
+    }
+
+    private void Draw2D( SpriteBatch spriteBatch )
+    {
       // player HUDs
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
       int nPlayers = players.Count;
@@ -337,16 +400,66 @@ namespace AvatarHamsterPanic.Objects
 
       // debugging stuff
       DebugString.Clear();
-      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), new Vector2( 20, 20 ), Color.Black );
-      //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, new Vector2( 20, 20 ), Color.Black );
-      spriteBatch.End();
+      Vector2 position = new Vector2( 20, 20 );
+      spriteBatch.DrawString( gameFont, FormatDebugString(), position, Color.Tomato );
+      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), position, Color.Black );
+      //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, position, Color.Black );
+    }
 
-      // If the game is transitioning on or off, fade it out to black.
-      if ( TransitionPosition > 0 )
-        ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
+    string strFrameRate = "FPS: ";
+    //string strPhysTicks = "Physics MS: ";
+    //string strCricleTicks = "TestVsCircle MS: ";
+    //string strPolygonTicks = "TestVsPolygon MS: ";
+    string strPolygonPercentage = "Polygon Percentage: ";
+    string strCirclePercentage = "Circle Percentage: ";
+    string strPhysicsPercentage = "Physics Percentage: ";
 
-      Performance.Update( gameTime.ElapsedGameTime );
-      Performance.CountFrame();
+    private StringBuilder FormatDebugString()
+    {
+      DebugString.Clear();
+
+      // framerate
+      DebugString.Append( strFrameRate );
+      DebugString.AppendInt( Performance.FrameRate );
+      DebugString.Append( '\n' );
+
+      //// physics ticks
+      //DebugString.Append( strPhysTicks );
+      //DebugString.AppendInt( (int)( 1000 * (double)physicsTicks / (double)Stopwatch.Frequency ) );
+      //DebugString.Append( '\n' );
+
+      //// test vs circle ticks
+      //DebugString.Append( strCricleTicks );
+      //DebugString.AppendInt( (int)( 1000 * (double)PhysBody.TestVsCircleTicks / (double)Stopwatch.Frequency ) );
+      //DebugString.Append( '\n' );
+
+      //// test vs polygon ticks
+      //DebugString.Append( strPolygonTicks );
+      //DebugString.AppendInt( (int)( 1000 * (double)PhysBody.TestVsPolygonTicks / (double)Stopwatch.Frequency ) );
+      //DebugString.Append( '\n' );
+      int updateMS = (int)( 1000 * (double)updateTicks / (double)Stopwatch.Frequency );
+      int physMS = (int)( 1000 * (double)physicsTicks / (double)Stopwatch.Frequency );
+      int polyMS = (int)( 1000 * (double)PhysBody.TestVsPolygonTicks / (double)Stopwatch.Frequency );
+      int circleMS = (int)( 1000 * (double)PhysBody.TestVsCircleTicks / (double)Stopwatch.Frequency );
+
+      // percentage of time Physics is taking
+      DebugString.Append( strPhysicsPercentage );
+      DebugString.AppendInt( (int)( .5f + 100f * (float)physMS / (float)updateMS ) );
+      DebugString.Append( '\n' );
+
+      // percentage of time TestVsCircle is taking
+      DebugString.Append( strCirclePercentage );
+      DebugString.AppendInt( (int)( .5f + 100f * (float)circleMS / (float)physMS ) );
+      DebugString.Append( '\n' );
+
+      // percentage of time TestVsPolygon is taking
+      DebugString.Append( strPolygonPercentage );
+      DebugString.AppendInt( (int)( .5f + 100f * (float)polyMS / (float)physMS ) );
+      DebugString.Append( '\n' );
+
+
+
+      return DebugString;
     }
 
     #endregion

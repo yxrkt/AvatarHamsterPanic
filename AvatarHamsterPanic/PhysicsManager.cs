@@ -50,7 +50,7 @@ namespace Physics
         body.Touching = null;
         body.CollisionList.Clear();
 
-        if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+        if ( body.Flags.HasFlags( BodyFlags.Anchored ) )
           continue;
 
         // factor in net linear force
@@ -75,23 +75,27 @@ namespace Physics
         int nCollisions = 0;
         float bestTime = float.MaxValue;
 
+        foreach ( PhysBody body in bodies )
+          body.UpdateInternalData( timeLeft );
+
         for ( int i = 0; i < nBodies; ++i )
         {
           PhysBody bodyA = bodies[i];
           bodyA.Moved = false;
           bodyA.LastResult.BodyB = null;
 
-          // this assumes that all non-anchored bodies come before anchored ones
-          if ( bodyA.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+          if ( bodyA.Flags.HasFlags( BodyFlags.Anchored ) )
             break;
 
           for ( int j = i + 1; j < nBodies; ++j )
           {
             PhysBody bodyB = bodies[j];
-            CollisResult result = bodyA.TestVsBody( bodyB, timeLeft );
-            if ( result.Collision )
+
+            //Collision result = bodyA.TestVsBody( bodyB, timeLeft );
+            Collision result = CollisionDetector.TestForCollision( bodyA, bodyB, timeLeft );
+            if ( result.Collided )
             {
-              if ( bodyA.Flags.HasFlags( PhysBodyFlags.Ghost ) || bodyB.Flags.HasFlags( PhysBodyFlags.Ghost ) )
+              if ( bodyA.Flags.HasFlags( BodyFlags.Ghost ) || bodyB.Flags.HasFlags( BodyFlags.Ghost ) )
               {
                 bodyA.HandleCollision( result );
                 bodyB.HandleCollision( result.GetInvert() );
@@ -130,7 +134,7 @@ namespace Physics
         {
           foreach ( PhysBody body in bodies )
           {
-            if ( body.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+            if ( body.Flags.HasFlags( BodyFlags.Anchored ) )
               break;
             MoveBody( body, timeLeft, 0f );
           }
@@ -145,7 +149,7 @@ namespace Physics
             {
               if ( !body.Moved )
                 MoveBody( body, body.LastResult.Time, .001f );
-              if ( !body.LastResult.BodyB.Moved && !body.LastResult.BodyB.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+              if ( !body.LastResult.BodyB.Moved && !body.LastResult.BodyB.Flags.HasFlags( BodyFlags.Anchored ) )
                 MoveBody( body.LastResult.BodyB, bestTime, .001f );
               body.ApplyResponseFrom( body.LastResult );
             }
@@ -162,8 +166,8 @@ namespace Physics
         }
       }
 
-      DebugString.Clear();
-      DebugString.AppendInt( nIterations );
+      //DebugString.Clear();
+      //DebugString.AppendInt( nIterations );
     }
 
     // private helpers

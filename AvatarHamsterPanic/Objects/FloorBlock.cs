@@ -40,7 +40,7 @@ namespace AvatarHamsterPanic.Objects
       BoundingPolygon = new PhysPolygon( Size, Height, Vector2.Zero, 1 );
       BoundingPolygon.Elasticity = 1f;
       BoundingPolygon.Friction = 1.5f;
-      BoundingPolygon.Flags = PhysBodyFlags.Anchored;
+      BoundingPolygon.Flags = BodyFlags.Anchored;
       BoundingPolygon.Parent = this;
       BoundingPolygon.Collided += KillSelfIfPwnt;
       PhysBody.AllBodies.Remove( BoundingPolygon );
@@ -51,7 +51,7 @@ namespace AvatarHamsterPanic.Objects
       alive = true;
       BoundingPolygon.Position = pos;
       BoundingPolygon.Released = false;
-      BoundingPolygon.Flags = PhysBodyFlags.Anchored;
+      BoundingPolygon.Flags = BodyFlags.Anchored;
       PhysBody.AllBodies.Add( BoundingPolygon );
     }
 
@@ -174,21 +174,22 @@ namespace AvatarHamsterPanic.Objects
       renderState.AlphaBlendEnable = true;
       renderState.SourceBlend = Blend.SourceAlpha;
       renderState.DestinationBlend = Blend.InverseSourceAlpha;
+      renderState.AlphaTestEnable = false;
 
       renderState.DepthBufferEnable = true;
       renderState.DepthBufferWriteEnable = true;
     }
 
-    private bool KillSelfIfPwnt( CollisResult result )
+    private bool KillSelfIfPwnt( Collision result )
     {
       Player player = result.BodyB.Parent as Player;
 
       if ( player != null && ( player.Respawning || player.Crushing ) )
       {
-        if ( !BoundingPolygon.Flags.HasFlags( PhysBodyFlags.Ghost ) )
+        if ( !BoundingPolygon.Flags.HasFlags( BodyFlags.Ghost ) )
         {
           // remove the block
-          BoundingPolygon.Flags |= PhysBodyFlags.Ghost;
+          BoundingPolygon.Flags |= BodyFlags.Ghost;
           BoundingPolygon.Release();
           Screen.ObjectTable.MoveToTrash( this );
           alive = false;

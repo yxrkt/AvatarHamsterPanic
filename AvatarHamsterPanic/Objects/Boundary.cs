@@ -78,13 +78,13 @@ namespace AvatarHamsterPanic.Objects
       polyLeft = new PhysPolygon( polyWidth, 100f, new Vector2( left - halfPolyWidth, 0f ), 1f );
       polyLeft.Elasticity = 1f;
       polyLeft.Friction = 1.5f;
-      polyLeft.Flags = PhysBodyFlags.Anchored;
+      polyLeft.Flags = BodyFlags.Anchored;
 
       // right polygon
       polyRight = new PhysPolygon( polyWidth, 100f, new Vector2( right + halfPolyWidth, 0f ), 1f );
       polyRight.Elasticity = 1f;
       polyRight.Friction = 1.5f;
-      polyRight.Flags = PhysBodyFlags.Anchored;
+      polyRight.Flags = BodyFlags.Anchored;
 
       // model
       cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );
@@ -320,15 +320,15 @@ namespace AvatarHamsterPanic.Objects
       Matrix proj = Screen.Projection;
       Vector3 eye = Screen.Camera.Position;
 
-      renderState.AlphaBlendEnable = false;
+      cupModel.DrawTranslucentInstances( view, proj, eye );
+      teeModel.DrawTranslucentInstances( view, proj, eye );
+
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
       renderState.DepthBufferEnable = true;
+      renderState.DepthBufferWriteEnable = true;
 
       cageModel.DrawInstances( view, proj, eye );
       cageHoleModel.DrawInstances( view, proj, eye );
-
-      cupModel.DrawTranslucentInstances( view, proj, eye );
-      teeModel.DrawTranslucentInstances( view, proj, eye );
     }
   }
 

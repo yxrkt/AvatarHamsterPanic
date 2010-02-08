@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
+using CustomModelSample;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -13,6 +14,8 @@ namespace AvatarHamsterPanic.Objects
     Texture2D texture;
     float width, height;
     Matrix[] transforms = new Matrix[4];
+
+    CustomModel cylinder;
 
     public OneByOneByOne( GameplayScreen screen )
       : base( screen )
@@ -24,6 +27,14 @@ namespace AvatarHamsterPanic.Objects
       float depth = camera.Position.Z + .5f;
       height = depth * (float)Math.Tan( camera.Fov / 2f );
       width = height * camera.Aspect;
+
+      // cylinder
+      cylinder = screen.Content.Load<CustomModel>( "Models/cylinder" );
+      foreach ( CustomModel.ModelPart part in cylinder.ModelParts )
+      {
+        part.Effect.Parameters["Mask"].SetValue( MaskHelper.Glow( 1 ) );
+        //part.Effect.Parameters["LightingEnabled"].SetValue( false );
+      }
     }
 
     public override void Update( GameTime gameTime )
@@ -40,6 +51,7 @@ namespace AvatarHamsterPanic.Objects
       Matrix view = Screen.View;
       Matrix proj = Screen.Projection;
 
+      /*/
       foreach ( Matrix world in transforms )
       {
         foreach ( ModelMesh mesh in model.Meshes )
@@ -57,6 +69,9 @@ namespace AvatarHamsterPanic.Objects
           mesh.Draw();
         }
       }
+      /*/
+      cylinder.Draw( Screen.Camera.Position, Matrix.CreateScale( 2 ), view, proj );
+      /**/
     }
   }
 }

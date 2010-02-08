@@ -43,7 +43,7 @@ namespace AvatarHamsterPanic.Objects
     float shrinkBegin;
     float crushBegin;
     float seizureBegin;
-    CollisResult seizureCollision;
+    Collision seizureCollision;
     float lightningStunBegin;
     int lightningStunFrame;
     VertexDeclaration vertexDeclaration;
@@ -79,10 +79,11 @@ namespace AvatarHamsterPanic.Objects
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
         part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .3f ) );
         part.Effect.Parameters["SpecularPower"].SetValue( 400 );
+        part.Effect.Parameters["Mask"].SetValue( MaskHelper.MotionBlur( 1 ) );
       }
       DrawOrder = 3;
 
-      float depth = screen.Camera.Position.Z - Size / 2;
+      float depth = screen.Camera.Position.Z;
       DeathLine = depth * (float)Math.Tan( screen.Camera.Fov / 2f );
 
       RespawnTime = float.MaxValue;
@@ -130,7 +131,7 @@ namespace AvatarHamsterPanic.Objects
       Matrix.Multiply( ref transform, ref matTrans, out transform );
     }
 
-    private bool HandleCollision( CollisResult result )
+    private bool HandleCollision( Collision result )
     {
       //Player playerB = result.BodyB.Parent as Player;
       //if ( playerB != null )
@@ -145,7 +146,7 @@ namespace AvatarHamsterPanic.Objects
       return true;
     }
 
-    private bool HandleCollisionResponse( CollisResult result )
+    private bool HandleCollisionResponse( Collision result )
     {
       PhysCircle circle = BoundingCircle;
 
@@ -197,20 +198,20 @@ namespace AvatarHamsterPanic.Objects
 
     public void Laser()
     {
-      float offset = 1.125f * BoundingCircle.Radius;
-      Vector2 leftPos  = BoundingCircle.Position - new Vector2( offset, 0 );
-      Vector2 rightPos = BoundingCircle.Position + new Vector2( offset, 0 );
+      Vector2 offset   = new Vector2( 1.5f * BoundingCircle.Radius, 0 );
+      Vector2 leftPos  = BoundingCircle.Position - offset;
+      Vector2 rightPos = BoundingCircle.Position + offset;
       Screen.ObjectTable.Add( LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true ) );
       Screen.ObjectTable.Add( LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false ) );
     }
 
-    public void TakeLaserUpAss( CollisResult result )
+    public void TakeLaserUpAss( Collision result )
     {
       if ( Respawning ) return;
 
       seizureBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
       seizureCollision = result;
-      BoundingCircle.Flags |= PhysBodyFlags.Anchored;
+      BoundingCircle.Flags |= BodyFlags.Anchored;
       BoundingCircle.Velocity = Vector2.Zero;
       BoundingCircle.AngularVelocity = 0;
     }
@@ -220,7 +221,7 @@ namespace AvatarHamsterPanic.Objects
       if ( Respawning ) return;
 
       lightningStunBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
-      BoundingCircle.Flags = PhysBodyFlags.Anchored;
+      BoundingCircle.Flags = BodyFlags.Anchored;
       BoundingCircle.Velocity = Vector2.Zero;
       BoundingCircle.AngularVelocity = 0;
     }
@@ -269,7 +270,7 @@ namespace AvatarHamsterPanic.Objects
         if ( totalTime - seizureBegin > seizureDuration )
         {
           BoundingCircle.Velocity = ( 200f / BoundingCircle.Mass ) * -seizureCollision.Normal;
-          BoundingCircle.Flags = PhysBodyFlags.None;
+          BoundingCircle.Flags = BodyFlags.None;
           seizureBegin = 0;
         }
         else
@@ -285,7 +286,7 @@ namespace AvatarHamsterPanic.Objects
       {
         if ( totalTime - lightningStunBegin > lightningStunDuration )
         {
-          BoundingCircle.Flags = PhysBodyFlags.None;
+          BoundingCircle.Flags = BodyFlags.None;
           lightningStunBegin = 0;
         }
         else
@@ -305,9 +306,9 @@ namespace AvatarHamsterPanic.Objects
 
       //ScaleSpring.SetDest( 1 );
 
-      if ( BoundingCircle.Flags.HasFlags( PhysBodyFlags.Anchored ) )
+      if ( BoundingCircle.Flags.HasFlags( BodyFlags.Anchored ) )
       {
-        BoundingCircle.Flags = PhysBodyFlags.None;
+        BoundingCircle.Flags = BodyFlags.None;
         BoundingCircle.Velocity = Vector2.Zero;
         BoundingCircle.AngularVelocity = 0;
       }
@@ -375,6 +376,8 @@ namespace AvatarHamsterPanic.Objects
         if ( Powerup != null )
           Powerup.Use();
       }
+      //if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
+      //  Laser();
 
       // movement
       float forceY = 0f;

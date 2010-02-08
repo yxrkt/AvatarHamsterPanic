@@ -227,6 +227,7 @@ namespace AvatarHamsterPanic.Objects
       GetWorldTransforms();
 
       device.RenderState.DepthBufferEnable = true;
+      device.RenderState.AlphaTestEnable = false;
 
       for ( int i = 0; i < 4; ++i )
         tubeModels[i].DrawTranslucentInstances( Screen.View, Screen.Projection, Screen.Camera.Position );

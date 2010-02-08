@@ -91,7 +91,7 @@ namespace AvatarHamsterPanic.Objects
         cagePieces[i].Transform = scale * bottomStart * cagePieces[i].Translation;
         cagePieces[i].Body = new PhysPolygon( size, .014f * size, new Vector2( pos.X + size / 2f, pos.Y ), 1f );
         cagePieces[i].Body.SetPivotPoint( new Vector2( -size / 2, 0f ) );
-        cagePieces[i].Body.Flags = PhysBodyFlags.Anchored;
+        cagePieces[i].Body.Flags = BodyFlags.Anchored;
       }
 
       // all other cage pieces won't change
@@ -108,7 +108,7 @@ namespace AvatarHamsterPanic.Objects
         cagePieces[i].Rotation = rotation;
         cagePieces[i].Transform = scale * rotation * translation;
         cagePieces[i].Body = new PhysPolygon( .014f, size, new Vector2( pos.X, pos.Y ), 1f );
-        cagePieces[i].Body.Flags = PhysBodyFlags.Anchored;
+        cagePieces[i].Body.Flags = BodyFlags.Anchored;
       }
     }
 

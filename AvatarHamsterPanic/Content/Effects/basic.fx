@@ -4,6 +4,8 @@ float4x4 Projection;
 
 float3 Eye;
 float4 Color = { 1, 1, 1, 1 };
+float4 Mask = { 0, 0, 0, 0 };
+float4 Glow = { 1, 1, 1, 1 };
 float3 AmbientLight = { 0.05333332, 0.09882354, 0.1819608 };
 float3 DirLight0Direction = { -0.5265408, -0.5735765, -0.6275069 };
 float3 DirLight0Diffuse   = { 1, 0.9607844, 0.8078432 };
@@ -16,6 +18,7 @@ float3 DirLight2Diffuse   = { 0.3231373, 0.3607844, 0.3937255 };
 float3 DirLight2Specular  = { 0.3231373, 0.3607844, 0.3937255 };
 float3 SpecularColor   = { 0.7215686, 0.6078432, 0.8980393 };
 float  SpecularPower   = 16.0;
+bool   LightingEnabled = true;
 
 float4x4 InstanceTransforms[59];
 int VertexCount;
@@ -86,6 +89,13 @@ struct NormalDiffuseColorOut
   float3 LightDir2 : TEXCOORD6;
 };
 
+struct PixelShaderOut
+{
+  float4 Color : COLOR0;
+  float4 Mask  : COLOR1;
+  float4 Glow  : COLOR2;
+};
+
 float3 ComputePerPixelLights( float3 E, float3 N, float3 LightDir0, float3 LightDir1, float3 LightDir2 )
 {
   float3 diffuse  = AmbientLight;
@@ -135,28 +145,40 @@ ColorOut VS_Color( ColorIn params )
   return Out;
 }
 
-float4 PS_ColorDefault( ColorOut params ) : COLOR
+PixelShaderOut PS_ColorDefault( ColorOut params )
 {
+  PixelShaderOut output = (PixelShaderOut)0;
+
   float3 normal  = normalize( params.Normal );
   float3 viewDir = normalize( params.ViewDir );
   
-  float3 I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
+  float3 I = 1;
+  if ( LightingEnabled )
+    I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
   
-  float4 color = float4( I, 1 ) * Color * params.Color;
+  output.Color = float4( I, 1 ) * Color * params.Color;
+  output.Mask  = Mask;
+  output.Glow  = Glow;
   
-  return color;
+  return output;
 }
 
-float4 PS_Color( ColorOut params ) : COLOR
+PixelShaderOut PS_Color( ColorOut params )
 {
+  PixelShaderOut output = (PixelShaderOut)0;
+
   float3 normal  = normalize( params.Normal );
   float3 viewDir = normalize( params.ViewDir );
   
-  float3 I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
+  float3 I = 1;
+  if ( LightingEnabled )
+    I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
   
-  float4 color = float4( I, 1 ) * Color;
+  output.Color = float4( I, 1 ) * Color;
+  output.Mask  = Mask;
+  output.Glow  = Glow;
   
-  return color;
+  return output;
 }
 
 DiffuseColorOut VS_DiffuseColor( DiffuseColorIn params )
@@ -176,16 +198,22 @@ DiffuseColorOut VS_DiffuseColor( DiffuseColorIn params )
   return Out;
 }
 
-float4 PS_DiffuseColor( DiffuseColorOut params ) : COLOR
+PixelShaderOut PS_DiffuseColor( DiffuseColorOut params )
 {
+  PixelShaderOut output = (PixelShaderOut)0;
+
   float3 normal  = normalize( params.Normal );
   float3 viewDir = normalize( params.ViewDir );
   
-  float3 I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
+  float3 I = 1;
+  if ( LightingEnabled )
+    I = ComputePerPixelLights( viewDir, normal, DirLight0Direction, DirLight1Direction, DirLight2Direction );
   
-  float4 color = tex2D( DiffuseMapSampler, params.TextureUV ) * float4( I, 1 ) * Color;
+  output.Color = tex2D( DiffuseMapSampler, params.TextureUV ) * float4( I, 1 ) * Color;
+  output.Mask  = Mask;
+  output.Glow  = Glow;
   
-  return color;
+  return output;
 }
 
 NormalDiffuseColorOut VS_NormalDiffuseColor( NormalDiffuseColorIn params )
@@ -214,9 +242,10 @@ NormalDiffuseColorOut VS_NormalDiffuseColor( NormalDiffuseColorIn params )
   return Out;
 }
 
-float4 PS_NormalDiffuseColor( NormalDiffuseColorOut params ) : COLOR
+PixelShaderOut PS_NormalDiffuseColor( NormalDiffuseColorOut params )
 {
-  //float3 normal  = normalize( params.Normal );
+  PixelShaderOut output = (PixelShaderOut)0;
+
   float3 viewDir = normalize( params.ViewDir );
   float3 lightDir0 = normalize( params.LightDir0 );
   float3 lightDir1 = normalize( params.LightDir1 );
@@ -224,11 +253,15 @@ float4 PS_NormalDiffuseColor( NormalDiffuseColorOut params ) : COLOR
   
   float3 normal = ( 2.0 * ( tex2D( NormalMapSampler, params.TextureUV ) ) ) - 1.0;
   
-  float3 I = ComputePerPixelLights( viewDir, normal, lightDir0, lightDir1, lightDir2 );
+  float3 I = 1;
+  if ( LightingEnabled )
+    I = ComputePerPixelLights( viewDir, normal, lightDir0, lightDir1, lightDir2 );
   
-  float4 color = tex2D( DiffuseMapSampler, params.TextureUV ) * float4( I, 1 ) * Color;
+  output.Color = tex2D( DiffuseMapSampler, params.TextureUV ) * float4( I, 1 ) * Color;
+  output.Mask  = Mask;
+  output.Glow  = Glow;
   
-  return color;
+  return output;
 }
 
 technique ColorDefault
@@ -252,7 +285,7 @@ technique Color
 technique DiffuseColor
 {
   pass
-{
+  {
     VertexShader = compile vs_3_0 VS_DiffuseColor();
     PixelShader  = compile ps_3_0 PS_DiffuseColor();
   }

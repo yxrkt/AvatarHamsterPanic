@@ -66,6 +66,7 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CollisionDetector.cs" />
     <Compile Include="CustomModel.cs" />
     <Compile Include="CustomModelReader.cs" />
     <Compile Include="CustomVertex.cs" />
@@ -87,6 +88,7 @@
     <Compile Include="Objects\ReadyGo.cs" />
     <Compile Include="Objects\Shelves.cs" />
     <Compile Include="Objects\SparkParticleSystem.cs" />
+    <Compile Include="PostProcessing.cs" />
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />
