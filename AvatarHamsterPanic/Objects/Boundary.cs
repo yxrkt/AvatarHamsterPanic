@@ -8,6 +8,8 @@ using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using InstancedModelSample;
 using System.Collections.ObjectModel;
+using Menu;
+using MathLibrary;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -79,12 +81,14 @@ namespace AvatarHamsterPanic.Objects
       polyLeft.Elasticity = 1f;
       polyLeft.Friction = 1.5f;
       polyLeft.Flags = BodyFlags.Anchored;
+      screen.PhysicsSpace.AddBody( polyLeft );
 
       // right polygon
       polyRight = new PhysPolygon( polyWidth, 100f, new Vector2( right + halfPolyWidth, 0f ), 1f );
       polyRight.Elasticity = 1f;
       polyRight.Friction = 1.5f;
       polyRight.Flags = BodyFlags.Anchored;
+      screen.PhysicsSpace.AddBody( polyRight );
 
       // model
       cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );

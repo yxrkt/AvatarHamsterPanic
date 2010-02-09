@@ -13,7 +13,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// Helper for reading input from keyboard and gamepad. This class tracks both

@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   class MenuText : MenuItem
   {

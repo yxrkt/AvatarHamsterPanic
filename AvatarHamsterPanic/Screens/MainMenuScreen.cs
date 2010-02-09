@@ -11,15 +11,40 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using Microsoft.Xna.Framework.Content;
+using MathLibrary;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// The main menu screen is the first thing displayed when the game starts up.
   /// </summary>
   class MainMenuScreen : MenuScreen
   {
+    // 'Avatar'
+    Texture2D avatarTexture;
+    SpringInterpolater[] avatarVertSprings;
+
+    // 'Hamster'
+    Texture2D hamsterTexture;
+    SpringInterpolater[] hamsterVertSprings;
+
+    // 'Panic'
+    Texture2D panicTexture;
+    SpringInterpolater panicSizeSpring;
+    SpringInterpolater panicPositionSpring;
+
+    VertexPositionTexture[] vertArray;
+    VertexDeclaration vertexDeclaration;
+    Effect screenEffect;
+    EffectParameter screenTextureParameter;
+
+    float scale;
+    bool transitioningOn;
+    bool transitioningOff;
+    float transitionTime;
+
     #region Initialization
 
 
@@ -28,21 +53,15 @@ namespace AvatarHamsterPanic.Objects
     /// </summary>
     public MainMenuScreen()
     {
+      transitioningOn = false;
+      transitioningOff = false;
 
+      TransitionOffTime = TimeSpan.FromSeconds( .75 );
     }
 
     public override void LoadContent()
     {
-      // Create menu title
-      string menuTitle = "Avatar Hamster Panic";
-      SpriteFont font = ScreenManager.Font;
-      MenuText mainMenuTitle = new MenuText( this, new Vector2( 426, 80 ), menuTitle, font );
-      mainMenuTitle.Origin = font.MeasureString( menuTitle ) / 2f;
-      mainMenuTitle.Color = new Color( 192, 192, 192, 255 );
-      mainMenuTitle.Scale = 1.25f;
-      mainMenuTitle.TransitionOnPosition = mainMenuTitle.Position + new Vector2( 0f, -100f );
-      mainMenuTitle.TransitionOffPosition = mainMenuTitle.TransitionOnPosition;
-      MenuItems.Add( mainMenuTitle );
+      LoadTitleContent();
 
       // Create our menu entries.
       string[] entryStrings = { "Play", "Leaderboard", "Options", "Credits", "Exit" };
@@ -69,6 +88,127 @@ namespace AvatarHamsterPanic.Objects
       MenuEntries[0].Focused = true;
     }
 
+    private void LoadTitleContent()
+    {
+      GraphicsDevice device = ScreenManager.Game.GraphicsDevice;
+      ContentManager content = ScreenManager.Game.Content;
+      Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
+
+      vertArray = new VertexPositionTexture[4];
+      vertArray[0].TextureCoordinate = new Vector2( 0, 0 );
+      vertArray[1].TextureCoordinate = new Vector2( 1, 0 );
+      vertArray[2].TextureCoordinate = new Vector2( 1, 1 );
+      vertArray[3].TextureCoordinate = new Vector2( 0, 1 );
+      vertexDeclaration = new VertexDeclaration( device, VertexPositionTexture.VertexElements );
+
+      screenEffect = content.Load<Effect>( "Effects/screenAlignedEffect" );
+      screenEffect.CurrentTechnique = screenEffect.Techniques["Texture"];
+      screenEffect.Parameters["ScreenWidth"].SetValue( viewport.Width );
+      screenEffect.Parameters["ScreenHeight"].SetValue( viewport.Height );
+      screenTextureParameter = screenEffect.Parameters["Texture"];
+
+      scale = (float)viewport.Height / 720f;
+
+      // 'Avatar'
+      avatarTexture = content.Load<Texture2D>( "Textures/avatarText" );
+      avatarVertSprings = new SpringInterpolater[4];
+      for ( int i = 0; i < 4; ++i )
+      {
+        float k = i < 2 ? 125 : 220;
+        float bs = i < 2 ? .7f : 1f;
+        avatarVertSprings[i] = new SpringInterpolater( 3, k, bs * SpringInterpolater.GetCriticalDamping( k ) );
+      }
+
+      // 'Hamster'
+      hamsterTexture = content.Load<Texture2D>( "Textures/hamsterText" );
+      hamsterVertSprings = new SpringInterpolater[4];
+      for ( int i = 0; i < 4; ++i )
+      {
+        float k = i < 2 ? 145 : 250;
+        float bs = i < 2 ? .8f : 1f;
+        hamsterVertSprings[i] = new SpringInterpolater( 3, k, bs * SpringInterpolater.GetCriticalDamping( k ) );
+      }
+
+      // 'Panic'
+      panicTexture = content.Load<Texture2D>( "Textures/panicText" );
+      panicPositionSpring = new SpringInterpolater( 2, 155, SpringInterpolater.GetCriticalDamping( 155 ) );
+      panicSizeSpring = new SpringInterpolater( 1, 750, .75f * SpringInterpolater.GetCriticalDamping( 200 ) );
+    }
+
+    private void InitializeTransitionOn()
+    {
+      Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
+
+      // 'Avatar'
+      SetSpringDests( avatarTexture, new Vector2( viewport.Width / 2, 26f * scale ), scale, avatarVertSprings );
+      float right = -100f * scale;
+      float left  = right - avatarTexture.Width * scale;
+      avatarVertSprings[0].SetSource( left );
+      avatarVertSprings[1].SetSource( right );
+      avatarVertSprings[2].SetSource( right );
+      avatarVertSprings[3].SetSource( left );
+      foreach ( SpringInterpolater spring in avatarVertSprings )
+        spring.Active = false;
+
+      // 'Hamster'
+      SetSpringDests( hamsterTexture, new Vector2( viewport.Width / 2, 111f * scale ), scale, hamsterVertSprings );
+      left = viewport.Width + 100f * scale;
+      right = left + hamsterTexture.Width * scale;
+      hamsterVertSprings[0].SetSource( left );
+      hamsterVertSprings[1].SetSource( right );
+      hamsterVertSprings[2].SetSource( right );
+      hamsterVertSprings[3].SetSource( left );
+      foreach ( SpringInterpolater spring in hamsterVertSprings )
+        spring.Active = false;
+
+      // 'Panic'
+      Vector2 position = new Vector2( viewport.Width / 2, ( 163f + panicTexture.Height / 2 ) * scale );
+      panicPositionSpring.SetSource( position );
+      panicPositionSpring.SetDest( position );
+      panicPositionSpring.Active = false;
+      panicSizeSpring.SetSource( 0 );
+      panicSizeSpring.SetDest( scale );
+      panicSizeSpring.Active = false;
+    }
+
+    private void InitializeTransitionOff()
+    {
+      Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
+
+      // 'Avatar'
+      foreach ( SpringInterpolater spring in avatarVertSprings )
+      {
+        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 200 * scale ) );
+        spring.Active = false;
+      }
+
+      // 'Hamster'
+      foreach ( SpringInterpolater spring in hamsterVertSprings )
+      {
+        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 200 * scale ) );
+        spring.Active = false;
+      }
+
+      // 'Panic'
+      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 300 * scale ) );
+      panicPositionSpring.Active = false;
+    }
+
+    private void SetSpringDests( Texture2D texture, Vector2 position, float scale, SpringInterpolater[] springs )
+    {
+      float halfWidth  = scale * texture.Width  / 2;
+      float height = scale * texture.Height;
+
+      springs[0].SetDest( new Vector3( -halfWidth + position.X, position.Y, 0 ) );
+      springs[1].SetDest( new Vector3(  halfWidth + position.X, position.Y, 0 ) );
+      springs[2].SetDest( new Vector3(  halfWidth + position.X, height + position.Y, 0 ) );
+      springs[3].SetDest( new Vector3( -halfWidth + position.X, height + position.Y, 0 ) );
+
+      springs[0].SetSource( new Vector3( -halfWidth + position.X, position.Y, 0 ) );
+      springs[1].SetSource( new Vector3(  halfWidth + position.X, position.Y, 0 ) );
+      springs[2].SetSource( new Vector3(  halfWidth + position.X, height + position.Y, 0 ) );
+      springs[3].SetSource( new Vector3( -halfWidth + position.X, height + position.Y, 0 ) );
+    }
 
     #endregion
 
@@ -137,6 +277,139 @@ namespace AvatarHamsterPanic.Objects
       ScreenManager.Game.Exit();
     }
 
+
+    #endregion
+
+    #region Update and Draw
+
+    public override void Update( GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen )
+    {
+      // initialize transitions
+      if ( ScreenState == ScreenState.TransitionOn && !transitioningOn )
+      {
+        InitializeTransitionOn();
+        transitionTime = 0;
+        transitioningOn = true;
+      }
+      else if ( ScreenState == ScreenState.TransitionOff && !transitioningOff )
+      {
+        InitializeTransitionOff();
+        transitionTime = 0;
+        transitioningOff = true;
+      }
+      if ( ScreenState == ScreenState.Active )
+      {
+        transitioningOn = false;
+        transitioningOff = false;
+      }
+
+      // transitioning on
+      if ( ScreenState == ScreenState.TransitionOn || ScreenState == ScreenState.Active )
+      {
+        // zoom 'Avatar' in
+        if ( IsActive && transitionTime > .0625f && !avatarVertSprings[0].Active )
+        {
+          foreach ( SpringInterpolater spring in avatarVertSprings )
+            spring.Active = true;
+        }
+
+        // zoom 'Hamster' in
+        if ( IsActive && transitionTime > .45f && !hamsterVertSprings[0].Active )
+        {
+          foreach ( SpringInterpolater spring in hamsterVertSprings )
+            spring.Active = true;
+        }
+
+        // zoom 'Panic' in
+        if ( IsActive && transitionTime > .95f && !panicSizeSpring.Active )
+          panicSizeSpring.Active = true;
+      }
+
+      // transitioning off
+      if ( ScreenState == ScreenState.TransitionOff )
+      {
+        if ( transitionTime > .1f && !avatarVertSprings[0].Active )
+        {
+          foreach ( SpringInterpolater spring in avatarVertSprings )
+            spring.Active = true;
+        }
+
+        if ( transitionTime > .15f && !hamsterVertSprings[0].Active )
+        {
+          foreach ( SpringInterpolater spring in hamsterVertSprings )
+            spring.Active = true;
+        }
+
+        if ( transitionTime > .2f && !panicPositionSpring.Active )
+          panicPositionSpring.Active = true;
+      }
+
+      // update springs
+      float elapsed = Math.Min( (float)gameTime.ElapsedGameTime.TotalSeconds, 1f / 60f );
+
+      foreach ( SpringInterpolater spring in avatarVertSprings )
+        spring.Update( elapsed );
+
+      foreach ( SpringInterpolater spring in hamsterVertSprings )
+        spring.Update( elapsed );
+
+      panicPositionSpring.Update( elapsed );
+      panicSizeSpring.Update( elapsed );
+
+      transitionTime += elapsed;
+
+      base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
+    }
+
+    public override void Draw( GameTime gameTime )
+    {
+      GraphicsDevice device = ScreenManager.Game.GraphicsDevice;
+
+      device.VertexDeclaration = vertexDeclaration;
+      device.RenderState.AlphaBlendEnable = true;
+      device.RenderState.AlphaSourceBlend = Blend.SourceAlpha;
+      device.RenderState.AlphaDestinationBlend = Blend.InverseSourceAlpha;
+
+      // 'Avatar'
+      SetVertexBuffer( avatarVertSprings );
+      screenTextureParameter.SetValue( avatarTexture );
+      screenEffect.Begin();
+      screenEffect.CurrentTechnique.Passes[0].Begin();
+      device.DrawUserPrimitives( PrimitiveType.TriangleFan, vertArray, 0, 2 );
+      screenEffect.CurrentTechnique.Passes[0].End();
+      screenEffect.End();
+
+      // 'Hamster'
+      SetVertexBuffer( hamsterVertSprings );
+      screenTextureParameter.SetValue( hamsterTexture );
+      screenEffect.Begin();
+      screenEffect.CurrentTechnique.Passes[0].Begin();
+      device.DrawUserPrimitives( PrimitiveType.TriangleFan, vertArray, 0, 2 );
+      screenEffect.CurrentTechnique.Passes[0].End();
+      screenEffect.End();
+
+      // 'Panic'
+      SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+      spriteBatch.Begin();
+      Vector2 origin   = new Vector2( panicTexture.Width / 2, panicTexture.Height / 2 );
+      Vector2 position = new Vector2( panicPositionSpring.GetSource()[0], panicPositionSpring.GetSource()[1] );
+      spriteBatch.Draw( panicTexture, position, null, Color.White, 0f, 
+                        origin, panicSizeSpring.GetSource()[0], SpriteEffects.None, 0 );
+      spriteBatch.End();
+
+      // draw the lame buttons
+      base.Draw( gameTime );
+    }
+
+    private void SetVertexBuffer( SpringInterpolater[] springs )
+    {
+      int index = 0;
+      foreach ( SpringInterpolater spring in springs )
+      {
+        float[] vert = spring.GetSource();
+        vertArray[index++].Position = new Vector3( vert[0], vert[1], 0 );
+      }
+    }
 
     #endregion
   }

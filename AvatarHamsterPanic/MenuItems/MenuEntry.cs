@@ -13,7 +13,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// Helper class represents a single entry in a MenuScreen. By default this
@@ -67,7 +67,6 @@ namespace AvatarHamsterPanic.Objects
 
 
     #endregion
-
 
     #region Update and Draw
 

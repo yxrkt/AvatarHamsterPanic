@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Physics;
 using AvatarHamsterPanic.Objects;
+using Menu;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -43,16 +44,14 @@ namespace AvatarHamsterPanic.Objects
       BoundingPolygon.Flags = BodyFlags.Anchored;
       BoundingPolygon.Parent = this;
       BoundingPolygon.Collided += KillSelfIfPwnt;
-      PhysBody.AllBodies.Remove( BoundingPolygon );
     }
 
     void Initialize( Vector2 pos )
     {
       alive = true;
       BoundingPolygon.Position = pos;
-      BoundingPolygon.Released = false;
       BoundingPolygon.Flags = BodyFlags.Anchored;
-      PhysBody.AllBodies.Add( BoundingPolygon );
+      Screen.PhysicsSpace.AddBody( BoundingPolygon );
     }
 
     static FloorBlock()
@@ -124,7 +123,7 @@ namespace AvatarHamsterPanic.Objects
       if ( BoundingPolygon.Position.Y > clearLine )
       {
         Screen.ObjectTable.MoveToTrash( this );
-        BoundingPolygon.Release();
+        Screen.PhysicsSpace.RemoveBody( BoundingPolygon );
         alive = false;
       }
     }
@@ -190,7 +189,7 @@ namespace AvatarHamsterPanic.Objects
         {
           // remove the block
           BoundingPolygon.Flags |= BodyFlags.Ghost;
-          BoundingPolygon.Release();
+          Screen.PhysicsSpace.RemoveBody( BoundingPolygon );
           Screen.ObjectTable.MoveToTrash( this );
           alive = false;
 

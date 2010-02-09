@@ -5,12 +5,10 @@ using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 
-namespace AvatarHamsterPanic.Utilities
+namespace Utilities
 {
-  class XFileUtils
+  static class XFileUtils
   {
-    private XFileUtils() { }
-
     /// <summary>
     /// Gets the concatenated matrix for a bone in a hierarchy.
     /// </summary>

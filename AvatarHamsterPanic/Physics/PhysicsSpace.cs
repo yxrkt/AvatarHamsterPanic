@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
-using MathLib;
+using MathLibrary;
 using AvatarHamsterPanic.Objects;
 using Utilities;
 using System.Diagnostics;
@@ -11,29 +11,47 @@ using System.Diagnostics;
 
 namespace Physics
 {
-  sealed class PhysicsManager
+  public class PhysicsSpace
   {
-    static readonly PhysicsManager instance = new PhysicsManager();
-    public static StringBuilder DebugString = new StringBuilder( 260 );
+    public StringBuilder DebugString = new StringBuilder( 260 );
+    public static float LastImpulse = 0;
+    public Vector2 Gravity = new Vector2( 0.0f, -10.0f );
 
-    Vector2 m_gravity = new Vector2( 0.0f, -10.0f );
     uint collisionIndex = 0;
+    List<PhysBody> bodies;
 
     // initialization
-    private PhysicsManager()
+    public PhysicsSpace()
     {
+      bodies = new List<PhysBody>( 50 );
     }
 
-    public static PhysicsManager Instance { get { return instance; } }
+    // public methods
+    public void AddBody( PhysBody body )
+    {
+#if DEBUG
+      if ( bodies.Contains( body ) && !body.Released )
+        throw new InvalidOperationException( "body already in space" );
+#endif
+      // if Released is marked true, then the body hasn't been removed yet
+      if ( body.Released )
+        bodies.Add( body );
+      body.Released = false;
+    }
 
-    public Vector2 Gravity { get { return m_gravity; } set { m_gravity = value; } }
+    public void RemoveBody( PhysBody body )
+    {
+#if DEBUG
+      if ( !bodies.Contains( body ) || body.Released )
+        throw new InvalidOperationException( "invalid body release" );
+#endif
+      body.Released = true;
+    }
 
     // update
     public void Update( double elapsed )
     {
       if ( elapsed <= 0d ) return;
-
-      List<PhysBody> bodies = PhysBody.AllBodies;
 
       // cleanup released bodies
       bodies.RemoveAll( body => body.Released );
@@ -91,14 +109,14 @@ namespace Physics
           {
             PhysBody bodyB = bodies[j];
 
-            //Collision result = bodyA.TestVsBody( bodyB, timeLeft );
             Collision result = CollisionDetector.TestForCollision( bodyA, bodyB, timeLeft );
+
             if ( result.Collided )
             {
               if ( bodyA.Flags.HasFlags( BodyFlags.Ghost ) || bodyB.Flags.HasFlags( BodyFlags.Ghost ) )
               {
-                bodyA.HandleCollision( result );
-                bodyB.HandleCollision( result.GetInvert() );
+                bodyA.OnCollision( result );
+                bodyB.OnCollision( result.GetInvert() );
               }
               else
               {
@@ -151,7 +169,7 @@ namespace Physics
                 MoveBody( body, body.LastResult.Time, .001f );
               if ( !body.LastResult.BodyB.Moved && !body.LastResult.BodyB.Flags.HasFlags( BodyFlags.Anchored ) )
                 MoveBody( body.LastResult.BodyB, bestTime, .001f );
-              body.ApplyResponseFrom( body.LastResult );
+              CollisionResolver.ResolveCollision( body.LastResult );
             }
             else if ( !body.Moved )
             {
@@ -161,7 +179,7 @@ namespace Physics
 
           timeLeft -= bestTime;
           //++nIterations;
-          if ( ++nIterations > 10 )
+          if ( ++nIterations > 20 )
             timeLeft = 0f;
         }
       }

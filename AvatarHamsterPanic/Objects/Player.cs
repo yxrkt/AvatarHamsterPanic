@@ -13,8 +13,10 @@ using Microsoft.Xna.Framework.Input;
 using CustomModelSample;
 using Particle3DSample;
 using Utilities;
-using MathLib;
+using MathLibrary;
 using System.Diagnostics;
+using Menu;
+using Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -107,6 +109,7 @@ namespace AvatarHamsterPanic.Objects
       BoundingCircle.Friction = .5f;
       BoundingCircle.Collided += HandleCollision;
       BoundingCircle.Responded += HandleCollisionResponse;
+      screen.PhysicsSpace.AddBody( BoundingCircle );
 
       walkAnim = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
       runAnim  = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );

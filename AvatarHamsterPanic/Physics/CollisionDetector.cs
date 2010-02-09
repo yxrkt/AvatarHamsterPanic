@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
-using MathLib;
+using MathLibrary;
 using AvatarHamsterPanic.Objects;
 using System.Diagnostics;
 

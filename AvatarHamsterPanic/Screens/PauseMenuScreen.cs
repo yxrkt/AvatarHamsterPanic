@@ -10,9 +10,10 @@
 #region Using Statements
 using Microsoft.Xna.Framework;
 using System;
+using AvatarHamsterPanic.Objects;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// The pause menu comes up over the top of the game,

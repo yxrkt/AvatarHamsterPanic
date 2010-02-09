@@ -12,7 +12,7 @@ using Microsoft.Xna.Framework;
 using System;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// The options screen is brought up over the top of the main menu

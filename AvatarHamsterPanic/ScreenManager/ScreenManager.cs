@@ -17,7 +17,7 @@ using Microsoft.Xna.Framework.Graphics;
 using CustomAvatarAnimationFramework;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// The screen manager is a component which manages one or more GameScreen

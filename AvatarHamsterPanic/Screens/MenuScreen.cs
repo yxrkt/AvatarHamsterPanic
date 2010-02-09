@@ -16,7 +16,7 @@ using AvatarHamsterPanic.Objects;
 using System.Collections.ObjectModel;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// Base class for screens that contain a menu of options. The user can
@@ -152,13 +152,14 @@ namespace AvatarHamsterPanic.Objects
     /// Updates the menu.
     /// </summary>
     public override void Update( GameTime gameTime, bool otherScreenHasFocus,
-                                                   bool coveredByOtherScreen )
+                                                    bool coveredByOtherScreen )
     {
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
 
       ReadOnlyCollection<MenuItem> menuItems = MenuItems.AllObjects;
-      foreach ( MenuItem item in menuItems )
+      for ( int i = 0; i < menuItems.Count; ++i )
       {
+        MenuItem item = menuItems[i];
         item.Update( gameTime );
         item.UpdateTransition( TransitionPosition, ScreenState );
       }
@@ -177,8 +178,8 @@ namespace AvatarHamsterPanic.Objects
 
       spriteBatch.Begin();
       ReadOnlyCollection<MenuItem> menuItems = MenuItems.AllObjects;
-      foreach ( MenuItem item in menuItems )
-        item.Draw( gameTime );
+      for ( int i = 0; i < menuItems.Count; ++i )
+        menuItems[i].Draw( gameTime );
       spriteBatch.End();
     }
 

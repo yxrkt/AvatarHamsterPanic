@@ -6,6 +6,8 @@ using InstancedModelSample;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Physics;
+using MathLibrary;
+using Menu;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -92,6 +94,7 @@ namespace AvatarHamsterPanic.Objects
         cagePieces[i].Body = new PhysPolygon( size, .014f * size, new Vector2( pos.X + size / 2f, pos.Y ), 1f );
         cagePieces[i].Body.SetPivotPoint( new Vector2( -size / 2, 0f ) );
         cagePieces[i].Body.Flags = BodyFlags.Anchored;
+        Screen.PhysicsSpace.AddBody( cagePieces[i].Body );
       }
 
       // all other cage pieces won't change
@@ -109,6 +112,7 @@ namespace AvatarHamsterPanic.Objects
         cagePieces[i].Transform = scale * rotation * translation;
         cagePieces[i].Body = new PhysPolygon( .014f, size, new Vector2( pos.X, pos.Y ), 1f );
         cagePieces[i].Body.Flags = BodyFlags.Anchored;
+        Screen.PhysicsSpace.AddBody( cagePieces[i].Body );
       }
     }
 
@@ -124,7 +128,7 @@ namespace AvatarHamsterPanic.Objects
       if ( Screen.Camera.Position.Y < deathLine )
       {
         foreach ( CagePiece piece in cagePieces )
-          piece.Body.Release();
+          Screen.PhysicsSpace.RemoveBody( piece.Body );
         Screen.ObjectTable.MoveToTrash( this );
         return;
       }

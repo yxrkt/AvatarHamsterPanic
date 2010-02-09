@@ -66,15 +66,18 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="CollisionDetector.cs" />
-    <Compile Include="CustomModel.cs" />
-    <Compile Include="CustomModelReader.cs" />
-    <Compile Include="CustomVertex.cs" />
+    <Compile Include="MenuItems\MenuWheel.cs" />
+    <Compile Include="Physics\CollisionDetector.cs" />
+    <Compile Include="Graphics\CustomModel.cs" />
+    <Compile Include="Graphics\CustomModelReader.cs" />
+    <Compile Include="Graphics\CustomVertex.cs" />
     <Compile Include="Game.cs" />
-    <Compile Include="Geometry.cs" />
-    <Compile Include="InstancedModel.cs" />
-    <Compile Include="InstancedModelPart.cs" />
-    <Compile Include="InstancedModelReader.cs" />
+    <Compile Include="Physics\CollisionResolver.cs" />
+    <Compile Include="Physics\PhysicsSpace.cs" />
+    <Compile Include="Utilities\Geometry.cs" />
+    <Compile Include="Graphics\InstancedModel.cs" />
+    <Compile Include="Graphics\InstancedModelPart.cs" />
+    <Compile Include="Graphics\InstancedModelReader.cs" />
     <Compile Include="Objects\LaserBeam.cs" />
     <Compile Include="Objects\Lightning.cs" />
     <Compile Include="Objects\PinkPixieParticleSystem.cs" />
@@ -88,7 +91,7 @@
     <Compile Include="Objects\ReadyGo.cs" />
     <Compile Include="Objects\Shelves.cs" />
     <Compile Include="Objects\SparkParticleSystem.cs" />
-    <Compile Include="PostProcessing.cs" />
+    <Compile Include="Graphics\PostProcessing.cs" />
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\MenuStaticImage.cs" />
@@ -100,21 +103,19 @@
     <Compile Include="Objects\GameObject.cs" />
     <Compile Include="Objects\ModelExplosion.cs" />
     <Compile Include="Objects\ObjectTable.cs" />
-    <Compile Include="Objects\PhysBody.cs" />
+    <Compile Include="Physics\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />
     <Compile Include="Objects\PlayerHUD.cs" />
     <Compile Include="Utilities\Pool.cs" />
     <Compile Include="Objects\PopupText.cs" />
     <Compile Include="Objects\TubeMaze.cs" />
     <Compile Include="Utilities\Performance.cs" />
-    <Compile Include="PhysicsManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\RandomBag.cs" />
     <Compile Include="ScreenManager\GameScreen.cs" />
     <Compile Include="ScreenManager\InputState.cs" />
     <Compile Include="ScreenManager\ScreenManager.cs" />
     <Compile Include="Screens\BackgroundScreen.cs" />
-    <Compile Include="Screens\ControlsMenuScreen.cs" />
     <Compile Include="Screens\CreditsMenuScreen.cs" />
     <Compile Include="Screens\GameplayScreen.cs" />
     <Compile Include="Screens\LeaderboardMenuScreen.cs" />

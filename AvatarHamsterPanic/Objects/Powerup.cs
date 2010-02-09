@@ -12,6 +12,8 @@ using Microsoft.Xna.Framework.Content;
 using CustomModelSample;
 using System.Diagnostics;
 using System.Collections.ObjectModel;
+using Menu;
+using MathLibrary;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -155,9 +157,8 @@ namespace AvatarHamsterPanic.Objects
     private void Initialize( Vector2 pos, PowerupType type )
     {
       Body.Position = pos;
-      Body.Released = false;
       Body.ClearEvents();
-      PhysBody.AllBodies.Add( Body );
+      Screen.PhysicsSpace.AddBody( Body );
       UpdateSelf = null;
       Activate = null;
       alive = true;
@@ -219,7 +220,6 @@ namespace AvatarHamsterPanic.Objects
       Body = new PhysCircle( 1f, Vector2.Zero, 1f );
       Body.Flags = BodyFlags.Anchored | BodyFlags.Ghost;
       Body.Parent = this;
-      Body.Release();
 
       Oscillator = new SpringInterpolater( 1, 10, 0 );
       SizeSpring = new SpringInterpolater( 1, 200, .15f * SpringInterpolater.GetCriticalDamping( 200 ) );
@@ -260,7 +260,7 @@ namespace AvatarHamsterPanic.Objects
 
     private void Die()
     {
-      Body.Release();
+      Screen.PhysicsSpace.RemoveBody( Body );
       Screen.ObjectTable.MoveToTrash( this );
       alive = false;
     }
@@ -377,7 +377,7 @@ namespace AvatarHamsterPanic.Objects
         owner = (Player)result.BodyB.Parent;
         owner.HUD.AddPoints( 1 );
 
-        result.BodyA.Release();
+        Screen.PhysicsSpace.RemoveBody( result.BodyA );
         Screen.ObjectTable.MoveToTrash( this );
         alive = false;
 

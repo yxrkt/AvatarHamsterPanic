@@ -5,6 +5,7 @@ using System.Text;
 using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
+using Menu;
 
 namespace AvatarHamsterPanic.Objects
 {

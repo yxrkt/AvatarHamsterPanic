@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework;
 using Utilities;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using AvatarHamsterPanic.Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {

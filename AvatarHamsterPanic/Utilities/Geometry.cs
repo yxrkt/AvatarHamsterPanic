@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using AvatarHamsterPanic.Objects;
 
-namespace MathLib
+namespace MathLibrary
 {
   /// <summary>
   /// Geometry tools

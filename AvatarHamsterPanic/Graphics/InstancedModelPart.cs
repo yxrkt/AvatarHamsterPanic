@@ -52,9 +52,16 @@ namespace InstancedModelSample
     Effect effect;
     public Effect Effect { get { return effect; } }
 
+    EffectParameter effectParameterView;
+    EffectParameter effectParameterProjection;
+    EffectParameter effectParameterEye;
+    EffectParameter effectParameterVertexCount;
+    EffectParameter effectParameterInstanceTransforms;
+
     public EffectParameter EffectParameterColor { get; private set; }
     public EffectParameter EffectParameterDiffuseMap { get; private set; }
     public EffectParameter EffectParameterSpecularPower { get; private set; }
+
 
     // Track whether effect.CurrentTechnique is dirty.
     bool techniqueChanged;
@@ -99,10 +106,16 @@ namespace InstancedModelSample
       {
         effect = value;
 
-        // convenience stuff
+        // accessors
         EffectParameterColor = effect.Parameters["Color"];
         EffectParameterDiffuseMap = effect.Parameters["DiffuseMap"];
         EffectParameterSpecularPower = effect.Parameters["SpecularPower"];
+
+        effectParameterView = effect.Parameters["View"];
+        effectParameterProjection = effect.Parameters["Projection"];
+        effectParameterEye = effect.Parameters["Eye"];
+        effectParameterVertexCount = effect.Parameters["VertexCount"];
+        effectParameterInstanceTransforms = effect.Parameters["InstanceTransforms"];
       } );
 
       // Work out how many shader instances we can fit into a single batch.
@@ -230,13 +243,11 @@ namespace InstancedModelSample
         techniqueChanged = false;
       }
 
-      // Pass camera matrices through to the effect.
-      effect.Parameters["View"].SetValue( view );
-      effect.Parameters["Projection"].SetValue( projection );
-      effect.Parameters["Eye"].SetValue( eye );
+      effectParameterView.SetValue( view );
+      effectParameterProjection.SetValue( projection );
+      effectParameterEye.SetValue( eye );
 
-      // Set the vertex count (used by the VFetch instancing technique).
-      effect.Parameters["VertexCount"].SetValue( vertexCount );
+      effectParameterVertexCount.SetValue( vertexCount );
     }
 
 
@@ -258,7 +269,7 @@ namespace InstancedModelSample
         // Upload transform matrices as shader constants.
         Array.Copy( instanceTransforms, i, tempMatrices, 0, instanceCount );
 
-        effect.Parameters["InstanceTransforms"].SetValue( tempMatrices );
+        effectParameterInstanceTransforms.SetValue( tempMatrices );
         effect.CommitChanges();
 
         // Draw maxInstances copies of our geometry in a single batch.

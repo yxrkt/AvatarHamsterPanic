@@ -2,16 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework;
 
 namespace Menu
 {
-  class MenuStaticImage : MenuItem
+  class MenuWheel : MenuItem
   {
-    public MenuStaticImage( MenuScreen screen, Vector2 position, string imageFile )
-      : base( screen, position )
+    public MenuWheel( MenuScreen screen )
+      : base( screen, Vector2.Zero )
     {
-
     }
   }
 }

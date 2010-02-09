@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   abstract class MenuItem
   {

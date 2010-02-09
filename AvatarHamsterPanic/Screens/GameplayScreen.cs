@@ -20,7 +20,7 @@ using Physics;
 using AvatarHamsterPanic.Objects;
 using Utilities;
 using System.Collections.Generic;
-using MathLib;
+using MathLibrary;
 using Microsoft.Xna.Framework.Audio;
 using CustomAvatarAnimationFramework;
 using System.Collections.ObjectModel;
@@ -29,9 +29,10 @@ using InstancedModelSample;
 using System.Text;
 using Particle3DSample;
 using CustomModelSample;
+using Graphics;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace Menu
 {
   /// <summary>
   /// This screen implements the actual game logic.
@@ -43,6 +44,7 @@ namespace AvatarHamsterPanic.Objects
     public static GameplayScreen Instance { get; private set; }
 
     public ContentManager Content { get; private set; }
+    public PhysicsSpace PhysicsSpace { get; private set; }
     public Camera Camera { get; private set; }
     public float CameraScrollSpeed { get { return camScrollSpeed; } }
     public Matrix View { get; private set; }
@@ -78,7 +80,7 @@ namespace AvatarHamsterPanic.Objects
     RenderTarget2D basicSceneRenderTarget;
     RenderTarget2D maskRenderTarget;
     Rectangle screenRectangle;
-    GameComponentCollection components = new GameComponentCollection();
+    List<DrawableGameComponent> components = new List<DrawableGameComponent>();
 
     Random random = new Random();
 
@@ -112,6 +114,10 @@ namespace AvatarHamsterPanic.Objects
       if ( Content == null )
         Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
+      // initialize physics
+      PhysicsSpace = new PhysicsSpace();
+      PhysicsSpace.Gravity = new Vector2( 0f, -5.5f );
+
       // render targets
       GraphicsDevice device = ScreenManager.GraphicsDevice;
       PostProcessor.Initialize( device, ScreenManager.SpriteBatch, Content );
@@ -133,16 +139,12 @@ namespace AvatarHamsterPanic.Objects
       // model explosion particles
       ParticleManager = new ParticleManager( game, Content );
       ParticleManager.Initialize();
-      //game.Components.Add( ParticleManager );
       components.Add( ParticleManager );
 
       // other particles
       PixieParticleSystem = new PixieParticleSystem( game, Content );
       SparkParticleSystem = new SparkParticleSystem( game, Content );
       PinkPixieParticleSystem = new PinkPixieParticleSystem( game, Content );
-      //game.Components.Add( PixieParticleSystem );
-      //game.Components.Add( SparkParticleSystem );
-      //game.Components.Add( PinkPixieParticleSystem );
       components.Add( PixieParticleSystem );
       components.Add( SparkParticleSystem );
       components.Add( PinkPixieParticleSystem );
@@ -182,13 +184,9 @@ namespace AvatarHamsterPanic.Objects
 
       CountdownTime = 0f;
       CountdownEnd = 3f;
-      //ObjectTable.Add( new OneByOneByOne( this ) );
 
       lastCamY = Camera.Position.Y;
       SpawnRows(); // spawn additional rows before loading screen is over
-
-      // set gravity
-      PhysicsManager.Instance.Gravity = new Vector2( 0f, -5.5f );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -208,7 +206,6 @@ namespace AvatarHamsterPanic.Objects
     /// </summary>
     public override void UnloadContent()
     {
-      PhysBody.AllBodies.Clear();
       LaserBeam.Unload();
       ObjectTable.Clear();
       Game game = ScreenManager.Game;
@@ -240,14 +237,13 @@ namespace AvatarHamsterPanic.Objects
       {
         long updateBegin = Stopwatch.GetTimestamp();
 
-        foreach ( GameComponent component in components )
+        foreach ( DrawableGameComponent component in components )
           component.Update( gameTime );
 
         double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
 
         long begin = Stopwatch.GetTimestamp();
-        // Update physics
-        PhysicsManager.Instance.Update( elapsed );
+        PhysicsSpace.Update( elapsed );
         physicsTicks += Stopwatch.GetTimestamp() - begin;
 
         Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
@@ -350,6 +346,7 @@ namespace AvatarHamsterPanic.Objects
       foreach ( GameObject obj in objects )
         obj.Draw();
 
+      // these are mostly particles
       foreach ( DrawableGameComponent component in components )
         component.Draw( gameTime );
 
@@ -359,7 +356,7 @@ namespace AvatarHamsterPanic.Objects
       device.SetRenderTarget( 1, null );
 
       Texture2D scene = basicSceneRenderTarget.GetTexture();
-      Texture2D mask  = maskRenderTarget.GetTexture();
+      Texture2D mask = maskRenderTarget.GetTexture();
 
       //post processing here
       Texture2D glow = PostProcessor.Glow( scene, mask );
@@ -402,7 +399,6 @@ namespace AvatarHamsterPanic.Objects
       DebugString.Clear();
       Vector2 position = new Vector2( 20, 20 );
       spriteBatch.DrawString( gameFont, FormatDebugString(), position, Color.Tomato );
-      //spriteBatch.DrawString( gameFont, DebugString.AppendInt( Performance.FrameRate ), position, Color.Black );
       //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, position, Color.Black );
     }
 
@@ -413,6 +409,7 @@ namespace AvatarHamsterPanic.Objects
     string strPolygonPercentage = "Polygon Percentage: ";
     string strCirclePercentage = "Circle Percentage: ";
     string strPhysicsPercentage = "Physics Percentage: ";
+    string strLastImpulse = "Last Impulse: ";
 
     private StringBuilder FormatDebugString()
     {
@@ -457,7 +454,10 @@ namespace AvatarHamsterPanic.Objects
       DebugString.AppendInt( (int)( .5f + 100f * (float)polyMS / (float)physMS ) );
       DebugString.Append( '\n' );
 
-
+      // last collision impulse
+      DebugString.Append( strLastImpulse );
+      DebugString.Append( PhysicsSpace.LastImpulse );
+      DebugString.Append( '\n' );
 
       return DebugString;
     }
@@ -643,7 +643,7 @@ namespace AvatarHamsterPanic.Objects
 #if DEBUG
     private void DrawSafeRect( GraphicsDevice device )
     {
-      Effect debugEffect = Content.Load<Effect>( "Effects/debugLine" );
+      Effect debugEffect = Content.Load<Effect>( "Effects/screenAlignedEffect" );
       debugEffect.CurrentTechnique = debugEffect.Techniques[0];
       debugEffect.Begin();
       debugEffect.Parameters["ScreenWidth"].SetValue( device.Viewport.Width );
@@ -661,8 +661,12 @@ namespace AvatarHamsterPanic.Objects
         new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y, 0 ), Color.Red ),
       };
 
-      foreach ( EffectPass pass in debugEffect.CurrentTechnique.Passes )
+      EffectPassCollection passes = debugEffect.CurrentTechnique.Passes;
+      int nPasses = passes.Count;
+      for ( int i = 0; i < nPasses; ++i )
       {
+        EffectPass pass = passes[i];
+
         pass.Begin();
         device.DrawUserPrimitives( PrimitiveType.LineStrip, safeRectVerts, 0, 4 );
         pass.End();

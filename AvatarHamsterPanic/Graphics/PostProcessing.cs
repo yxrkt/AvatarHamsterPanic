@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 
-namespace AvatarHamsterPanic
+namespace Graphics
 {
   public static class MaskHelper
   {
@@ -229,8 +229,12 @@ namespace AvatarHamsterPanic
       motionBlurLastFrameParameter.SetValue( motionBlurLastFrame );
 
       motionBlurEffect.Begin();
-      foreach ( EffectPass pass in motionBlurEffect.CurrentTechnique.Passes )
+      EffectPassCollection passes = motionBlurEffect.CurrentTechnique.Passes;
+      int nPasses = passes.Count;
+      for ( int i = 0; i < nPasses; ++i )
       {
+        EffectPass pass = passes[i];
+
         pass.Begin();
         device.DrawPrimitives( PrimitiveType.TriangleFan, 0, 2 );
         pass.End();

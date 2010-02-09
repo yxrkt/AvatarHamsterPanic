@@ -9,6 +9,8 @@ using Utilities;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Menu;
+using Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -75,8 +77,7 @@ namespace AvatarHamsterPanic.Objects
                              float startVelocity, float endVelocity, float duration )
     {
       Screen = GameplayScreen.Instance;
-      body.Released = false;
-      PhysBody.AllBodies.Add( body );
+      Screen.PhysicsSpace.AddBody( body );
       for ( int i = 0; i < 4; ++i )
       {
         body.Vertices[i].X = position.X;
@@ -109,7 +110,6 @@ namespace AvatarHamsterPanic.Objects
       body = new PhysPolygon( 0f, beamThickness, Vector2.Zero, 1f );
       body.Collided += HandlePlayerCollision;
       body.Flags = BodyFlags.Anchored | BodyFlags.Ghost;
-      body.Release();
     }
 
     public override void Update( GameTime gameTime )
@@ -152,7 +152,7 @@ namespace AvatarHamsterPanic.Objects
     private void Die()
     {
       Screen.ObjectTable.MoveToTrash( this );
-      body.Release();
+      Screen.PhysicsSpace.RemoveBody( body );
       valid = false;
     }
 

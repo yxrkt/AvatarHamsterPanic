@@ -8,6 +8,8 @@ using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.ObjectModel;
 using Utilities;
+using MathLibrary;
+using Menu;
 
 namespace AvatarHamsterPanic.Objects
 {

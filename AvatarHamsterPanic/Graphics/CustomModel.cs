@@ -14,6 +14,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using AvatarHamsterPanic.Objects;
 using System.Diagnostics;
+using Graphics;
 #endregion
 
 namespace CustomModelSample
@@ -146,10 +147,13 @@ namespace CustomModelSample
 
         part.Effect.Begin();
 
-        foreach ( EffectPass pass in part.Effect.CurrentTechnique.Passes )
+        EffectPassCollection passes = part.Effect.CurrentTechnique.Passes;
+        int nPasses = passes.Count;
+        for ( int i = 0; i < nPasses; ++i )
         {
+          EffectPass pass = passes[i];
           pass.Begin();
-          device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,   
+          device.DrawIndexedPrimitives( PrimitiveType.TriangleList, 0, 0,
                                         part.VertexCount, 0, part.TriangleCount );
           pass.End();
         }

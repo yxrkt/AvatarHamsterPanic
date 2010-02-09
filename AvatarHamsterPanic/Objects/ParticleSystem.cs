@@ -396,8 +396,12 @@ namespace Particle3DSample
         // Activate the particle effect.
         particleEffect.Begin();
 
-        foreach ( EffectPass pass in particleEffect.CurrentTechnique.Passes )
+        EffectPassCollection passes = particleEffect.CurrentTechnique.Passes;
+        int nPasses = passes.Count;
+        for ( int i = 0; i < nPasses; ++i )
         {
+          EffectPass pass = passes[i];
+
           pass.Begin();
 
           if ( firstActiveParticle < firstFreeParticle )

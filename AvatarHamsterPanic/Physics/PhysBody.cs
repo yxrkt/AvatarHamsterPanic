@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
-using MathLib;
+using MathLibrary;
 using System.Diagnostics;
 
 namespace Physics
@@ -39,9 +39,6 @@ namespace Physics
   /// </summary>
   public abstract class PhysBody : IComparable
   {
-    // Static list available 
-    private static List<PhysBody> s_bodies = new List<PhysBody>();
-
     // Public fields
     public Vector2 Position;
     public Vector2 Velocity;
@@ -64,10 +61,9 @@ namespace Physics
     public static int TestVsPolygonHits = 0;
 
     // Properties
-    public static List<PhysBody> AllBodies { get { return s_bodies; } }
     public List<PhysBody> CollisionList { get; private set; }
 
-    public delegate bool CollisionEvent( Collision data );
+    public delegate bool CollisionEvent( Collision result );
     public event CollisionEvent Collided = null;
     public event CollisionEvent Responded = null;
 
@@ -98,13 +94,6 @@ namespace Physics
       Parent          = null;
 
       CollisionList = new List<PhysBody>( 4 );
-
-      s_bodies.Add( this );
-    }
-
-    public void Release()
-    {
-      Released = true;
     }
 
     public void ClearEvents()
@@ -113,92 +102,18 @@ namespace Physics
       Responded = null;
     }
 
-    public void ApplyResponseFrom( Collision result )
+    public bool OnCollision( Collision result )
     {
-      PhysBody body = result.BodyB;
-
-      this.Touching = body;
-      body.Touching = this;
-
-      this.TouchNormal = result.Normal;
-      body.TouchNormal = -result.Normal;
-
-      bool ignoreResponse = false;
-      if ( this.Collided != null && !this.CollisionList.Contains( body ) )
-        ignoreResponse = !Collided( result );
-      if ( body.Collided != null && !body.CollisionList.Contains( this ) )
-        ignoreResponse = ignoreResponse || !body.Collided( result.GetInvert() );
-      if ( ignoreResponse ) return;
-
-      float e = Math.Min( this.Elasticity, body.Elasticity );
-      float u = Math.Max( this.Friction, body.Friction );
-      Vector2 n = result.Normal;
-
-      // adjust normal in case of floating point error
-      if ( n.X == 0f && Math.Abs( n.Y ) != 1f )
-        n.Y = Math.Sign( n.Y );
-      else if ( n.Y == 0f && Math.Abs( n.X ) != 1f )
-        n.X = Math.Sign( n.X );
-
-      Vector2 rA = result.Intersection - this.Position;
-      Vector2 rB = result.Intersection - body.Position;
-      Vector2 vA = this.Velocity + Geometry.Perp( rA ) * -this.AngularVelocity;
-      Vector2 vB = body.Velocity + Geometry.Perp( rB ) * -body.AngularVelocity;
-      Vector2 vAB = vA - vB;
-      Vector2 fricDir = -( vAB - Vector2.Dot( vAB, n ) * n );
-
-      if ( fricDir != Vector2.Zero )
-        fricDir.Normalize();
-      if ( float.IsInfinity( fricDir.X ) || float.IsInfinity( fricDir.Y ) )
-        fricDir = Vector2.Zero;
-
-      float oneByMassA = 1f / Mass;
-      float oneByMassB = 1f / body.Mass;
-      float oneByIA = 1f / MomentOfInertia;
-      float oneByIB = 1f / body.MomentOfInertia;
-
-      if ( body.Flags.HasFlags( BodyFlags.Anchored ) )
-      {
-        oneByMassB = 0f;
-        oneByIB = 0f;
-      }
-
-      float dotASq = Geometry.PerpDot( rA, n ); dotASq *= dotASq;
-      float dotBSq = Geometry.PerpDot( rB, n ); dotBSq *= dotBSq;
-      float jc = Vector2.Dot( vAB, n ) / ( oneByMassA + oneByMassB + dotASq * oneByIA + dotBSq * oneByIB );
-
-      dotASq = Geometry.PerpDot( rA, fricDir ); dotASq *= dotASq;
-      dotBSq = Geometry.PerpDot( rB, fricDir ); dotBSq *= dotBSq;
-      float jf = Vector2.Dot( vAB, fricDir ) / ( oneByMassA + oneByMassB + dotASq * oneByIA + dotBSq * oneByIB );
-
-      if ( Math.Abs( jf ) > Math.Abs( jc * u ) )
-        jf = Math.Abs( jc * u ) * Math.Sign( jc );
-
-      Vector2 impulse = ( jc * -( 1f + e ) ) * n - jf * fricDir;
-
-      this.Velocity += ( impulse * oneByMassA );
-      body.Velocity -= ( impulse * oneByMassB );
-
-      this.AngularVelocity += ( Geometry.PerpDot( rA, impulse ) * oneByIA );
-      body.AngularVelocity -= ( Geometry.PerpDot( rB, impulse ) * oneByIB );
-
-      if ( this.Responded != null && !this.CollisionList.Contains( body ) )
-        Responded( result );
-      if ( body.Responded != null && !body.CollisionList.Contains( this ) )
-        body.Responded( result.GetInvert() );
-
-      this.CollisionList.Add( body );
-      body.CollisionList.Add( this );
+      if ( Collided != null && !CollisionList.Contains( result.BodyB ) )
+        return Collided( result );
+      return true;
     }
 
-    public bool HandleCollision( Collision result )
+    public bool OnResponse( Collision result )
     {
-      if ( Collided != null )
-      {
-        Collided( result );
-        return true;
-      }
-      return false;
+      if ( Responded != null && !CollisionList.Contains( result.BodyB ) )
+        return Responded( result );
+      return true;
     }
 
     public void GetTransform( out Matrix transform )
@@ -217,6 +132,7 @@ namespace Physics
     }
 
     protected abstract void UpdateMotionBounds( float elapsed );
+
     public virtual void UpdateInternalData( float elapsed )
     {
       UpdateMotionBounds( elapsed );

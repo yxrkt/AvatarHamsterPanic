@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Content;
 using System.Diagnostics;
 using InstancedModelSample;
 using System.Collections.ObjectModel;
+using Menu;
 
 namespace AvatarHamsterPanic.Objects
 {
