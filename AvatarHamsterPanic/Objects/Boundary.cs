@@ -10,6 +10,7 @@ using InstancedModelSample;
 using System.Collections.ObjectModel;
 using Menu;
 using MathLibrary;
+using Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {

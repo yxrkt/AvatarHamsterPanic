@@ -66,7 +66,8 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="MenuItems\MenuWheel.cs" />
+    <Compile Include="MenuItems\WheelMenu.cs" />
+    <Compile Include="MenuItems\WheelMenuEntry.cs" />
     <Compile Include="Physics\CollisionDetector.cs" />
     <Compile Include="Graphics\CustomModel.cs" />
     <Compile Include="Graphics\CustomModelReader.cs" />
@@ -98,7 +99,7 @@
     <Compile Include="MenuItems\MenuText.cs" />
     <Compile Include="Objects\Avatar.cs" />
     <Compile Include="Objects\Boundary.cs" />
-    <Compile Include="Objects\Camera.cs" />
+    <Compile Include="Graphics\Camera.cs" />
     <Compile Include="Objects\FloorBlock.cs" />
     <Compile Include="Objects\GameObject.cs" />
     <Compile Include="Objects\ModelExplosion.cs" />

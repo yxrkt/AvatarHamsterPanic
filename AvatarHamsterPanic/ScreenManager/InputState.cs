@@ -207,6 +207,36 @@ namespace Menu
 
 
     /// <summary>
+    /// Checks for a "menu left" input action.
+    /// The controllingPlayer parameter specifies which player to read
+    /// input for. If this is null, it will accept input from any player.
+    /// </summary>
+    public bool IsMenuLeft( PlayerIndex? controllingPlayer )
+    {
+      PlayerIndex playerIndex;
+
+      return IsNewKeyPress( Keys.Left, controllingPlayer, out playerIndex ) ||
+             IsNewButtonPress( Buttons.DPadLeft, controllingPlayer, out playerIndex ) ||
+             IsNewButtonPress( Buttons.LeftThumbstickLeft, controllingPlayer, out playerIndex );
+    }
+
+
+    /// <summary>
+    /// Checks for a "menu right" input action.
+    /// The controllingPlayer parameter specifies which player to read
+    /// input for. If this is null, it will accept input from any player.
+    /// </summary>
+    public bool IsMenuRight( PlayerIndex? controllingPlayer )
+    {
+      PlayerIndex playerIndex;
+
+      return IsNewKeyPress( Keys.Right, controllingPlayer, out playerIndex ) ||
+             IsNewButtonPress( Buttons.DPadRight, controllingPlayer, out playerIndex ) ||
+             IsNewButtonPress( Buttons.LeftThumbstickRight, controllingPlayer, out playerIndex );
+    }
+
+
+    /// <summary>
     /// Checks for a "pause the game" input action.
     /// The controllingPlayer parameter specifies which player to read
     /// input for. If this is null, it will accept input from any player.

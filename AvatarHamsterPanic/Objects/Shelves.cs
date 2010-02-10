@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Physics;
 using MathLibrary;
 using Menu;
+using Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {

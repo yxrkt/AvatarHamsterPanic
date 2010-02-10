@@ -27,7 +27,7 @@ namespace Menu
     #region Fields
 
     ObjectTable<MenuItem> menuItems = new ObjectTable<MenuItem>();
-    int selectedEntry = 0;
+    protected int selectedEntry = 0;
 
     #endregion
 
@@ -71,33 +71,41 @@ namespace Menu
 
       PlayerIndex playerIndex;
 
-      if ( menuEntries == null )
+      if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
+        OnCancel( playerIndex );
+
+      // If there is a wheel menu, handle left and right input
+      if ( menuItems.AllObjectsList.Exists( item => item is WheelMenu ) )
       {
-        if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
-          OnCancel( playerIndex );
-        return;
+        WheelMenu wheel = menuItems.GetObjects<WheelMenu>()[0];
+        if ( input.IsMenuLeft( ControllingPlayer ) )
+          wheel.RotateCW();
+        if ( input.IsMenuRight( ControllingPlayer ) )
+          wheel.RotateCCW();
       }
-
-      // Move to the previous menu entry?
-      if ( input.IsMenuUp( ControllingPlayer ) )
+      else if ( menuEntries != null )
       {
-        menuEntries[selectedEntry--].Focused = false;
+        // Move to the previous menu entry?
+        if ( input.IsMenuUp( ControllingPlayer ) )
+        {
+          menuEntries[selectedEntry--].Focused = false;
 
-        if ( selectedEntry < 0 )
-          selectedEntry = menuEntries.Count - 1;
+          if ( selectedEntry < 0 )
+            selectedEntry = menuEntries.Count - 1;
 
-        menuEntries[selectedEntry].Focused = true;
-      }
+          menuEntries[selectedEntry].Focused = true;
+        }
 
-      // Move to the next menu entry?
-      if ( input.IsMenuDown( ControllingPlayer ) )
-      {
-        menuEntries[selectedEntry++].Focused = false;
+        // Move to the next menu entry?
+        if ( input.IsMenuDown( ControllingPlayer ) )
+        {
+          menuEntries[selectedEntry++].Focused = false;
 
-        if ( selectedEntry >= menuEntries.Count )
-          selectedEntry = 0;
+          if ( selectedEntry >= menuEntries.Count )
+            selectedEntry = 0;
 
-        menuEntries[selectedEntry].Focused = true;
+          menuEntries[selectedEntry].Focused = true;
+        }
       }
 
       // Accept or cancel the menu? We pass in our ControllingPlayer, which may
@@ -106,13 +114,9 @@ namespace Menu
       // us which player actually provided the input. We pass that through to
       // OnSelectEntry and OnCancel, so they can tell which player triggered them.
       if ( input.IsMenuSelect( ControllingPlayer, out playerIndex ) )
-      {
         OnSelectEntry( playerIndex );
-      }
       else if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
-      {
         OnCancel( playerIndex );
-      }
     }
 
 
@@ -121,7 +125,14 @@ namespace Menu
     /// </summary>
     protected virtual void OnSelectEntry( PlayerIndex playerIndex )
     {
-      MenuEntries[selectedEntry].OnSelect( playerIndex );
+      if ( menuItems.AllObjectsList.Exists( item => item is WheelMenu ) )
+      {
+        menuItems.GetObjects<WheelMenu>()[0].OnSelect( playerIndex );
+      }
+      else if ( MenuEntries != null && MenuEntries.Count != 0 )
+      {
+        MenuEntries[selectedEntry].OnSelect( playerIndex );
+      }
     }
 
 

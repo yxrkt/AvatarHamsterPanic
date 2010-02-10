@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace AvatarHamsterPanic.Objects
+namespace Graphics
 {
   public class Camera
   {
@@ -33,6 +33,16 @@ namespace AvatarHamsterPanic.Objects
     {
       Position += trans;
       Target += trans;
+    }
+
+    public Matrix GetViewMatrix()
+    {
+      return Matrix.CreateLookAt( Position, Target, Up );
+    }
+
+    public Matrix GetProjectionMatrix()
+    {
+      return Matrix.CreatePerspectiveFieldOfView( Fov, Aspect, Near, Far );
     }
   }
 }

@@ -44,8 +44,13 @@ namespace AvatarHamsterPanic.Objects
 
       graphics = new GraphicsDeviceManager( this );
 
-      graphics.PreferredBackBufferWidth = 1920;//853;
-      graphics.PreferredBackBufferHeight = 1080;//480;
+      /*/
+      graphics.PreferredBackBufferWidth = 1280;
+      graphics.PreferredBackBufferHeight = 720;
+      /*/
+      graphics.PreferredBackBufferWidth = 1920;
+      graphics.PreferredBackBufferHeight = 1080;
+      /**/
 
       IsFixedTimeStep = false;
       graphics.SynchronizeWithVerticalRetrace = false;

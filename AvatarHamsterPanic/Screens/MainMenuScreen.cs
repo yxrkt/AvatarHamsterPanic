@@ -13,6 +13,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using Microsoft.Xna.Framework.Content;
 using MathLibrary;
+using Graphics;
 #endregion
 
 namespace Menu
@@ -56,36 +57,45 @@ namespace Menu
       transitioningOn = false;
       transitioningOff = false;
 
+      TransitionOnTime = TimeSpan.FromSeconds( 1.25f );
       TransitionOffTime = TimeSpan.FromSeconds( .75 );
     }
 
     public override void LoadContent()
     {
+      // load the fancy title effects
       LoadTitleContent();
 
-      // Create our menu entries.
-      string[] entryStrings = { "Play", "Leaderboard", "Options", "Credits", "Exit" };
-      EventHandler<PlayerIndexEventArgs>[] entryEvents = 
-      {
-        PlayMenuEntrySelected,
-        LeaderboardMenuEntrySelected,
-        OptionsMenuEntrySelected,
-        CreditsMenuEntrySelected,
-        OnCancel,
-      };
+      // create the wheel menu
+      GraphicsDevice device = ScreenManager.GraphicsDevice;
+      scale = (float)device.Viewport.Height / 720f;
 
-      Vector2 entryPosition = new Vector2( 100f, 150f );
-      int nEntries = entryStrings.Length;
-      for ( int i = 0; i < nEntries; ++i )
-      {
-        MenuEntry entry = new MenuEntry( this, entryPosition, entryStrings[i] );
-        entry.Selected += entryEvents[i];
-        entry.TransitionOnPosition = entryPosition + new Vector2( -256f, 0f );
-        entry.TransitionOffPosition = entryPosition + new Vector2( 512f, 0f );
-        MenuItems.Add( entry );
-        entryPosition.Y += entry.Dimensions.Y;
-      }
-      MenuEntries[0].Focused = true;
+      ContentManager content = ScreenManager.Game.Content;
+
+      Camera camera = new Camera( MathHelper.PiOver4, device.Viewport.AspectRatio, 
+                                  1f, 100f, new Vector3( 0, 3f, 10 ), new Vector3( 0, 3f, 0 ) );
+      float wheelScale = 2.5f;
+      WheelMenu wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
+
+      WheelMenuEntry entry;
+
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/playText" ) );
+      entry.Selected += PlayMenuEntrySelected;
+      wheelMenu.AddEntry( entry );
+
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/leaderboardText" ) );
+      entry.Selected += LeaderboardMenuEntrySelected;
+      wheelMenu.AddEntry( entry );
+
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/optionsText" ) );
+      entry.Selected += OptionsMenuEntrySelected;
+      wheelMenu.AddEntry( entry );
+
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/exitText" ) );
+      entry.Selected += OnCancel;
+      wheelMenu.AddEntry( entry );
+
+      MenuItems.Add( wheelMenu );
     }
 
     private void LoadTitleContent()
@@ -106,8 +116,6 @@ namespace Menu
       screenEffect.Parameters["ScreenWidth"].SetValue( viewport.Width );
       screenEffect.Parameters["ScreenHeight"].SetValue( viewport.Height );
       screenTextureParameter = screenEffect.Parameters["Texture"];
-
-      scale = (float)viewport.Height / 720f;
 
       // 'Avatar'
       avatarTexture = content.Load<Texture2D>( "Textures/avatarText" );
@@ -131,7 +139,7 @@ namespace Menu
 
       // 'Panic'
       panicTexture = content.Load<Texture2D>( "Textures/panicText" );
-      panicPositionSpring = new SpringInterpolater( 2, 155, SpringInterpolater.GetCriticalDamping( 155 ) );
+      panicPositionSpring = new SpringInterpolater( 2, 120, SpringInterpolater.GetCriticalDamping( 120 ) );
       panicSizeSpring = new SpringInterpolater( 1, 750, .75f * SpringInterpolater.GetCriticalDamping( 200 ) );
     }
 
@@ -169,6 +177,9 @@ namespace Menu
       panicSizeSpring.SetSource( 0 );
       panicSizeSpring.SetDest( scale );
       panicSizeSpring.Active = false;
+
+      // set entries to their initial positions
+      MenuItems.GetObjects<WheelMenu>()[0].ConfigureEntries();
     }
 
     private void InitializeTransitionOff()
@@ -190,7 +201,7 @@ namespace Menu
       }
 
       // 'Panic'
-      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 300 * scale ) );
+      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 400 * scale ) );
       panicPositionSpring.Active = false;
     }
 
@@ -214,6 +225,12 @@ namespace Menu
 
     #region Handle Input
 
+    public override void HandleInput( InputState input )
+    {
+      base.HandleInput( input ); // leave this trash in for now
+
+      // awesome wheel stuff!
+    }
 
     /// <summary>
     /// Event handler for when the Play menu entry is selected.

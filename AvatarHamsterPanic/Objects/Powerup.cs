@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Collections.ObjectModel;
 using Menu;
 using MathLibrary;
+using Graphics;
 
 namespace AvatarHamsterPanic.Objects
 {

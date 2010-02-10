@@ -51,6 +51,7 @@ namespace CustomModelSample
       public EffectParameter EffectParamView;
       public EffectParameter EffectParamProjection;
       public EffectParameter EffectParamEye;
+      public EffectParameter EffectParamColor;
     }
 
 
@@ -118,6 +119,7 @@ namespace CustomModelSample
           modelPart.EffectParamView = modelPart.Effect.Parameters["View"];
           modelPart.EffectParamProjection = modelPart.Effect.Parameters["Projection"];
           modelPart.EffectParamEye = modelPart.Effect.Parameters["Eye"];
+          modelPart.EffectParamColor = modelPart.Effect.Parameters["Color"];
         } );
 
         modelParts.Add( modelPart );
