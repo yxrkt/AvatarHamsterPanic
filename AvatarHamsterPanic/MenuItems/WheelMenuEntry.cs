@@ -119,18 +119,18 @@ namespace Menu
       int nVerts = vertexBuffer.Length;
       for ( int i = 0; i < nVerts; ++i )
       {
-        vertexBuffer[i].Position = Lerper.Lerp( idleVerts[i].Position, activeVerts[i].Position, grow );
-        vertexBuffer[i].TextureCoordinate = Lerper.Lerp( idleVerts[i].TextureCoordinate, 
-                                                         activeVerts[i].TextureCoordinate, grow );
+        vertexBuffer[i].Position = Vector3.Lerp( idleVerts[i].Position, activeVerts[i].Position, grow );
+        vertexBuffer[i].TextureCoordinate = Vector2.Lerp( idleVerts[i].TextureCoordinate, 
+                                                          activeVerts[i].TextureCoordinate, grow );
       }
 
       int v = 0;
       for ( int i = 0; i <= segments; ++i )
       {
         Vector3 rimPosition = Vector3.Normalize( vertexBuffer[v].Position ) * wheel.Radius;
-        vertexBuffer[v].Position = Lerper.Lerp( rimPosition, vertexBuffer[v].Position, extend );
+        vertexBuffer[v].Position = Vector3.Lerp( rimPosition, vertexBuffer[v].Position, extend );
         v++;
-        vertexBuffer[v].Position = Lerper.Lerp( rimPosition, vertexBuffer[v].Position, extend );
+        vertexBuffer[v].Position = Vector3.Lerp( rimPosition, vertexBuffer[v].Position, extend );
         v++;
       }
     }

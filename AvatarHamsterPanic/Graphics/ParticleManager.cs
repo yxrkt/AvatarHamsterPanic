@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace AvatarHamsterPanic.Objects
+namespace Graphics
 {
   public sealed class ParticleManager : DrawableGameComponent
   {
@@ -43,6 +43,12 @@ namespace AvatarHamsterPanic.Objects
     protected override void LoadContent()
     {
       LoadModelEffect();
+    }
+
+    public void Unload()
+    {
+      foreach ( ModelExplosion explosion in modelExplosions )
+        explosion.Invalidate();
     }
 
     void LoadModelEffect()

@@ -15,19 +15,21 @@ using System.Collections.ObjectModel;
 using Menu;
 using MathLibrary;
 using Graphics;
+using Audio;
 
 namespace AvatarHamsterPanic.Objects
 {
   enum PowerupType
   {
-    ScoreCoin,
+    Shake,
+    GoldenShake,
     Hammer,
     Laser,
     Shrimp,
     Lightning
   }
 
-  class Powerup : GameObject
+  class Powerup : GameObject, IAudioEmitter
   {
     // event delegates
     private delegate void UpdateMethod( GameTime gameTime );
@@ -43,10 +45,13 @@ namespace AvatarHamsterPanic.Objects
     static VertexDeclaration vertexDeclaration;
     static GameplayScreen screen;
     static CustomModel shakeModel;
+    static CustomModel goldShakeModel;
     static CustomModel shrimpModel;
     static CustomModel hammerModel;
     static CustomModel laserModel;
     static CustomModel boltModel;
+
+    static readonly string tubePopSound = "tubePop";
 
     static Dictionary<CustomModel, Matrix> initialTransforms = 
       new Dictionary<CustomModel, Matrix>( 4 );
@@ -60,13 +65,22 @@ namespace AvatarHamsterPanic.Objects
     public PhysCircle Body { get; private set; }
     public CustomModel Model { get; private set; }
     public float Size { get; private set; }
+    public PowerupType Type { get; private set; }
 
     bool inTube;
     Vector2 exitTubePos;
     public bool InTube 
     {
       get { return inTube; }
-      set { inTube = value; if ( !inTube ) exitTubePos = Body.Position; }
+      set
+      {
+        inTube = value;
+        if ( !inTube )
+        {
+          exitTubePos = Body.Position;
+          Screen.AudioManager.Play3DCue( tubePopSound, this, 1 );
+        }
+      }
     }
     public SpringInterpolater Oscillator { get; private set; }
     public SpringInterpolater SizeSpring { get; private set; }
@@ -87,18 +101,30 @@ namespace AvatarHamsterPanic.Objects
 
       shakeModel = content.Load<CustomModel>( "Models/milkshake" );
       InitializeShakeColors();
+
+      goldShakeModel = content.Load<CustomModel>( "Models/goldshake" );
+      foreach ( CustomModel.ModelPart part in goldShakeModel.ModelParts )
+      {
+        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
+        part.EffectParamColor.SetValue( Color.Gold.ToVector4() );
+      }
+
       shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
       foreach ( CustomModel.ModelPart part in shrimpModel.ModelParts )
         part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
+      
       hammerModel = content.Load<CustomModel>( "Models/hammer" );
+      
       laserModel = content.Load<CustomModel>( "Models/gun" );
       foreach ( CustomModel.ModelPart part in laserModel.ModelParts )
         part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
+      
       boltModel = content.Load<CustomModel>( "Models/bolt" );
       foreach ( CustomModel.ModelPart part in boltModel.ModelParts )
         part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
 
       initialTransforms.Add( shakeModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 15 ) ) );
+      initialTransforms.Add( goldShakeModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 15 ) ) );
       initialTransforms.Add( shrimpModel, Matrix.CreateRotationY( MathHelper.PiOver2 ) );
       initialTransforms.Add( hammerModel, Matrix.CreateRotationZ( MathHelper.ToRadians( 30 ) ) );
       initialTransforms.Add( laserModel, Matrix.CreateRotationZ( MathHelper.ToRadians( -20 ) ) );
@@ -136,9 +162,12 @@ namespace AvatarHamsterPanic.Objects
       }
     }
 
-    public static Powerup CreateRandomPowerup( Vector2 pos )
+    public static Powerup CreateRandomPowerup( Vector2 pos, bool includeGoldenShake )
     {
-      return CreatePowerup( pos, (PowerupType)rand.Next( (int)PowerupType.Hammer, (int)PowerupType.Lightning + 1 ) );
+      if ( includeGoldenShake )
+        return CreatePowerup( pos, PowerupType.GoldenShake );
+      PowerupType min = includeGoldenShake ? PowerupType.GoldenShake : PowerupType.Hammer;
+      return CreatePowerup( pos, (PowerupType)rand.Next( (int)min, (int)PowerupType.Lightning + 1 ) );
     }
 
     public static Powerup CreatePowerup( Vector2 pos, PowerupType type )
@@ -157,6 +186,7 @@ namespace AvatarHamsterPanic.Objects
 
     private void Initialize( Vector2 pos, PowerupType type )
     {
+      Type = type;
       Body.Position = pos;
       Body.ClearEvents();
       Screen.PhysicsSpace.AddBody( Body );
@@ -170,11 +200,18 @@ namespace AvatarHamsterPanic.Objects
 
       switch ( type )
       {
-        case PowerupType.ScoreCoin:
+        case PowerupType.Shake:
           Size = 1f;
           Model = shakeModel;
           UpdateSelf += Rotate;
-          Body.Collided += HandleCoinCollision;
+          Body.Collided += HandleShakeCollision;
+          break;
+        case PowerupType.GoldenShake:
+          Size = .8f;
+          Model = goldShakeModel;
+          UpdateSelf += Rotate;
+          UpdateSelf += SineWave;
+          Body.Collided += HandleGoldenShakeCollision;
           break;
         case PowerupType.Hammer:
           Size = .8f;
@@ -371,12 +408,13 @@ namespace AvatarHamsterPanic.Objects
       Model.Draw( Screen.Camera.Position, world, Screen.View, Screen.Projection );
     }
 
-    public bool HandleCoinCollision( Collision result )
+    public bool HandleShakeCollision( Collision result )
     {
       if ( owner == null && result.BodyB.Parent is Player )
       {
         owner = (Player)result.BodyB.Parent;
-        owner.HUD.AddPoints( 1 );
+        if ( !Screen.GameOver )
+          owner.HUD.AddPoints( 1 );
 
         Screen.PhysicsSpace.RemoveBody( result.BodyA );
         Screen.ObjectTable.MoveToTrash( this );
@@ -394,6 +432,32 @@ namespace AvatarHamsterPanic.Objects
           }
           system.AddParticle( new Vector3( Body.Position, Player.Size ) + pos, Vector3.Zero/*.5f * pos*/ );
         }
+      }
+
+      return true;
+    }
+
+    public bool HandleGoldenShakeCollision( Collision result )
+    {
+      if ( owner != null ) return true; // maybe have the powerup avoid the player?
+
+      Player player = result.BodyB.Parent as Player;
+      if ( player != null && player.Powerup == null )
+      {
+        UpdateSelf -= SineWave;
+        UpdateSelf += LockToPlayer;
+
+        owner = player;
+        LockToPlayerSpring.SetSource( Body.Position - player.BoundingCircle.Position );
+        LockToPlayerSpring.SetDest( new Vector2( 0f, .75f * Player.Size ) );
+        SizeSpring.SetDest( .3f );
+        RotationSpring.Active = false;
+
+        player.HUD.AddPoints( 7 );
+
+        player.Powerup = this;
+
+        GameplayScreen.Instance.EndGame();
       }
 
       return true;
@@ -423,7 +487,6 @@ namespace AvatarHamsterPanic.Objects
 
     public void ActivateShrink()
     {
-      //Debug.WriteLine( "Shrink!" );
       ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
       for ( int i = 0; i < players.Count; ++i )
       {
@@ -434,19 +497,16 @@ namespace AvatarHamsterPanic.Objects
 
     public void ActivateCrush()
     {
-      //Debug.WriteLine( "Crush!" );
       owner.Crush();
     }
 
     public void ActivateLaser()
     {
-      //Debug.WriteLine( "Laser!" );
       owner.Laser();
     }
 
     public void ActivateLightning()
     {
-      //Debug.WriteLine( "Lightning!" );
       ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
       for ( int i = 0; i < players.Count; ++i )
       {
@@ -454,5 +514,29 @@ namespace AvatarHamsterPanic.Objects
           players[i].GetStunnedByLightning();
       }
     }
+
+    #region IAudioEmitter Members
+
+    public Vector3 Position
+    {
+      get { return new Vector3( Body.Position, 0 ); }
+    }
+
+    public Vector3 Forward
+    {
+      get { return Vector3.Forward; }
+    }
+
+    public Vector3 Up
+    {
+      get { return Screen.Camera.Up; }
+    }
+
+    public Vector3 Velocity
+    {
+      get { return Vector3.Zero; }
+    }
+
+    #endregion
   }
 }

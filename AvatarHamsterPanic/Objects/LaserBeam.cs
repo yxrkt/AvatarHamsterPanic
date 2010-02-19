@@ -11,10 +11,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Menu;
 using Graphics;
+using Audio;
 
 namespace AvatarHamsterPanic.Objects
 {
-  class LaserBeam : GameObject
+  class LaserBeam : GameObject, IAudioEmitter
   {
     Vector2 startPosition;
     Vector2 parentVelocity;
@@ -167,5 +168,29 @@ namespace AvatarHamsterPanic.Objects
 
       return true;
     }
+
+    #region IAudioEmitter Members
+
+    public Vector3 Position
+    {
+      get { return new Vector3( body.Position, 0 ); }
+    }
+
+    public Vector3 Forward
+    {
+      get { return Vector3.Forward; }
+    }
+
+    public Vector3 Up
+    {
+      get { return Screen.Camera.Up; }
+    }
+
+    public Vector3 Velocity
+    {
+      get { return Vector3.Zero; }
+    }
+
+    #endregion
   }
 }

@@ -30,6 +30,7 @@ using System.Text;
 using Particle3DSample;
 using CustomModelSample;
 using Graphics;
+using Audio;
 #endregion
 
 namespace Menu
@@ -41,9 +42,26 @@ namespace Menu
   {
     #region Fields and Properties
 
-    public static GameplayScreen Instance { get; private set; }
+    static GameplayScreen instance = null;
+    static GameplayScreen nextInstance = null;
+    public static GameplayScreen Instance
+    {
+      get { return instance; }
+      set
+      {
+        if ( instance != null )
+          nextInstance = value;
+        else
+          instance = value;
+      }
+    }
 
+    public AudioManager AudioManager { get; private set; }
     public ContentManager Content { get; private set; }
+    public bool CameraIsScrolling { get { return camIsScrolling; } }
+    public bool GameOver { get { return gameEndTime != 0; } }
+    public float FirstRow { get; private set; }
+    public float RowSpacing { get { return rowSpacing; } }
     public PhysicsSpace PhysicsSpace { get; private set; }
     public Camera Camera { get; private set; }
     public float CameraScrollSpeed { get { return camScrollSpeed; } }
@@ -60,19 +78,32 @@ namespace Menu
     public PinkPixieParticleSystem PinkPixieParticleSystem { get; set; }
     public GameTime LastGameTime { get; private set; }
 
+    public const int BlocksPerRow = 8;
+
+    const float CelebrationTime = 3f;
+
     TubeMaze tubeMaze;
     SpriteFont gameFont;
     float lastRowY = 0f;
     float lastCamY = 0f;
     float rowSpacing = 5f * FloorBlock.Size / 2f;
-    float stageWidth = FloorBlock.Size * 8f;
+    float stageWidth = FloorBlock.Size * BlocksPerRow;
     int lastRowPattern = int.MaxValue;
-    SlotState[] initSlotInfo;
+    Slot[] initSlotInfo;
     bool firstFrame;
-    float camScrollSpeed = 0;//-1.25f;
+    float camScrollSpeed = -1.25f;
     bool camIsScrolling = false;
     Rectangle backgroundRect;
     Texture2D backgroundTexture;
+    float gameEndTime = 0;
+    SpringInterpolater winnerSpring;
+    Vector3 winnerCameraOffset;
+    float cameraDistance = 20;
+    float winCameraDistance = 7;
+    Player winner;
+    bool addedPodium = false;
+    ScoreboardMenuScreen scoreboardMenuScreen;
+    PauseMenuScreen pauseScreen;
 
     long physicsTicks;
     long updateTicks;
@@ -97,10 +128,10 @@ namespace Menu
     /// <summary>
     /// Constructor.
     /// </summary>
-    public GameplayScreen( SlotState[] slots )
+    public GameplayScreen( Slot[] slots )
     {
-      TransitionOnTime = TimeSpan.FromSeconds( 1.5 );
-      TransitionOffTime = TimeSpan.FromSeconds( 0.5 );
+      TransitionOnTime = TimeSpan.FromSeconds( .5 );
+      TransitionOffTime = TimeSpan.FromSeconds( .75 );
       initSlotInfo = slots;
 
       Instance = this;
@@ -114,9 +145,15 @@ namespace Menu
       if ( Content == null )
         Content = new ContentManager( ScreenManager.Game.Services, "Content" );
 
+      Game game = ScreenManager.Game;
+
       // initialize physics
       PhysicsSpace = new PhysicsSpace();
       PhysicsSpace.Gravity = new Vector2( 0f, -5.5f );
+
+      // initialize audio
+      AudioManager = new AudioManager( game );
+      game.Components.Add( AudioManager );
 
       // render targets
       GraphicsDevice device = ScreenManager.GraphicsDevice;
@@ -134,7 +171,9 @@ namespace Menu
       gameFont = Content.Load<SpriteFont>( "Fonts/gamefont" );
       Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
 
-      Game game = ScreenManager.Game;
+      // load screens ahead of time
+      scoreboardMenuScreen = new ScoreboardMenuScreen( ScreenManager, initSlotInfo );
+      pauseScreen = new PauseMenuScreen( ScreenManager );
 
       // model explosion particles
       ParticleManager = new ParticleManager( game, Content );
@@ -172,7 +211,11 @@ namespace Menu
 
       float fov = MathHelper.ToRadians( 30f );
       float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
-      Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, 20f ), Vector3.Zero );
+      Camera = new Camera( fov, aspect, 1f, 100f, new Vector3( 0f, 0f, cameraDistance ), Vector3.Zero );
+
+      winnerSpring = new SpringInterpolater( 1, 10, SpringInterpolater.GetCriticalDamping( 10 ) );
+      winnerSpring.SetSource( 1 );
+      winnerSpring.SetDest( 0 );
 
       FloorBlock.Initialize( this );
       Powerup.Initialize( this );
@@ -207,13 +250,26 @@ namespace Menu
     public override void UnloadContent()
     {
       LaserBeam.Unload();
+      PlayerAI.RemoveAllRows();
       ObjectTable.Clear();
       Game game = ScreenManager.Game;
-      game.Components.Remove( ParticleManager );
-      game.Components.Remove( PixieParticleSystem );
-      game.Components.Remove( SparkParticleSystem );
-      game.Components.Remove( PinkPixieParticleSystem );
+      game.Components.Remove( AudioManager );
+      ParticleManager.Unload();
+      components.Remove( ParticleManager );
+      components.Remove( PixieParticleSystem );
+      components.Remove( SparkParticleSystem );
+      components.Remove( PinkPixieParticleSystem );
       Content.Unload();
+
+      if ( nextInstance != null )
+      {
+        instance = nextInstance;
+        nextInstance = null;
+      }
+      else
+      {
+        instance = null;
+      }
     }
 
 
@@ -233,18 +289,11 @@ namespace Menu
 
       LastGameTime = gameTime;
 
-      if ( IsActive )
+      if ( IsActive || ( ScreenState == ScreenState.TransitionOff && GameOver ) )
       {
         long updateBegin = Stopwatch.GetTimestamp();
 
-        foreach ( DrawableGameComponent component in components )
-          component.Update( gameTime );
-
         double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
-
-        long begin = Stopwatch.GetTimestamp();
-        PhysicsSpace.Update( elapsed );
-        physicsTicks += Stopwatch.GetTimestamp() - begin;
 
         Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
                                                           Camera.Near, Camera.Far );
@@ -255,27 +304,84 @@ namespace Menu
         SparkParticleSystem.SetCamera( View, Projection );
         PinkPixieParticleSystem.SetCamera( View, Projection );
 
+        foreach ( DrawableGameComponent component in components )
+          component.Update( gameTime );
+
+        long begin = Stopwatch.GetTimestamp();
+        PhysicsSpace.Update( elapsed );
+        physicsTicks += Stopwatch.GetTimestamp() - begin;
+
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
           CountdownTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         UpdateCamera( (float)elapsed );
+        AudioListener listener = AudioManager.Listener;
+        listener.Position = Camera.Position;
+        listener.Forward = Vector3.Forward;
+        listener.Up = Camera.Up;
+        listener.Velocity = Vector3.Zero;
 
         SpawnRows();
 
-        // Delete objects
-        ObjectTable.EmptyTrash();
+        if ( GameOver && !addedPodium )
+        {
+          if ( gameEndTime > CelebrationTime )
+          {
+            //foreach ( GameScreen screen in ScreenManager.GetScreens() )
+            //  screen.ExitScreen();
+            ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
 
-        // Update objects
+            for ( int i = 0; i < players.Count; ++i )
+            {
+              Player player = players.First( p => p.HUD.Place == ( i + 1 ) );
+              SignedInGamer gamer = (int)player.PlayerIndex < 0 ? null : SignedInGamer.SignedInGamers[player.PlayerIndex];
+              scoreboardMenuScreen.SetPlayer( i, player.PlayerNumber, player.Avatar, gamer, 
+                                              player.HUD.TotalScore, player.ID );
+            }
+
+            ScreenManager.AddScreen( scoreboardMenuScreen, null );
+            addedPodium = true;
+          }
+          else
+          {
+            gameEndTime += (float)elapsed;
+          }
+        }
+
         ReadOnlyCollection<GameObject> objects = ObjectTable.AllObjects;
         int nObjects = objects.Count;
         for ( int i = 0; i < nObjects; ++i )
           objects[i].Update( gameTime );
 
+        // Cleanup
+        ObjectTable.EmptyTrash();
         Pool.CleanUpAll();
 
         updateTicks += Stopwatch.GetTimestamp() - updateBegin;
       }
+    }
+
+    public void EndGame()
+    {
+      winnerSpring.Active = true;
+
+      ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
+      for ( int i = 0; i < players.Count; ++i )
+      {
+        Player player = players[i];
+        if ( player.Powerup != null && player.Powerup.Type == PowerupType.GoldenShake )
+        {
+          player.WinState = PlayerWinState.Win;
+          winnerCameraOffset = Camera.Target - new Vector3( player.BoundingCircle.Position, 0 );
+          winner = player;
+        }
+        else
+        {
+          player.WinState = PlayerWinState.Lose;
+        }
+      }
+      gameEndTime += (float)LastGameTime.ElapsedGameTime.TotalSeconds;
     }
 
     /// <summary>
@@ -308,9 +414,9 @@ namespace Menu
         }
       }
 
-      if ( input.IsPauseGame( null ) || gamePadDisconnected )
+      if ( ( input.IsPauseGame( null ) || gamePadDisconnected ) && ( ScreenState == ScreenState.Active ) && !GameOver )
       {
-        ScreenManager.AddScreen( new PauseMenuScreen(), null );
+        ScreenManager.AddScreen( pauseScreen, null );
       }
       else
       {
@@ -376,7 +482,7 @@ namespace Menu
       spriteBatch.End();
 
       // If the game is transitioning on or off, fade it out to black.
-      if ( TransitionPosition > 0 )
+      if ( TransitionPosition > 0 && !GameOver )
         ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
 
       Performance.Update( gameTime.ElapsedGameTime );
@@ -398,7 +504,7 @@ namespace Menu
       // debugging stuff
       DebugString.Clear();
       Vector2 position = new Vector2( 20, 20 );
-      spriteBatch.DrawString( gameFont, FormatDebugString(), position, Color.Tomato );
+      //spriteBatch.DrawString( gameFont, FormatDebugString(), position, Color.Tomato );
       //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, position, Color.Black );
     }
 
@@ -409,7 +515,7 @@ namespace Menu
     string strPolygonPercentage = "Polygon Percentage: ";
     string strCirclePercentage = "Circle Percentage: ";
     string strPhysicsPercentage = "Physics Percentage: ";
-    string strLastImpulse = "Last Impulse: ";
+    //string strLastImpulse = "Last Impulse: ";
 
     private StringBuilder FormatDebugString()
     {
@@ -454,10 +560,10 @@ namespace Menu
       DebugString.AppendInt( (int)( .5f + 100f * (float)polyMS / (float)physMS ) );
       DebugString.Append( '\n' );
 
-      // last collision impulse
-      DebugString.Append( strLastImpulse );
-      DebugString.Append( PhysicsSpace.LastImpulse );
-      DebugString.Append( '\n' );
+      //// last collision impulse
+      //DebugString.Append( strLastImpulse );
+      //DebugString.Append( PhysicsSpace.LastImpulse );
+      //DebugString.Append( '\n' );
 
       return DebugString;
     }
@@ -497,7 +603,8 @@ namespace Menu
 
       // side boundaries
       float leftBoundX = -.5f * stageWidth;
-      Boundary boundary = new Boundary( this, leftBoundX, -leftBoundX, lastRowY, rowSpacing );
+      FirstRow = lastRowY;
+      Boundary boundary = new Boundary( this, leftBoundX, -leftBoundX, FirstRow, rowSpacing );
       boundary.DrawOrder = 2;
       ObjectTable.Add( boundary );
 
@@ -532,7 +639,7 @@ namespace Menu
       for ( int i = 0; i < nBits && nBlocks > 0; ++i )
       {
         if ( random.Next( 10 ) < 3 )
-          ObjectTable.Add( Powerup.CreatePowerup( blockPos + new Vector2( 0, 1f ), PowerupType.ScoreCoin ) );
+          ObjectTable.Add( Powerup.CreatePowerup( blockPos + new Vector2( 0, 1f ), PowerupType.Shake ) );
 
         if ( ( lastRowPattern & ( 1 << i ) ) == 0 )
         {
@@ -562,6 +669,8 @@ namespace Menu
         blockPos.X += xStep;
       }
 
+      PlayerAI.AddRow( blockPos.Y, curPattern );
+
       lastRowPattern = curPattern;
     }
 
@@ -575,23 +684,31 @@ namespace Menu
           {
             Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
                                         Player.Size, Vector3.UnitX, Vector3.Zero );
-            ObjectTable.Add( new Player( this, i, (PlayerIndex)i, avatar, shelf.GetPlayerPos( i ) ) );
+            ObjectTable.Add( new Player( this, i, (PlayerIndex)i, avatar, shelf.GetPlayerPos( i ), 0 ) );
           }
         }
         else if ( i < initSlotInfo.Length && initSlotInfo[i].Avatar != null )
         {
           initSlotInfo[i].Avatar.Scale = Player.Size;
-          ObjectTable.Add( new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar, 
-                                       shelf.GetPlayerPos( i ) ) );
+          ObjectTable.Add( new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar,
+                                       shelf.GetPlayerPos( i ), initSlotInfo[i].ID ) );
         }
       }
     }
 
     private void UpdateCamera( float elapsed )
     {
+      if ( GameOver )
+        UpdateWinCamera( elapsed );
+      else
+        UpdateCameraScroll( elapsed );
+    }
+
+    private void UpdateCameraScroll( float elapsed )
+    {
       if ( elapsed == 0f ) return;
 
-      float scrollLine  = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
+      float scrollLine = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
       float scrollLine2 = .7f * FloorBlock.BirthLine;  // camera will be snapped down
 
       float prevY = Camera.Position.Y;
@@ -636,8 +753,21 @@ namespace Menu
       {
         Camera.Translate( new Vector3( 0f, camScrollSpeed * (float)elapsed, 0f ) );
       }
-    
+
       lastCamY = begCamPos;
+
+    }
+
+    private void UpdateWinCamera( float elapsed )
+    {
+      if ( elapsed > 1f / 60f )
+        elapsed = 1f / 60f;
+
+      float u = winnerSpring.GetSource()[0];
+      Camera.Target = new Vector3( winner.BoundingCircle.Position, 0 ) + winnerCameraOffset * u;
+      Camera.Position = Camera.Target + Vector3.UnitZ * MathHelper.Lerp( cameraDistance, winCameraDistance, 1 - u );
+
+      winnerSpring.Update( elapsed );
     }
 
 #if DEBUG

@@ -32,9 +32,11 @@ namespace AvatarHamsterPanic.Objects
     PopupText scorePopup;
     StringBuilder scoreString;
 
+    int place;
     SpriteFont placeFont;
     Vector2 placePos;
     StringBuilder placeNumber;
+    SpringInterpolater placeSpring;
 
     Rectangle boostRect;
     Effect boostEffect;
@@ -51,9 +53,14 @@ namespace AvatarHamsterPanic.Objects
 
     public Player Player { get; private set; }
     public int Score { get; private set; }
-    public int Place { get; set; }
+    public int TotalScore { get { return Math.Max( Score + scorePopup.Points, 0 ); } }
     public string Name { get; set; }
     public float Boost { get; set; }
+    public int Place
+    {
+      get { return place; }
+      set { if ( place != value ) { place = value; placeSpring.SetSource( 1.25f ); } }
+    }
 
     public PlayerHUD( Player player, SignedInGamer gamer )
     {
@@ -68,7 +75,6 @@ namespace AvatarHamsterPanic.Objects
 
       Player = player;
       Score = 0;
-      Place = 1;
       Boost = 1f;
 
       Rectangle safeRect = screen.SafeRect;
@@ -119,11 +125,18 @@ namespace AvatarHamsterPanic.Objects
       placePos = new Vector2( x0 + 37, y0 + 65 );
       placeFont = screen.Content.Load<SpriteFont>( "Fonts/HUDPlaceFont" );
       placeNumber = new StringBuilder( "0" );
+      placeSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
+      placeSpring.SetSource( 1f );
+      placeSpring.SetDest( 1f );
+      placeSpring.Active = true;
+      Place = 1;
     }
 
     public void Update( GameTime gameTime )
     {
       float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+      if ( elapsed > 1f / 60f )
+        elapsed = 1f / 60f;
 
       int scoreChange = scorePopup.Update( elapsed );
       if ( scoreChange != 0 )
@@ -132,6 +145,7 @@ namespace AvatarHamsterPanic.Objects
       Score = Math.Max( 0, Score );
 
       scoreSpring.Update( elapsed );
+      placeSpring.Update( elapsed );
 
       lastTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
@@ -185,8 +199,10 @@ namespace AvatarHamsterPanic.Objects
       Vector2 placeTagSize = nameFont.MeasureString( placeTag );
       Vector2 placeNumberOrigin = new Vector2( ( placeNumberSize.X + placeTagSize.X ) / 2, placeNumberSize.Y );
       Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X - 1, placeTagSize.Y + 12 );
-      spriteBatch.DrawString( placeFont, placeNumber, placePos, Color.Black, 0f, placeNumberOrigin, 1f, SpriteEffects.None, 0f );
-      spriteBatch.DrawString( nameFont, placeTag, placePos, Color.Black, 0f, placeTagOrigin, 1f, SpriteEffects.None, 0f );
+      spriteBatch.DrawString( placeFont, placeNumber, placePos, Color.Black, 0f,
+                              placeNumberOrigin, placeSpring.GetSource()[0], SpriteEffects.None, 0f );
+      spriteBatch.DrawString( nameFont, placeTag, placePos, Color.Black, 0f, placeTagOrigin, 
+                              1, SpriteEffects.None, 0f );
     }
 
     public void AddPoints( int points )

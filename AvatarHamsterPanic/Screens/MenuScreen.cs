@@ -40,6 +40,7 @@ namespace Menu
     /// </summary>
     protected ObjectTable<MenuItem> MenuItems { get { return menuItems; } }
     protected ReadOnlyCollection<MenuEntry> MenuEntries { get { return MenuItems.GetObjects<MenuEntry>(); } }
+    protected ReadOnlyCollection<ImageMenuEntry> ImageMenuEntries { get { return MenuItems.GetObjects<ImageMenuEntry>(); } }
 
 
     #endregion
@@ -68,6 +69,7 @@ namespace Menu
     public override void HandleInput( InputState input )
     {
       ReadOnlyCollection<MenuEntry> menuEntries = MenuEntries;
+      ReadOnlyCollection<ImageMenuEntry> imageMenuEntries = ImageMenuEntries;
 
       PlayerIndex playerIndex;
 
@@ -83,7 +85,31 @@ namespace Menu
         if ( input.IsMenuRight( ControllingPlayer ) )
           wheel.RotateCCW();
       }
-      else if ( menuEntries != null )
+      else if ( imageMenuEntries != null && imageMenuEntries.Count != 0 )
+      {
+        // Move to the previous menu entry?
+        if ( input.IsMenuUp( ControllingPlayer ) )
+        {
+          imageMenuEntries[selectedEntry--].Focused = false;
+
+          if ( selectedEntry < 0 )
+            selectedEntry = imageMenuEntries.Count - 1;
+
+          imageMenuEntries[selectedEntry].Focused = true;
+        }
+
+        // Move to the next menu entry?
+        if ( input.IsMenuDown( ControllingPlayer ) )
+        {
+          imageMenuEntries[selectedEntry++].Focused = false;
+
+          if ( selectedEntry >= imageMenuEntries.Count )
+            selectedEntry = 0;
+
+          imageMenuEntries[selectedEntry].Focused = true;
+        }
+      }
+      else if ( menuEntries != null && menuEntries.Count != 0 )
       {
         // Move to the previous menu entry?
         if ( input.IsMenuUp( ControllingPlayer ) )
@@ -128,6 +154,10 @@ namespace Menu
       if ( menuItems.AllObjectsList.Exists( item => item is WheelMenu ) )
       {
         menuItems.GetObjects<WheelMenu>()[0].OnSelect( playerIndex );
+      }
+      else if ( ImageMenuEntries != null && ImageMenuEntries.Count != 0 )
+      {
+        ImageMenuEntries[selectedEntry].OnSelect( playerIndex );
       }
       else if ( MenuEntries != null && MenuEntries.Count != 0 )
       {

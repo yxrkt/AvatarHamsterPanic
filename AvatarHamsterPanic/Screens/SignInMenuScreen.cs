@@ -12,19 +12,20 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Menu
 {
-  public struct SlotState
+  public struct Slot
   {
     public Avatar Avatar;
     public PlayerIndex Player;
     public bool Ready;
     public Vector3 Position;
     public List<int> CreatedBots;
+    public uint ID;
   }
 
   class SignInMenuScreen : MenuScreen
   {
     ContentManager content;
-    SlotState[] slots = new SlotState[4];
+    Slot[] slots = new Slot[4];
     float scale = 1f;
     const PlayerIndex NoPlayer = (PlayerIndex)( -2 );
     const PlayerIndex BotPlayer = (PlayerIndex)( -1 );
@@ -98,7 +99,7 @@ namespace Menu
       }
     }
 
-    public void OnButtonAHit( PlayerIndex playerIndex, ref SlotState slot )
+    public void OnButtonAHit( PlayerIndex playerIndex, ref Slot slot )
     {
       if ( slot.Player < PlayerIndex.One )
       {
@@ -134,7 +135,7 @@ namespace Menu
       }
     }
 
-    public void OnButtonBHit( PlayerIndex playerIndex, ref SlotState slot )
+    public void OnButtonBHit( PlayerIndex playerIndex, ref Slot slot )
     {
       if ( slot.Ready )
       {
@@ -158,7 +159,7 @@ namespace Menu
       }
     }
 
-    public void OnButtonXHit( PlayerIndex playerIndex, ref SlotState slot )
+    public void OnButtonXHit( PlayerIndex playerIndex, ref Slot slot )
     {
       for ( int i = 0; i < 4; ++i )
       {

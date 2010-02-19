@@ -66,6 +66,11 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Audio\AudioManager.cs" />
+    <Compile Include="Audio\IAudioEmitter.cs" />
+    <Compile Include="Audio\SoundSource.cs" />
+    <Compile Include="Graphics\ScreenQuadEffect.cs" />
+    <Compile Include="MenuItems\ImageMenuEntry.cs" />
     <Compile Include="MenuItems\WheelMenu.cs" />
     <Compile Include="MenuItems\WheelMenuEntry.cs" />
     <Compile Include="Physics\CollisionDetector.cs" />
@@ -75,23 +80,25 @@
     <Compile Include="Game.cs" />
     <Compile Include="Physics\CollisionResolver.cs" />
     <Compile Include="Physics\PhysicsSpace.cs" />
+    <Compile Include="Screens\ScoreboardMenuScreen.cs" />
+    <Compile Include="Screens\ScoreboardPopupMenuScreen.cs" />
     <Compile Include="Utilities\Geometry.cs" />
     <Compile Include="Graphics\InstancedModel.cs" />
     <Compile Include="Graphics\InstancedModelPart.cs" />
     <Compile Include="Graphics\InstancedModelReader.cs" />
     <Compile Include="Objects\LaserBeam.cs" />
     <Compile Include="Objects\Lightning.cs" />
-    <Compile Include="Objects\PinkPixieParticleSystem.cs" />
-    <Compile Include="Objects\PixieParticleSystem.cs" />
+    <Compile Include="Graphics\PinkPixieParticleSystem.cs" />
+    <Compile Include="Graphics\PixieParticleSystem.cs" />
     <Compile Include="Objects\Powerup.cs" />
     <Compile Include="Objects\OneByOneByOne.cs" />
-    <Compile Include="Objects\ParticleManager.cs" />
-    <Compile Include="Objects\ParticleSettings.cs" />
-    <Compile Include="Objects\ParticleSystem.cs" />
-    <Compile Include="Objects\ParticleVertex.cs" />
+    <Compile Include="Graphics\ParticleManager.cs" />
+    <Compile Include="Graphics\ParticleSettings.cs" />
+    <Compile Include="Graphics\ParticleSystem.cs" />
+    <Compile Include="Graphics\ParticleVertex.cs" />
     <Compile Include="Objects\ReadyGo.cs" />
     <Compile Include="Objects\Shelves.cs" />
-    <Compile Include="Objects\SparkParticleSystem.cs" />
+    <Compile Include="Graphics\SparkParticleSystem.cs" />
     <Compile Include="Graphics\PostProcessing.cs" />
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
@@ -102,7 +109,7 @@
     <Compile Include="Graphics\Camera.cs" />
     <Compile Include="Objects\FloorBlock.cs" />
     <Compile Include="Objects\GameObject.cs" />
-    <Compile Include="Objects\ModelExplosion.cs" />
+    <Compile Include="Graphics\ModelExplosion.cs" />
     <Compile Include="Objects\ObjectTable.cs" />
     <Compile Include="Physics\PhysBody.cs" />
     <Compile Include="Objects\Player.cs" />

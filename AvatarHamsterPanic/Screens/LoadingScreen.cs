@@ -96,8 +96,8 @@ namespace Menu
 
       // Create and activate the loading screen.
       LoadingScreen loadingScreen = new LoadingScreen( screenManager,
-                                                      loadingIsSlow,
-                                                      screensToLoad );
+                                                       loadingIsSlow,
+                                                       screensToLoad );
 
       screenManager.AddScreen( loadingScreen, controllingPlayer );
     }

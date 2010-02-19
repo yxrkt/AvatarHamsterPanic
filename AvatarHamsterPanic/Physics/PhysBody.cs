@@ -71,6 +71,7 @@ namespace Physics
     public Collision LastResult = new Collision();
     public bool Moved = false;
     public MotionBounds MotionBounds;
+    public Vector2 LastImpulse;
 
     public bool Released = false;
 

@@ -24,7 +24,7 @@ namespace Menu
     public float Scale { get; set; }
     public float Z { get; set; }
     public bool Hidden { get; set; }
-    public Vector2 Dimensions { get; protected set; }
+    public Vector2 Dimensions { get; set; }
     public Vector2 Origin { get; set; }
     public Vector2 Position { get; set; }
     public Vector2 TransitionOnPosition { get; set; }

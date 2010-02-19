@@ -132,22 +132,4 @@ namespace MathLibrary
       }
     }
   }
-
-  public static class Lerper
-  {
-    public static Vector2 Lerp( Vector2 value1, Vector2 value2, float amount )
-    {
-      return value1 + ( value2 - value1 ) * amount;
-    }
-
-    public static Vector3 Lerp( Vector3 value1, Vector3 value2, float amount )
-    {
-      return value1 + ( value2 - value1 ) * amount;
-    }
-
-    public static Vector4 Lerp( Vector4 value1, Vector4 value2, float amount )
-    {
-      return value1 + ( value2 - value1 ) * amount;
-    }
-  }
 }

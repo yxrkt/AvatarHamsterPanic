@@ -75,6 +75,9 @@ namespace Physics
 
       Vector2 impulse = ( jc * -( 1f + e ) ) * n - jf * fricDir;
 
+      bodyA.LastImpulse = impulse;
+      bodyB.LastImpulse = -impulse;
+
       bodyA.Velocity += ( impulse * oneByMassA );
       bodyB.Velocity -= ( impulse * oneByMassB );
 

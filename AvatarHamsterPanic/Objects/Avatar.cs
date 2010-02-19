@@ -14,13 +14,14 @@ namespace AvatarHamsterPanic.Objects
 {
   public class Avatar
   {
-    public AvatarRenderer Renderer { get; set; }
+    public AvatarRenderer Renderer { get; private set; }
     public float Scale { get; set; }
     public Vector3 Direction { get; set; }
     public Vector3 Position { get; set; }
     public float BlendTime { get; set; }
     public ReadOnlyCollection<Matrix> BoneTransforms { get; private set; }
     public AvatarExpression Expression { get { return currentAnimation.Expression; } }
+    public AvatarDescription Description { get; private set; }
 
     private AvatarAnimationWrapper currentAnimation = null;
     private AvatarAnimationWrapper targetAnimation = null;
@@ -45,6 +46,7 @@ namespace AvatarHamsterPanic.Objects
       Direction = dir;
       Position = pos;
       BlendTime = .25f;
+      Description = body;
 
       Renderer = new AvatarRenderer( body );
       currentAnimation = anim;

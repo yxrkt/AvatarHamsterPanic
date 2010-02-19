@@ -20,6 +20,7 @@ namespace AvatarHamsterPanic.Objects
     public bool Active { get; private set; }
     public SpringInterpolater PositionSpring { get; private set; }
     public SpringInterpolater ScaleSpring { get; private set; }
+    public int Points { get { return number; } }
 
     public PopupText( float size, Vector2 showPos, Vector2 hidePos, float timeout )
     {
@@ -55,7 +56,9 @@ namespace AvatarHamsterPanic.Objects
         if ( ScaleSpring.GetSource()[0] < .05f )
         {
           Active = false;
-          return number;
+          int temp = number;
+          number = 0;
+          return temp;
         }
       }
 

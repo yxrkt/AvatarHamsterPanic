@@ -34,7 +34,7 @@ namespace Physics
         throw new InvalidOperationException( "body already in space" );
 #endif
       // if Released is marked true, then the body hasn't been removed yet
-      if ( body.Released )
+      if ( !bodies.Contains( body ) )
         bodies.Add( body );
       body.Released = false;
     }

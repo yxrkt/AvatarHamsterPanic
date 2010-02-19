@@ -18,6 +18,7 @@ namespace AvatarHamsterPanic.Objects
   {
     const float polyWidth = 100f;
     const float halfPolyWidth = polyWidth / 2f;
+    const int goldenShakeSpacing = 5;
 
     PhysPolygon polyLeft, polyRight;
     float deathLine;
@@ -31,6 +32,7 @@ namespace AvatarHamsterPanic.Objects
     float minHoleSpacing = 12;
     int highestRow = 0;
     int rows;
+    int lastGoldenShake;
 
     InstancedModel cageModel;
     InstancedModel cageHoleModel;
@@ -65,12 +67,13 @@ namespace AvatarHamsterPanic.Objects
       Right = right;
 
       lastFrame = new GameTime( TimeSpan.FromSeconds( 0 ), TimeSpan.FromSeconds( 0 ),
-                               TimeSpan.FromSeconds( 1f / 60f ), TimeSpan.FromSeconds( 1f / 60 ) );
+                                TimeSpan.FromSeconds( 1f / 60f ), TimeSpan.FromSeconds( 1f / 60 ) );
 
       this.rowSpacing = rowSpacing;
       this.rowStart = rowStart;
       minHoleDist = ( FloorBlock.Height + Size ) / 2f;
       lastHole = rowStart;
+      lastGoldenShake = 0;
 
       // this is for objects, such as powerups and players, so they can travel through the tubes
       objects = new List<BoundaryTubeObject>( 10 );
@@ -82,6 +85,7 @@ namespace AvatarHamsterPanic.Objects
       polyLeft.Elasticity = 1f;
       polyLeft.Friction = 1.5f;
       polyLeft.Flags = BodyFlags.Anchored;
+      polyLeft.Parent = this;
       screen.PhysicsSpace.AddBody( polyLeft );
 
       // right polygon
@@ -89,6 +93,7 @@ namespace AvatarHamsterPanic.Objects
       polyRight.Elasticity = 1f;
       polyRight.Friction = 1.5f;
       polyRight.Flags = BodyFlags.Anchored;
+      polyRight.Parent = this;
       screen.PhysicsSpace.AddBody( polyRight );
 
       // model
@@ -188,7 +193,8 @@ namespace AvatarHamsterPanic.Objects
         else
           piece.TubeTransform = scale * flip * Matrix.CreateTranslation( piece.TubePosition );
 
-        ShootRandomPowerup( piece, midLine );
+        if ( !Screen.GameOver )
+          ShootRandomPowerup( piece, midLine );
       }
       else
       {
@@ -237,7 +243,13 @@ namespace AvatarHamsterPanic.Objects
       }
 
       Vector2 startPos = new Vector2( piece.TubePosition.X, deathLine + Screen.Camera.Position.Y );
-      Powerup powerup = Powerup.CreateRandomPowerup( startPos );
+      Powerup powerup = Powerup.CreateRandomPowerup( startPos, lastGoldenShake >= goldenShakeSpacing );
+
+      if ( powerup.Type == PowerupType.GoldenShake )
+        lastGoldenShake = 0;
+      else
+        lastGoldenShake++;
+
       powerup.InTube = true;
       powerup.Update( lastFrame );
       Screen.ObjectTable.Add( powerup );

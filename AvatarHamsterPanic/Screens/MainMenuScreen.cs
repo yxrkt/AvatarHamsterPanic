@@ -68,7 +68,7 @@ namespace Menu
 
       // create the wheel menu
       GraphicsDevice device = ScreenManager.GraphicsDevice;
-      scale = (float)device.Viewport.Height / 720f;
+      scale = (float)device.Viewport.Height / 1080f;
 
       ContentManager content = ScreenManager.Game.Content;
 
@@ -89,6 +89,10 @@ namespace Menu
 
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/optionsText" ) );
       entry.Selected += OptionsMenuEntrySelected;
+      wheelMenu.AddEntry( entry );
+
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/creditsText" ) );
+      entry.Selected += CreditsMenuEntrySelected;
       wheelMenu.AddEntry( entry );
 
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/exitText" ) );
@@ -148,7 +152,7 @@ namespace Menu
       Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
 
       // 'Avatar'
-      SetSpringDests( avatarTexture, new Vector2( viewport.Width / 2, 26f * scale ), scale, avatarVertSprings );
+      SetSpringDests( avatarTexture, new Vector2( viewport.Width / 2, 39f * scale ), scale, avatarVertSprings );
       float right = -100f * scale;
       float left  = right - avatarTexture.Width * scale;
       avatarVertSprings[0].SetSource( left );
@@ -159,7 +163,7 @@ namespace Menu
         spring.Active = false;
 
       // 'Hamster'
-      SetSpringDests( hamsterTexture, new Vector2( viewport.Width / 2, 111f * scale ), scale, hamsterVertSprings );
+      SetSpringDests( hamsterTexture, new Vector2( viewport.Width / 2, 166.5f * scale ), scale, hamsterVertSprings );
       left = viewport.Width + 100f * scale;
       right = left + hamsterTexture.Width * scale;
       hamsterVertSprings[0].SetSource( left );
@@ -170,7 +174,7 @@ namespace Menu
         spring.Active = false;
 
       // 'Panic'
-      Vector2 position = new Vector2( viewport.Width / 2, ( 163f + panicTexture.Height / 2 ) * scale );
+      Vector2 position = new Vector2( viewport.Width / 2, ( 244.5f + panicTexture.Height / 2 ) * scale );
       panicPositionSpring.SetSource( position );
       panicPositionSpring.SetDest( position );
       panicPositionSpring.Active = false;
@@ -189,19 +193,19 @@ namespace Menu
       // 'Avatar'
       foreach ( SpringInterpolater spring in avatarVertSprings )
       {
-        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 200 * scale ) );
+        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 350 * scale ) );
         spring.Active = false;
       }
 
       // 'Hamster'
       foreach ( SpringInterpolater spring in hamsterVertSprings )
       {
-        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 200 * scale ) );
+        spring.SetDest( new Vector2( spring.GetDest()[0], spring.GetDest()[1] - 350 * scale ) );
         spring.Active = false;
       }
 
       // 'Panic'
-      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 400 * scale ) );
+      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 600 * scale ) );
       panicPositionSpring.Active = false;
     }
 

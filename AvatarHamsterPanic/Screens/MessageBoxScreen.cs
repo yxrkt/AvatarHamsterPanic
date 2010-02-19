@@ -146,9 +146,9 @@ namespace Menu
       const int vPad = 16;
 
       Rectangle backgroundRectangle = new Rectangle( (int)textPosition.X - hPad,
-                                                    (int)textPosition.Y - vPad,
-                                                    (int)textSize.X + hPad * 2,
-                                                    (int)textSize.Y + vPad * 2 );
+                                                     (int)textPosition.Y - vPad,
+                                                     (int)textSize.X + hPad * 2,
+                                                     (int)textSize.Y + vPad * 2 );
 
       // Fade the popup alpha during transitions.
       Color color = new Color( 255, 255, 255, TransitionAlpha );

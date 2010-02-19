@@ -13,6 +13,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Storage;
 using Menu;
+using System.Collections.Generic;
 #endregion
 
 namespace AvatarHamsterPanic.Objects
@@ -23,12 +24,15 @@ namespace AvatarHamsterPanic.Objects
   /// menu. This main game class is extremely simple: all the interesting
   /// stuff happens in the ScreenManager component.
   /// </summary>
-  public class GameCore : Microsoft.Xna.Framework.Game
+  public class GameCore : Game
   {
     #region Fields
 
     GraphicsDeviceManager graphics;
     ScreenManager screenManager;
+
+    public Dictionary<uint, int> PlayerWins { get; private set; }
+    public Color[] PlayerColors { get; private set; }
 
     #endregion
 
@@ -44,6 +48,15 @@ namespace AvatarHamsterPanic.Objects
 
       graphics = new GraphicsDeviceManager( this );
 
+      PlayerWins = new Dictionary<uint, int>( 4 );
+      PlayerColors = new Color[4]
+      {
+        new Color( 0xAA, 0xEA, 0xFF ),//AAEAFF
+        new Color( 0xF7, 0xA4, 0xA4 ),//F7A4A4
+        new Color( 0xFF, 0xEB, 0x9B ),//FFEB9B
+        new Color( 0xC2, 0xF2, 0xA2 ),//C2F2A2
+      };
+
       /*/
       graphics.PreferredBackBufferWidth = 1280;
       graphics.PreferredBackBufferHeight = 720;
@@ -51,6 +64,8 @@ namespace AvatarHamsterPanic.Objects
       graphics.PreferredBackBufferWidth = 1920;
       graphics.PreferredBackBufferHeight = 1080;
       /**/
+
+      graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
 
       IsFixedTimeStep = false;
       graphics.SynchronizeWithVerticalRetrace = false;

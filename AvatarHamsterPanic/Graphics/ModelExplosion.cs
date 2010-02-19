@@ -7,7 +7,7 @@ using Utilities;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace AvatarHamsterPanic.Objects
+namespace Graphics
 {
   public class ModelExplosion
   {
@@ -59,13 +59,18 @@ namespace AvatarHamsterPanic.Objects
       particles = new List<MeshParticle>( 40 );
     }
 
+    public void Invalidate()
+    {
+      foreach ( MeshParticle particle in particles )
+        particle.Alpha = 0; // this invalidates the particle, removing it from the pool
+      Valid = false;
+    }
+
     public void Update( GameTime gameTime )
     {
       if ( time > expiration )
       {
-        foreach ( MeshParticle particle in particles )
-          particle.Alpha = 0; // this invalidates the particle, removing it from the pool
-        Valid = false;
+        Invalidate();
       }
       else
       {

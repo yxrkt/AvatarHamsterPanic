@@ -17,10 +17,12 @@ using MathLibrary;
 using System.Diagnostics;
 using Menu;
 using Graphics;
+using Audio;
+using System.Collections.ObjectModel;
 
 namespace AvatarHamsterPanic.Objects
 {
-  class Player : GameObject
+  class Player : GameObject, IAudioEmitter
   {
     static readonly float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
     static readonly float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
@@ -34,9 +36,17 @@ namespace AvatarHamsterPanic.Objects
     static readonly float shrinkSize = .35f;
     //static readonly float squashSize;
     static readonly float crushDuration = .75f;
-    static readonly float crushMass = 10000f;
+    static readonly float crushMass = 20f;
     static readonly float seizureDuration = .5f;
     static readonly float lightningStunDuration = 1f;
+
+    static readonly string pvpSound = "plasticHit";
+    static readonly string pvBlockSound = "ballVBlock";
+    static readonly string pvCageSound = "ballVCage";
+    static readonly string laserShotSound = "laserShot";
+
+    static Dictionary<string, uint> playerIDs = new Dictionary<string, uint>( 4 );
+    static uint nextID = 1;
 
     float jumpRegistered;
     const float jumpTimeout = .125f;
@@ -51,6 +61,10 @@ namespace AvatarHamsterPanic.Objects
     VertexDeclaration vertexDeclaration;
     CustomAvatarAnimationData walkAnim;
     CustomAvatarAnimationData runAnim;
+    Vector3 soundPosition;
+    Vector3 soundVelocity;
+    PlayerAI playerAI;
+    AvatarAnimationPreset standAnim;
 
     static Random random = new Random();
 
@@ -59,6 +73,7 @@ namespace AvatarHamsterPanic.Objects
     public bool Boosting { get; private set; }
     public float BoostBurnRate { get; set; }
     public float BoostRechargeRate { get; set; }
+    public uint ID { get; private set; }
     public int PlayerNumber { get; private set; }
     public PlayerIndex PlayerIndex { get; private set; }
     public PhysCircle BoundingCircle { get; private set; }
@@ -71,8 +86,9 @@ namespace AvatarHamsterPanic.Objects
     public float DeathLine { get; private set; }
     public bool Crushing { get { return crushBegin != 0; } }
     public bool Seizuring { get { return seizureBegin != 0; } }
+    public PlayerWinState WinState { get; set; }
 
-    public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos )
+    public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos, uint id )
       : base( screen )
     {
       WheelModel = screen.Content.Load<CustomModel>( "Models/hamsterBall" );
@@ -83,7 +99,13 @@ namespace AvatarHamsterPanic.Objects
         part.Effect.Parameters["SpecularPower"].SetValue( 400 );
         part.Effect.Parameters["Mask"].SetValue( MaskHelper.MotionBlur( 1 ) );
       }
+
       DrawOrder = 3;
+
+      WinState = PlayerWinState.None;
+
+      soundPosition = Vector3.Zero;
+      soundVelocity = Vector3.Zero;
 
       float depth = screen.Camera.Position.Z;
       DeathLine = depth * (float)Math.Tan( screen.Camera.Fov / 2f );
@@ -114,13 +136,29 @@ namespace AvatarHamsterPanic.Objects
       walkAnim = CustomAvatarAnimationData.GetAvatarAnimationData( "Walk", Screen.Content );
       runAnim  = CustomAvatarAnimationData.GetAvatarAnimationData( "Run", Screen.Content );
 
+      // pre-load animations for podium screen
+      avatar.SetAnimation( AvatarAnimationPreset.Celebrate );
+      avatar.SetAnimation( AvatarAnimationPreset.Clap );
+      avatar.SetAnimation( AvatarAnimationPreset.FemaleAngry );
+      avatar.SetAnimation( AvatarAnimationPreset.MaleCry );
+
+      standAnim = (AvatarAnimationPreset)( (int)AvatarAnimationPreset.Stand0 + random.Next( 8 ) );
+      avatar.SetAnimation( standAnim );
+
       if ( playerIndex >= PlayerIndex.One )
+      {
         HUD = new PlayerHUD( this, SignedInGamer.SignedInGamers[playerIndex] );
+      }
       else
+      {
         HUD = new PlayerHUD( this, null );
+        playerAI = new PlayerAI( this );
+      }
 
       vertexDeclaration = new VertexDeclaration( screen.ScreenManager.GraphicsDevice, 
                                                  VertexPositionNormalTexture.VertexElements );
+
+      SetID( id );
     }
 
     public void GetWheelTransform( out Matrix transform )
@@ -132,6 +170,34 @@ namespace AvatarHamsterPanic.Objects
 
       Matrix.Multiply( ref matScale, ref matRot, out transform );
       Matrix.Multiply( ref transform, ref matTrans, out transform );
+    }
+
+    private void SetID( uint id )
+    {
+      if ( id == 0 )
+      {
+        if ( PlayerIndex >= PlayerIndex.One )
+        {
+          string gamertag = SignedInGamer.SignedInGamers[PlayerIndex].Gamertag;
+          if ( playerIDs.ContainsKey( gamertag ) )
+          {
+            ID = playerIDs[gamertag];
+          }
+          else
+          {
+            ID = nextID++;
+            playerIDs.Add( gamertag, ID );
+          }
+        }
+        else
+        {
+          ID = nextID++;
+        }
+      }
+      else
+      {
+        ID = id;
+      }
     }
 
     private bool HandleCollision( Collision result )
@@ -146,6 +212,19 @@ namespace AvatarHamsterPanic.Objects
       //  }
       //}
 
+      // play collision sound
+      Player playerB = result.BodyB.Parent as Player;
+      if ( playerB != null )
+      {
+        float relVelMag = ( result.BodyA.Velocity - result.BodyB.Velocity ).Length();
+        if ( relVelMag > 1f )
+        {
+          float volume = Math.Min( .75f, relVelMag / 6f );
+          soundPosition = new Vector3( result.Intersection, 0 );
+          Screen.AudioManager.Play3DCue( pvpSound, this, volume );
+        }
+      }
+
       return true;
     }
 
@@ -158,6 +237,36 @@ namespace AvatarHamsterPanic.Objects
 
       // set emitter position
       SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
+
+      string sound = null;
+      if ( result.BodyB.Parent is FloorBlock )
+        sound = pvBlockSound;
+      if ( result.BodyB.Parent is Boundary || result.BodyB.Parent is Shelves )
+        sound = pvCageSound;
+
+      if ( sound != null )
+      {
+        float impulse = result.BodyA.LastImpulse.Length();
+        if ( impulse > .5f )
+        {
+          float volume = Math.Min( 1f, impulse / ( 5 * BoundingCircle.Mass ) );
+          soundPosition = new Vector3( result.Intersection, 0 );
+          Screen.AudioManager.Play3DCue( sound, this, volume );
+        }
+      }
+
+      //// play collision sound
+      //Player playerB = result.BodyB.Parent as Player;
+      //if ( playerB != null )
+      //{
+      //  float impulseMag = result.BodyB.LastImpulse.Length();
+      //  //if ( impulseMag > .5f )
+      //  {
+      //    float volume = Math.Min( .85f, impulseMag / 30f );
+      //    soundPosition = new Vector3( result.Intersection, 0 );
+      //    Screen.AudioManager.Play3DCue( plasticHitSound, this, volume );
+      //  }
+      //}
 
       Vector3 position = new Vector3( result.Intersection, 0f );
       //emitter.Position = position;
@@ -204,8 +313,14 @@ namespace AvatarHamsterPanic.Objects
       Vector2 offset   = new Vector2( 1.5f * BoundingCircle.Radius, 0 );
       Vector2 leftPos  = BoundingCircle.Position - offset;
       Vector2 rightPos = BoundingCircle.Position + offset;
-      Screen.ObjectTable.Add( LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true ) );
-      Screen.ObjectTable.Add( LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false ) );
+
+      LaserBeam leftLaser = LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true );
+      Screen.AudioManager.Play3DCue( laserShotSound, leftLaser, 1 );
+      Screen.ObjectTable.Add( leftLaser );
+
+      LaserBeam rightLaser = LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false );
+      Screen.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
+      Screen.ObjectTable.Add( rightLaser );
     }
 
     public void TakeLaserUpAss( Collision result )
@@ -300,6 +415,25 @@ namespace AvatarHamsterPanic.Objects
       }
     }
 
+    private void UpdatePlace()
+    {
+      ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
+      int place = 1;
+      int nPlayers = players.Count;
+      for ( int i = 0; i < nPlayers; ++i )
+      {
+        if ( players[i] == this ) continue;
+
+        if ( players[i].HUD.Score > HUD.Score ||
+             players[i].HUD.Score == HUD.Score && players[i].PlayerNumber < PlayerNumber )
+        {
+          place++;
+        }
+      }
+
+      HUD.Place = place;
+    }
+
     private void ClearPowerupEffects()
     {
       //shrinkBegin = 0;
@@ -325,6 +459,8 @@ namespace AvatarHamsterPanic.Objects
 
       UpdateScale( (float)gameTime.ElapsedGameTime.TotalSeconds );
 
+      UpdatePlace();
+
       UpdateAvatar( gameTime );
       HUD.Update( gameTime );
 
@@ -336,7 +472,8 @@ namespace AvatarHamsterPanic.Objects
         {
           ClearPowerupEffects();
           RespawnTime = 0f;
-          HUD.AddPoints( -5 );
+          if ( !Screen.GameOver )
+            HUD.AddPoints( -5 );
           BoundingCircle.Velocity.Y = Math.Min( BoundingCircle.Velocity.Y, Screen.CameraScrollSpeed );
         }
       }
@@ -349,38 +486,15 @@ namespace AvatarHamsterPanic.Objects
 
     public void HandleInput( InputState input )
     {
-      if ( PlayerIndex < PlayerIndex.One ) return;
+      PlayerInput playerInput;
+      GetPlayerInput( PlayerIndex, input, out playerInput );
 
       PhysCircle circle = BoundingCircle;
-      GamePadState gamePadState = input.CurrentGamePadStates[(int)PlayerIndex];
-
-      //// == testing garbage ==
-      //PlayerIndex trash;
-      //if ( input.IsNewButtonPress( Buttons.B, null, out trash ) )
-      //  HUD.Place = ( HUD.Place ) % 4 + 1;
-
-      //PlayerIndex playerIndex = PlayerIndex;
-      //if ( input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex ) )
-      //{
-      //  Scale = .5f;
-      //  BoundingCircle.Radius = ( Scale * Size ) / 2f;
-      //}
-      //else if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
-      //{
-      //  Scale = 1f;
-      //  BoundingCircle.Radius = Size / 2f;
-      //}
-      //// == testing garbage ==
 
       // powerups
       PlayerIndex playerIndex = PlayerIndex;
-      if ( input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex ) )
-      {
-        if ( Powerup != null )
-          Powerup.Use();
-      }
-      //if ( input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex ) )
-      //  Laser();
+      if ( playerInput.ButtonXHit && Powerup != null && Powerup.Type != PowerupType.GoldenShake )
+        Powerup.Use();
 
       // movement
       float forceY = 0f;
@@ -388,13 +502,13 @@ namespace AvatarHamsterPanic.Objects
       float maxVelX = 4f;
 
       Boosting = false;
-      if ( gamePadState.Triggers.Left != 0f )
+      if ( playerInput.LeftTrigger != 0f )
       {
         Boosting = true;
         forceX = -200f;
         maxVelX = 6f;
       }
-      if ( gamePadState.Triggers.Right != 0f )
+      if ( playerInput.RightTrigger != 0f )
       {
         Boosting = true;
         if ( forceX != 0f )
@@ -412,11 +526,10 @@ namespace AvatarHamsterPanic.Objects
 
       float maxAngVel = MathHelper.TwoPi;
 
-      Vector2 leftStick = gamePadState.ThumbSticks.Left;
       float torqueScale = -100f;
-      float torque = torqueScale * leftStick.X;
+      float torque = torqueScale * playerInput.LeftStick.X;
 
-      float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;//1f / 60f;
+      float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;
 
       // torque
       if ( circle.AngularVelocity < 0f && torque < 0f )
@@ -454,8 +567,7 @@ namespace AvatarHamsterPanic.Objects
 
       // jumping
       float totalTime = (float)lastGameTime.TotalGameTime.TotalSeconds;
-      PlayerIndex ret;
-      if ( input.IsNewButtonPress( Buttons.A, PlayerIndex, out ret ) )
+      if ( playerInput.ButtonAHit )
       {
         if ( totalTime - lastCollision < jumpTimeout )
           circle.Velocity += 2f * circle.TouchNormal;
@@ -474,6 +586,25 @@ namespace AvatarHamsterPanic.Objects
         {
           jumpRegistered = 0f;
         }
+      }
+    }
+
+    private void GetPlayerInput( PlayerIndex playerIndex, InputState input, out PlayerInput playerInput )
+    {
+      if ( playerIndex < PlayerIndex.One )
+      {
+        playerAI.GetInput( out playerInput );
+      }
+      else
+      {
+        playerInput.ButtonAHit = input.IsNewButtonPress( Buttons.A, playerIndex, out playerIndex );
+        playerInput.ButtonXHit = input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex );
+
+        GamePadState gamePadState = input.CurrentGamePadStates[(int)playerIndex];
+
+        playerInput.LeftTrigger = gamePadState.Triggers.Left;
+        playerInput.RightTrigger = gamePadState.Triggers.Right;
+        playerInput.LeftStick = gamePadState.ThumbSticks.Left;
       }
     }
 
@@ -525,7 +656,7 @@ namespace AvatarHamsterPanic.Objects
 
       if ( absAngVel <= idleThresh )
       {
-        Avatar.SetAnimation( AvatarAnimationPreset.Celebrate );
+        Avatar.SetAnimation( standAnim );
         Avatar.Update( gameTime.ElapsedGameTime, true );
       }
       else
@@ -544,5 +675,165 @@ namespace AvatarHamsterPanic.Objects
         Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );
       }
     }
+
+    #region IAudioEmitter Members
+
+    public Vector3 Position
+    {
+      get { return soundPosition; }
+    }
+
+    public Vector3 Forward
+    {
+      get { return Vector3.Forward; }
+    }
+
+    public Vector3 Up
+    {
+      get { return Screen.Camera.Up; }
+    }
+
+    public Vector3 Velocity
+    {
+      get { return soundVelocity; }
+    }
+
+    #endregion
+  }
+
+  enum PlayerWinState
+  {
+    None,
+    Lose,
+    Win,
+  }
+
+  struct PlayerInput
+  {
+    public bool ButtonAHit;
+    public bool ButtonXHit;
+    public float LeftTrigger;
+    public float RightTrigger;
+    public Vector2 LeftStick;
+  }
+
+  class PlayerAI
+  {
+    #region Static Members
+
+    static readonly SortedList<float, int> rows = new SortedList<float, int>( 6, new DescendingComparer<float>() );
+
+    public static void AddRow( float height, int pattern )
+    {
+      rows.Add( height, pattern );
+      while ( rows.Count > 5 )
+        rows.Remove( rows.First().Key );
+    }
+
+    //public static void RemoveRow( float height )
+    //{
+    //  rows.Remove( height );
+    //}
+
+    public static void RemoveAllRows()
+    {
+      rows.Clear();
+    }
+
+    #endregion
+
+    #region Instance Memebers
+
+    Player player;
+    float rightStart;
+
+    public PlayerAI( Player player )
+    {
+      this.player = player;
+      rightStart = ( FloorBlock.Size * GameplayScreen.BlocksPerRow - FloorBlock.Size ) / 2f;
+    }
+
+    public void GetInput( out PlayerInput playerInput )
+    {
+      //AI SUPERBRAIN GOES HERE
+      playerInput.ButtonAHit = false;
+      playerInput.ButtonXHit = false;
+      playerInput.LeftTrigger = 0;
+      playerInput.RightTrigger = 0;
+      playerInput.LeftStick = Vector2.Zero;
+
+      // No stage data yet
+      if ( rows.Count == 0 || !player.Screen.CameraIsScrolling )
+        return;
+
+      // MOVEMENT
+      //if falling through row
+      //  try to align self with hole
+      //else if row has been visible for x seconds
+      //  find nearest hole
+      //    set target to hole
+
+      PhysCircle circle = player.BoundingCircle;
+
+      // determine if falling through hole
+      float rowsTraveled = ( player.Screen.FirstRow - circle.Position.Y ) / player.Screen.RowSpacing;
+      float remainder = rowsTraveled - (float)Math.Floor( rowsTraveled );
+      if ( remainder > .5f )
+        remainder = 1f - remainder;
+      float holeDist = ( FloorBlock.Height / 2 + circle.Radius ) / player.Screen.RowSpacing;
+
+      if ( remainder < holeDist )
+      {
+        if ( circle.Touching != null )
+        {
+          // move to middle of hole
+        }
+      }
+      else
+      {
+        foreach ( KeyValuePair<float, int> row in rows )
+        {
+          // TODO: Reaction time delay
+          if ( row.Key < circle.Position.Y )
+          {
+            Vector2 hole = GetNearestHole( row );
+            if ( circle.Position.X < hole.X )
+              playerInput.LeftStick.X = 1;
+            else if ( circle.Position.X > hole.X )
+              playerInput.LeftStick.X = -1;
+            break;
+          }
+        }
+      }
+    }
+
+    private Vector2 GetNearestHole( KeyValuePair<float, int> row )
+    {
+      float bestDist = float.MaxValue;
+      float bestX = 0;
+
+      int pattern = row.Value;
+      float playerXPos = player.BoundingCircle.Position.X;
+
+      float x = -rightStart;
+      for ( int i = 0; i < GameplayScreen.BlocksPerRow; ++i )
+      {
+        if ( ( pattern & ( 1 << i ) ) == 0 )
+        {
+          float dist = Math.Abs( playerXPos - x );
+          if ( dist < bestDist )
+          {
+            bestX = x;
+            bestDist = dist;
+          }
+        }
+
+        x += FloorBlock.Size;
+      }
+
+      return new Vector2( bestX, row.Key );
+    }
+
+    #endregion
   }
 }
