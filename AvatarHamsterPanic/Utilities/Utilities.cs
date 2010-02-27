@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Utilities
 {
@@ -56,6 +57,32 @@ namespace Utilities
     {
       '9', '8', '7', '6', '5', '4', '3', '2', '1', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
     };
+  }
+}
+
+public static class ColorHelper
+{
+  public static Color ColorFromUintRgba( uint color )
+  {
+    return new Color( (byte)( ( color >> 24 ) & 0xFF ),
+                      (byte)( ( color >> 16 ) & 0xFF ),
+                      (byte)( ( color >> 8  ) & 0xFF ),
+                      (byte)( ( color >> 0  ) & 0xFF ) );
+  }
+
+  public static Color ColorFromUintRgb( uint color )
+  {
+    return new Color( (byte)( ( color >> 16 ) & 0xFF ),
+                      (byte)( ( color >> 8  ) & 0xFF ),
+                      (byte)( ( color >> 0  ) & 0xFF ) );
+  }
+}
+
+public static class PlayerIndexHelper
+{
+  public static bool IsPlayer( this PlayerIndex playerIndex )
+  {
+    return ( playerIndex >= PlayerIndex.One && playerIndex <= PlayerIndex.Four );
   }
 }
 

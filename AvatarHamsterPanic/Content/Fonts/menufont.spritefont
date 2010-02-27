@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
 	<Asset Type="Graphics:FontDescription">
-		<FontName>Calibri</FontName>
+		<FontName>Berlin Sans FB Demi</FontName>
 		<Size>23</Size>
 		<Spacing>2</Spacing>
-		<Style>Regular</Style>
+		<Style>Bold</Style>
 		<CharacterRegions>
 			<CharacterRegion>
 				<Start>&#32;</Start>

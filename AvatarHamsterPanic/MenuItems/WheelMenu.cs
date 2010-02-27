@@ -226,7 +226,7 @@ namespace Menu
       else if ( state == ScreenState.TransitionOff )
         curPos = Position + t * ( TransitionOffPosition - Position );
 
-      // updqate ball's rotation
+      // update wheel's rotation
       angle -= ( curPos.X - lastX ) / ( wheelScale / 2 );
 
       lastX = curPos.X;

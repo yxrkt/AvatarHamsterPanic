@@ -55,7 +55,7 @@ namespace Menu
             if (content == null)
                 content = new ContentManager(ScreenManager.Game.Services, "Content");
 
-            backgroundTexture = content.Load<Texture2D>( "Textures/background" );
+            backgroundTexture = content.Load<Texture2D>( "Textures/menuBackground" );
         }
 
 

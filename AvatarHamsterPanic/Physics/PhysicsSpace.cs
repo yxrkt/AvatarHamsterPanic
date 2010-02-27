@@ -42,8 +42,8 @@ namespace Physics
     public void RemoveBody( PhysBody body )
     {
 #if DEBUG
-      if ( !bodies.Contains( body ) || body.Released )
-        throw new InvalidOperationException( "invalid body release" );
+      //if ( !bodies.Contains( body ) || body.Released )
+      //  throw new InvalidOperationException( "invalid body release" );
 #endif
       body.Released = true;
     }

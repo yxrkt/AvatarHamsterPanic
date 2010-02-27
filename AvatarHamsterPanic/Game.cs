@@ -51,10 +51,10 @@ namespace AvatarHamsterPanic.Objects
       PlayerWins = new Dictionary<uint, int>( 4 );
       PlayerColors = new Color[4]
       {
-        new Color( 0xAA, 0xEA, 0xFF ),//AAEAFF
-        new Color( 0xF7, 0xA4, 0xA4 ),//F7A4A4
-        new Color( 0xFF, 0xEB, 0x9B ),//FFEB9B
-        new Color( 0xC2, 0xF2, 0xA2 ),//C2F2A2
+        ColorHelper.ColorFromUintRgb( 0xAAEAFF ),
+        ColorHelper.ColorFromUintRgb( 0xF7A4A4 ),
+        ColorHelper.ColorFromUintRgb( 0xFFEB9B ),
+        ColorHelper.ColorFromUintRgb( 0xC2F2A2 ),
       };
 
       /*/

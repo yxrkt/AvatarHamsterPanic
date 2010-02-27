@@ -17,7 +17,8 @@ namespace AvatarHamsterPanic.Objects
   {
     GamerProfile profile;
     Rectangle profileRect;
-    
+
+    Texture2D hudCageTexture;
     Texture2D hudTexture;
     Rectangle hudRect;
 
@@ -34,6 +35,7 @@ namespace AvatarHamsterPanic.Objects
 
     int place;
     SpriteFont placeFont;
+    SpriteFont placeSmallFont;
     Vector2 placePos;
     StringBuilder placeNumber;
     SpringInterpolater placeSpring;
@@ -77,23 +79,24 @@ namespace AvatarHamsterPanic.Objects
       Score = 0;
       Boost = 1f;
 
-      Rectangle safeRect = screen.SafeRect;
+      Rectangle fourByThree = screen.SafeRect;
 
       // base hud object
+      hudCageTexture = screen.Content.Load<Texture2D>( "Textures/playerHUDCage" );
       hudTexture = screen.Content.Load<Texture2D>( "Textures/playerHUD" );
       int hudWidth = hudTexture.Width;
       int hudHeight = hudTexture.Height;
 
-      int x0 = xPadding + safeRect.X + Player.PlayerNumber * ( safeRect.Width - hudWidth - 2 * xPadding ) / 3;
-      int y0 = -Math.Abs( yPadding ) + safeRect.Y + safeRect.Height - hudHeight;
+      int x0 = xPadding + fourByThree.X + Player.PlayerNumber * ( fourByThree.Width - hudWidth - 2 * xPadding ) / 3;
+      int y0 = -Math.Abs( yPadding ) + fourByThree.Y + fourByThree.Height - hudHeight;
 
       hudRect = new Rectangle( x0, y0, hudWidth, hudHeight );
 
       // profile picture
-      profileRect = new Rectangle( x0 + 91, y0 + 16, 55, 55 );
+      profileRect = new Rectangle( x0 + 88, y0 + 26, 60, 60 );
 
       // boost meter
-      boostRect = new Rectangle( x0 + 93, y0 + 97, 142, 18 );
+      boostRect = new Rectangle( x0 + 90, y0 + 111, 142, 18 );
       boostEffect = screen.Content.Load<Effect>( "Effects/meterEffect" );
       boostEffect.CurrentTechnique = boostEffect.Techniques[0];
       boostEffectParamBoost = boostEffect.Parameters["Boost"];
@@ -102,14 +105,14 @@ namespace AvatarHamsterPanic.Objects
       boostTexture = new Texture2D( screen.ScreenManager.GraphicsDevice, boostRect.Width, boostRect.Height );
 
       // name
-      namePos = new Vector2( x0 + 239, y0 + 34 );
+      namePos = new Vector2( x0 + 162, y0 + 12 );
       nameFont = screen.Content.Load<SpriteFont>( "Fonts/HUDNameFont" );
-      nameOrigin = nameFont.MeasureString( Name );
-      float nameLength = nameOrigin.X;
-      nameScale = Math.Min( 90f / nameLength, 1f );
+      nameOrigin = nameFont.MeasureString( Name ) / 2;
+      float nameLength = nameOrigin.X * 2;
+      nameScale = Math.Min( 150f / nameLength, 1f );
 
       // score
-      scorePos = new Vector2( x0 + 235, y0 + 88 );
+      scorePos = new Vector2( x0 + 230, y0 + 100 );
       scoreFont = screen.Content.Load<SpriteFont>( "Fonts/HUDScoreFont" );
       scoreSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
       scoreSpring.SetSource( 1f );
@@ -122,8 +125,9 @@ namespace AvatarHamsterPanic.Objects
                                   scorePos + new Vector2( -15f, -15f ), 1f );
 
       // place
-      placePos = new Vector2( x0 + 37, y0 + 65 );
+      placePos = new Vector2( x0 + 36, y0 + 91 );
       placeFont = screen.Content.Load<SpriteFont>( "Fonts/HUDPlaceFont" );
+      placeSmallFont = screen.Content.Load<SpriteFont>( "Fonts/HUDPlaceTagFont" );
       placeNumber = new StringBuilder( "0" );
       placeSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
       placeSpring.SetSource( 1f );
@@ -171,15 +175,18 @@ namespace AvatarHamsterPanic.Objects
       spriteBatch.Begin(); // resume...
 
       // draw the base object
-      spriteBatch.Draw( hudTexture, hudRect, Color.White );
+      GameCore game = Player.Screen.ScreenManager.Game as GameCore;
+      spriteBatch.Draw( hudCageTexture, hudRect, Color.White );
+      spriteBatch.Draw( hudTexture, hudRect, /**/Color.White/*/game.PlayerColors[Player.PlayerNumber]/**/ );
 
       // profile picture
       if ( profile != null )
         spriteBatch.Draw( profile.GamerPicture, profileRect, Color.White );
 
       // name
-      spriteBatch.DrawString( nameFont, Name, namePos, Color.Black, 0f, 
-                              nameOrigin, nameScale, SpriteEffects.None, 0f );
+      Vector2 scale = new Vector2( nameScale, 1 );
+      spriteBatch.DrawString( nameFont, Name, namePos, Color.Black, 0f,
+                              nameOrigin, scale, SpriteEffects.None, 0f );
 
       // score
       scoreString.Remove( 0, scoreString.Length );
@@ -196,12 +203,12 @@ namespace AvatarHamsterPanic.Objects
       placeNumber[0] = (char)( '0' + Place );
       string placeTag = placeStrings[Place - 1];
       Vector2 placeNumberSize = placeFont.MeasureString( placeNumber );
-      Vector2 placeTagSize = nameFont.MeasureString( placeTag );
+      Vector2 placeTagSize = placeSmallFont.MeasureString( placeTag );
       Vector2 placeNumberOrigin = new Vector2( ( placeNumberSize.X + placeTagSize.X ) / 2, placeNumberSize.Y );
-      Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X - 1, placeTagSize.Y + 12 );
+      Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X, placeTagSize.Y + 50 );
       spriteBatch.DrawString( placeFont, placeNumber, placePos, Color.Black, 0f,
                               placeNumberOrigin, placeSpring.GetSource()[0], SpriteEffects.None, 0f );
-      spriteBatch.DrawString( nameFont, placeTag, placePos, Color.Black, 0f, placeTagOrigin, 
+      spriteBatch.DrawString( placeSmallFont, placeTag, placePos, Color.Black, 0f, placeTagOrigin, 
                               1, SpriteEffects.None, 0f );
     }
 

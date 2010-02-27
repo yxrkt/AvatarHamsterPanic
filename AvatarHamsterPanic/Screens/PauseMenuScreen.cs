@@ -53,7 +53,7 @@ namespace Menu
       // Background box
       Texture2D pauseBoxTexture = content.Load<Texture2D>( "Textures/pauseBox" );
       Vector2 pauseBoxPosition = new Vector2( device.Viewport.Width / 2, device.Viewport.Height / 2 );
-      MenuStaticImage pauseBox = new MenuStaticImage( this, pauseBoxPosition, pauseBoxTexture );
+      StaticImageMenuItem pauseBox = new StaticImageMenuItem( this, pauseBoxPosition, pauseBoxTexture );
       pauseBox.TransitionOffPosition = pauseBoxPosition;
       pauseBox.TransitionOnPosition = pauseBoxPosition;
       pauseBox.Scale = screenScale;
@@ -84,7 +84,7 @@ namespace Menu
       entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
       entry.TransitionOffPosition = entryPosition + transOffOffset;
       entry.TransitionOnPosition = entryPosition + transOnOffset;
-      //entry.Selected += OnCancel;
+      entry.Selected += RestartMenuEntrySelected;
       entry.FocusScale = entryFocusScale * screenScale;
       entry.IdleScale = entryIdleScale * screenScale;
       MenuItems.Add( entry );
@@ -95,7 +95,7 @@ namespace Menu
       entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
       entry.TransitionOffPosition = entryPosition + transOffOffset;
       entry.TransitionOnPosition = entryPosition + transOnOffset;
-      entry.Selected += QuitGameMenuEntrySelected;
+      entry.Selected += ExitMenuEntrySelected;
       entry.FocusScale = entryFocusScale * screenScale;
       entry.IdleScale = entryIdleScale * screenScale;
       MenuItems.Add( entry );
@@ -144,13 +144,33 @@ namespace Menu
 
     #region Handle Input
 
+    /// <summary>
+    /// Event handler for when the Restart menu entry is selected.
+    /// </summary>
+    void RestartMenuEntrySelected( object sender, PlayerIndexEventArgs e )
+    {
+      const string message = "Ack! Do you really want to quit this game?";
+
+      MessageBoxScreen confirmRestartMessageBox = new MessageBoxScreen( message );
+
+      confirmRestartMessageBox.Accepted += ConfirmRestartMessageBoxAccepted;
+
+      ScreenManager.AddScreen( confirmRestartMessageBox, ControllingPlayer );
+    }
+
+
+    void ConfirmRestartMessageBoxAccepted( object sender, PlayerIndexEventArgs e )
+    {
+      Slot[] slots = GameplayScreen.Instance.Slots;
+      LoadingScreen.Load( ScreenManager, true, null, new GameplayScreen( slots ) );
+    }
 
     /// <summary>
-    /// Event handler for when the Quit Game menu entry is selected.
+    /// Event handler for when the Exit menu entry is selected.
     /// </summary>
-    void QuitGameMenuEntrySelected( object sender, PlayerIndexEventArgs e )
+    void ExitMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      const string message = "Are you sure you want to quit this game? Are you REALLY sure? Don't be gay now, you know you wanna keep playing...Come on...";
+      const string message = "Ack! Do you really want to quit this game?";
 
       MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen( message );
 

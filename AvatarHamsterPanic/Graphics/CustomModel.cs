@@ -91,30 +91,31 @@ namespace CustomModelSample
         // parameter, and will call us back as soon as the shared value becomes
         // available. We use C# anonymous delegate syntax to store the value
         // into its final location.
-        input.ReadSharedResource<Effect>( delegate( Effect value )
+        input.ReadSharedResource<Effect>( delegate( Effect effect )
         {
-          if ( value.Parameters["DiffuseMap"].GetValueTexture2D() != null )
+          //Effect effect = value.Clone( value.GraphicsDevice );
+          if ( effect.Parameters["DiffuseMap"].GetValueTexture2D() != null )
           {
-            if ( value.Parameters["NormalMap"].GetValueTexture2D() != null )
+            if ( effect.Parameters["NormalMap"].GetValueTexture2D() != null )
             {
-              value.CurrentTechnique = value.Techniques["NormalDiffuseColor"];
-              modelPart.VertexDeclaration = new VertexDeclaration( value.GraphicsDevice,
+              effect.CurrentTechnique = effect.Techniques["NormalDiffuseColor"];
+              modelPart.VertexDeclaration = new VertexDeclaration( effect.GraphicsDevice,
                                                                    VertexPositionNormalTextureTangentBinormal.VertexElements );
             }
             else
             {
-              value.CurrentTechnique = value.Techniques["DiffuseColor"];
-              modelPart.VertexDeclaration = new VertexDeclaration( value.GraphicsDevice,
+              effect.CurrentTechnique = effect.Techniques["DiffuseColor"];
+              modelPart.VertexDeclaration = new VertexDeclaration( effect.GraphicsDevice,
                                                                    VertexPositionNormalTexture.VertexElements );
             }
           }
           else
           {
-            value.CurrentTechnique = value.Techniques["ColorDefault"];
-            modelPart.VertexDeclaration = new VertexDeclaration( value.GraphicsDevice,
+            effect.CurrentTechnique = effect.Techniques["ColorDefault"];
+            modelPart.VertexDeclaration = new VertexDeclaration( effect.GraphicsDevice,
                                                                  VertexPositionNormalColor.VertexElements );
           }
-          modelPart.Effect = value;
+          modelPart.Effect = effect;
           modelPart.EffectParamWorld = modelPart.Effect.Parameters["World"];
           modelPart.EffectParamView = modelPart.Effect.Parameters["View"];
           modelPart.EffectParamProjection = modelPart.Effect.Parameters["Projection"];

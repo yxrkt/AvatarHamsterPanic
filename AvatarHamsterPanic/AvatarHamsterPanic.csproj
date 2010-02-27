@@ -102,7 +102,7 @@
     <Compile Include="Graphics\PostProcessing.cs" />
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
-    <Compile Include="MenuItems\MenuStaticImage.cs" />
+    <Compile Include="MenuItems\StaticImageMenuItem.cs" />
     <Compile Include="MenuItems\MenuText.cs" />
     <Compile Include="Objects\Avatar.cs" />
     <Compile Include="Objects\Boundary.cs" />
@@ -136,6 +136,7 @@
     <Compile Include="Screens\OptionsMenuScreen.cs" />
     <Compile Include="Screens\PauseMenuScreen.cs" />
     <Compile Include="Screens\SignInMenuScreen.cs" />
+    <Compile Include="Utilities\ScreenRects.cs" />
     <Compile Include="Utilities\Utilities.cs" />
     <Compile Include="Utilities\XFileUtils.cs" />
   </ItemGroup>

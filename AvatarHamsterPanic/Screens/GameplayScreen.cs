@@ -77,6 +77,7 @@ namespace Menu
     public SparkParticleSystem SparkParticleSystem { get; set; }
     public PinkPixieParticleSystem PinkPixieParticleSystem { get; set; }
     public GameTime LastGameTime { get; private set; }
+    public Slot[] Slots { get { return initSlotInfo; } }
 
     public const int BlocksPerRow = 8;
 
@@ -195,7 +196,7 @@ namespace Menu
       LaserBeam.Initialize();
       Content.Load<CustomAvatarAnimationData>( "Animations/Walk" );
       Content.Load<CustomAvatarAnimationData>( "Animations/Run" );
-      backgroundTexture = Content.Load<Texture2D>( "Textures/background" );
+      backgroundTexture = Content.Load<Texture2D>( "Textures/gameBackground" );
       int left = -( backgroundTexture.Width - ScreenManager.GraphicsDevice.Viewport.Width ) / 2;
       Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
       if ( left > 0 )
@@ -769,41 +770,6 @@ namespace Menu
 
       winnerSpring.Update( elapsed );
     }
-
-#if DEBUG
-    private void DrawSafeRect( GraphicsDevice device )
-    {
-      Effect debugEffect = Content.Load<Effect>( "Effects/screenAlignedEffect" );
-      debugEffect.CurrentTechnique = debugEffect.Techniques[0];
-      debugEffect.Begin();
-      debugEffect.Parameters["ScreenWidth"].SetValue( device.Viewport.Width );
-      debugEffect.Parameters["ScreenHeight"].SetValue( device.Viewport.Height );
-
-      Rectangle safeRect = SafeRect;
-
-      device.VertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
-      VertexPositionColor[] safeRectVerts = 
-      {
-        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y + safeRect.Height - 1, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( safeRect.X + safeRect.Width, safeRect.Y + safeRect.Height - 1, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( safeRect.X + safeRect.Width, safeRect.Y, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( safeRect.X, safeRect.Y, 0 ), Color.Red ),
-      };
-
-      EffectPassCollection passes = debugEffect.CurrentTechnique.Passes;
-      int nPasses = passes.Count;
-      for ( int i = 0; i < nPasses; ++i )
-      {
-        EffectPass pass = passes[i];
-
-        pass.Begin();
-        device.DrawUserPrimitives( PrimitiveType.LineStrip, safeRectVerts, 0, 4 );
-        pass.End();
-      }
-      debugEffect.End();
-    }
-#endif
 
     #endregion
   }

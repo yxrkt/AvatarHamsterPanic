@@ -15,6 +15,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using CustomAvatarAnimationFramework;
+using AvatarHamsterPanic.Utilities;
 #endregion
 
 namespace Menu
@@ -111,6 +112,8 @@ namespace Menu
     {
       // Load content belonging to the screen manager.
       ContentManager content = Game.Content;
+
+      ScreenRects.Initialize( Game );
 
       spriteBatch = new SpriteBatch( GraphicsDevice );
       font = content.Load<SpriteFont>( "Fonts/menufont" );
@@ -222,6 +225,8 @@ namespace Menu
 
         screen.Draw( gameTime );
       }
+
+      //ScreenRects.DrawFourByThreeRect();
     }
 
 

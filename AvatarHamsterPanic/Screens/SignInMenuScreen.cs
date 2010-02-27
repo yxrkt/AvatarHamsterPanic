@@ -9,63 +9,162 @@ using Microsoft.Xna.Framework.Content;
 using CustomAvatarAnimationFramework;
 using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Input;
+using CustomModelSample;
+using Graphics;
+using AvatarHamsterPanic.Utilities;
+using System.Diagnostics;
 
 namespace Menu
 {
-  public struct Slot
-  {
-    public Avatar Avatar;
-    public PlayerIndex Player;
-    public bool Ready;
-    public Vector3 Position;
-    public List<int> CreatedBots;
-    public uint ID;
-  }
-
   class SignInMenuScreen : MenuScreen
   {
-    ContentManager content;
-    Slot[] slots = new Slot[4];
-    float scale = 1f;
     const PlayerIndex NoPlayer = (PlayerIndex)( -2 );
     const PlayerIndex BotPlayer = (PlayerIndex)( -1 );
 
-    public SignInMenuScreen()
+    readonly Camera camera;
+    readonly CustomModel boxModel;
+    readonly Matrix boxScaleMatrix = Matrix.CreateScale( 2.1f );
+    readonly Matrix avatarScaleMatrix = Matrix.CreateScale( 1.5f );
+    readonly float boxSpacing = .45f;
+    readonly float boxAlpha = .4f;
+    readonly float textScale = .5f;
+    readonly float textColumnStart = .14f;
+    readonly float nameHeight = .3f;
+    readonly float joinHeight = .5f;
+    readonly float cpuHeight = .55f;
+    readonly float readyHeight = .8f;
+
+    SignInSlot[] slots = new SignInSlot[4];
+    bool autoSignIn = false;
+    bool toggleAutoSignIn = false;
+
+    public SignInMenuScreen( ScreenManager screenManager )
     {
-    }
+      TransitionOnTime = TimeSpan.FromSeconds( 1 );
+      TransitionOffTime = TimeSpan.FromSeconds( .25 );
 
-    public override void LoadContent()
-    {
-      content = new ContentManager( ScreenManager.Game.Services, "Content" );
+      this.ScreenManager = screenManager;
+      ContentManager content = screenManager.Game.Content;
+      GraphicsDevice device = screenManager.GraphicsDevice;
 
-      // Add menu title
-      SpriteFont font = ScreenManager.Font;
-      MenuText title = new MenuText( this, new Vector2( 100f, 82f ), "Please sign in!", font );
-      title.Scale = 1.25f;
-      title.TransitionOnPosition = title.Position + new Vector2( 0f, -100f );
-      title.TransitionOffPosition = title.TransitionOnPosition;
-      MenuItems.Add( title );
+      boxModel = content.Load<CustomModel>( "Models/signInBox" );
+      foreach ( CustomModel.ModelPart part in boxModel.ModelParts )
+      {
+        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
+      }
 
-      // Initialize slots
-      float spacing = .25f;
-      float xStep = scale + spacing;
-      Vector3 worldPos = new Vector3( -1.5f * scale - 1.5f * spacing, -1f, 0f );
+
+      camera = new Camera( MathHelper.PiOver4, device.Viewport.AspectRatio, 1, 100,
+                           new Vector3( 0, 0, 10 ), new Vector3( 0, 0, 0 ) );
+
+      StaticImageMenuItem item;
+      Vector2 itemPosition;
+
+      SpriteFont nameFont = content.Load<SpriteFont>( "Fonts/signInNameFont" );
+      Texture2D joinTexture = content.Load<Texture2D>( "Textures/aJoinText" );
+      Texture2D cpuTexture = content.Load<Texture2D>( "Textures/xAddCPUText" );
+      Texture2D aStartTexture = content.Load<Texture2D>( "Textures/aStartText" );
+      Texture2D readyTexture = content.Load<Texture2D>( "Textures/readyText" );
+
+      Rectangle rectangle = ScreenRects.FourByThree;
+
+      float x = textColumnStart * (float)rectangle.Width + (float)rectangle.X;
+      float xStep = (float)rectangle.Width * ( 1f - ( 2f * textColumnStart ) ) / 3f;
+
+      float nameY = nameHeight * (float)rectangle.Height + (float)rectangle.Y;
+      float joinY = joinHeight * (float)rectangle.Height + (float)rectangle.Y;
+      float cpuY = cpuHeight * (float)rectangle.Height + (float)rectangle.Y;
+      float readyY = readyHeight * (float)rectangle.Height + (float)rectangle.Y;
 
       for ( int i = 0; i < 4; ++i )
       {
-        slots[i].Avatar = null;
-        slots[i].CreatedBots = new List<int>();
-        slots[i].Player = NoPlayer;
+        // <GAMERTAG>
+        itemPosition = new Vector2( x, nameY );
+        TextMenuItem textItem = new TextMenuItem( this, itemPosition, null, nameFont );
+        textItem.Centered = true;
+        textItem.MaxWidth = xStep;
+        slots[i].NameItem = textItem;
+        MenuItems.Add( textItem );
+
+        // A Join
+        itemPosition = new Vector2( x, joinY );
+        item = new StaticImageMenuItem( this, itemPosition, joinTexture );
+        item.SetImmediateScale( textScale );
+        slots[i].JoinItem = item;
+        MenuItems.Add( item );
+
+        // X Add CPU
+        itemPosition = new Vector2( x, cpuY );
+        item = new StaticImageMenuItem( this, itemPosition, cpuTexture );
+        item.SetImmediateScale( textScale );
+        slots[i].CPUItem = item;
+        MenuItems.Add( item );
+
+        // A Start
+        itemPosition = new Vector2( x, readyY );
+        item = new StaticImageMenuItem( this, itemPosition, aStartTexture );
+        item.SetImmediateScale( textScale );
+        slots[i].StartItem = item;
+        MenuItems.Add( item );
+
+        // Ready!
+        itemPosition = new Vector2( x, readyY );
+        item = new StaticImageMenuItem( this, itemPosition, readyTexture );
+        item.SetImmediateScale( textScale );
+        slots[i].ReadyItem = item;
+        MenuItems.Add( item );
+
+        x += xStep;
+      }
+    }
+
+    private void ClearSlots()
+    {
+      float xStep = boxScaleMatrix.M11 + boxSpacing;
+      Vector3 worldPos = new Vector3( -1.5f * boxScaleMatrix.M11 - 1.5f * boxSpacing, -1.5f, 0f );
+
+      for ( int i = 0; i < 4; ++i )
+      {
+        slots[i].Slot.Avatar = null;
+        slots[i].Slot.Player = NoPlayer;
+        slots[i].Slot.ID = 0;
+        slots[i].CreatedBots = new List<int>( 3 );
         slots[i].Ready = false;
-        slots[i].Position = worldPos;
+        slots[i].ActivePosition = worldPos;
+        slots[i].TransitionOnPosition = worldPos + new Vector3( 0, 4 * ( i + 1 ), 0 );
+        slots[i].TransitionOffPosition = worldPos + new Vector3( 0, -2 * ( 4 - i ), 0 );
+        slots[i].JoinItem.SetImmediateScale( textScale );
+        slots[i].CPUItem.SetImmediateScale( textScale );
+        slots[i].StartItem.SetImmediateScale( 0 );
+        slots[i].ReadyItem.SetImmediateScale( 0 );
 
         worldPos.X += xStep;
       }
     }
 
+    public override void LoadContent()
+    {
+      // Content is loaded in the constructor to prevent spikes when 
+      // going from main menu to this screen
+
+      ClearSlots();
+      SignedInGamer.SignedIn += PlayerSignedIn;
+    }
+
     public override void UnloadContent()
     {
-      content.Unload();
+      SignedInGamer.SignedIn -= PlayerSignedIn;
+    }
+
+    void PlayerSignedIn( object sender, SignedInEventArgs e )
+    {
+      if ( autoSignIn )
+      {
+        //Debug.WriteLine( e.Gamer.Gamertag + " signed in" );
+        PlayerIndex playerIndex = e.Gamer.PlayerIndex;
+        AddPlayer( ref slots[(int)playerIndex], playerIndex );
+        toggleAutoSignIn = true;
+      }
     }
 
     public override void Update( GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen )
@@ -74,14 +173,52 @@ namespace Menu
 
       for ( int i = 0; i < 4; ++i )
       {
-        if ( slots[i].Avatar != null )
-          slots[i].Avatar.Update( gameTime.ElapsedGameTime, true );
+        if ( slots[i].Slot.Avatar != null )
+          slots[i].Slot.Avatar.Update( gameTime.ElapsedGameTime, true );
+
+        // player name
+        slots[i].NameItem.Text = slots[i].GetName();
+
+        // update 'join' and 'add cpu'
+        if ( slots[i].Slot.Player != NoPlayer )
+        {
+          slots[i].JoinItem.Scale = 0;
+          slots[i].CPUItem.Scale = 0;
+        }
+        else
+        {
+          slots[i].JoinItem.Scale = textScale;
+          slots[i].CPUItem.Scale = textScale;
+        }
+
+        // update 'start' and 'ready'
+        if ( slots[i].Slot.Player.IsPlayer() )
+        {
+          if ( slots[i].Ready )
+          {
+            slots[i].StartItem.Scale = 0;
+            slots[i].ReadyItem.Scale = textScale;
+          }
+          else
+          {
+            slots[i].StartItem.Scale = textScale;
+            slots[i].ReadyItem.Scale = 0;
+          }
+        }
+        else
+        {
+          slots[i].StartItem.Scale = 0;
+          slots[i].ReadyItem.Scale = 0;
+        }
       }
+
+      if ( toggleAutoSignIn )
+        autoSignIn = false;
     }
 
     public override void HandleInput( InputState input )
     {
-      //base.HandleInput( input );
+      if ( ScreenState != ScreenState.Active ) return;
 
       for ( int i = 0; i < 4; ++i )
       {
@@ -99,9 +236,9 @@ namespace Menu
       }
     }
 
-    public void OnButtonAHit( PlayerIndex playerIndex, ref Slot slot )
+    public void OnButtonAHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
-      if ( slot.Player < PlayerIndex.One )
+      if ( slot.Slot.Player < PlayerIndex.One )
       {
         bool found = false;
         foreach ( SignedInGamer gamer in Gamer.SignedInGamers )
@@ -116,110 +253,171 @@ namespace Menu
         if ( !found )
         {
           Guide.ShowSignIn( 4, false );
+          autoSignIn = true;
         }
         else
         {
-          slot.Player = playerIndex;
-          slot.Avatar = new Avatar( Gamer.SignedInGamers[playerIndex].Avatar, AvatarAnimationPreset.Stand0,
-                                    1f, Vector3.UnitZ, slot.Position );
+          AddPlayer( ref slot, playerIndex );
         }
       }
       else if ( slot.Ready == false )
       {
-        // change 'ready' graphic
         slot.Ready = true;
       }
-      else if ( slots.Count( s => s.Player >= PlayerIndex.One && !s.Ready ) == 0 )
+
+      if ( slots.Count( s => s.Slot.Player.IsPlayer() && !s.Ready ) == 0 )
       {
-        LoadingScreen.Load( ScreenManager, true, playerIndex, new GameplayScreen( slots ) );
+        Slot[] initSlots = new Slot[4];
+        for ( int i = 0; i < 4; ++i )
+          initSlots[i] = slots[i].Slot;
+        LoadingScreen.Load( ScreenManager, true, playerIndex, new GameplayScreen( initSlots ) );
       }
     }
 
-    public void OnButtonBHit( PlayerIndex playerIndex, ref Slot slot )
+    public void OnButtonBHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
       if ( slot.Ready )
       {
         slot.Ready = false;
       }
-      else if ( slots.Count( s => s.Player != NoPlayer ) <= 1 )
+      else if ( slots.Count( s => s.Slot.Player != NoPlayer ) <= 1 )
       {
-        OnCancel( playerIndex );
+        if ( slot.Slot.Player.IsPlayer() )
+          OnCancel( playerIndex );
       }
       else if ( slot.CreatedBots.Count > 0 )
       {
         int botIndex = slot.CreatedBots.Last();
         slot.CreatedBots.Remove( botIndex );
-        slots[botIndex].Player = NoPlayer;
-        slots[botIndex].Avatar = null;
+        slots[botIndex].Slot.Player = NoPlayer;
+        slots[botIndex].Slot.Avatar = null;
       }
       else
       {
-        slot.Player = NoPlayer;
-        slot.Avatar = null;
+        slot.Slot.Player = NoPlayer;
+        slot.Slot.Avatar = null;
       }
     }
 
-    public void OnButtonXHit( PlayerIndex playerIndex, ref Slot slot )
+    public void OnButtonXHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
       for ( int i = 0; i < 4; ++i )
       {
-        if ( slots[i].Player == NoPlayer )
+        if ( slots[i].Slot.Player == NoPlayer )
         {
-          slots[i].Player = BotPlayer;
-          slots[i].Avatar = new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
-                                        1f, Vector3.UnitZ, slots[i].Position );
+          slots[i].Slot.Player = BotPlayer;
+          slots[i].Slot.Avatar = new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
+                                             1f, Vector3.UnitZ, Vector3.Zero );
+          slots[(int)playerIndex].CreatedBots.Add( i );
           return;
         }
       }
     }
 
+    private void AddPlayer( ref SignInSlot slot, PlayerIndex playerIndex )
+    {
+      slot.Slot.Player = playerIndex;
+      slot.Slot.Avatar = new Avatar( Gamer.SignedInGamers[playerIndex].Avatar, AvatarAnimationPreset.Stand0,
+                                     1f, Vector3.UnitZ, Vector3.Zero );
+      foreach ( SignInSlot signInSlot in slots )
+        signInSlot.CreatedBots.Remove( (int)playerIndex );
+    }
+
     public override void Draw( GameTime gameTime )
     {
-      base.Draw( gameTime );
+      GraphicsDevice device = ScreenManager.GraphicsDevice;
 
-      // need to set vertex declaration every frame for shaders
-      GraphicsDevice graphics = ScreenManager.GraphicsDevice;
-      graphics.VertexDeclaration = new VertexDeclaration( graphics, VertexPositionNormalTexture.VertexElements );
+      Matrix view = camera.GetViewMatrix();
+      Matrix projection = camera.GetProjectionMatrix();
 
-      float aspect = ScreenManager.GraphicsDevice.DisplayMode.AspectRatio;
-      Matrix view, proj;
-      view = Matrix.CreateLookAt( new Vector3( 0f, 0f, 10f ), Vector3.Zero, Vector3.Up );
-      Matrix.CreatePerspectiveFieldOfView( MathHelper.ToRadians( 30f ), aspect, 1f, 100f, out proj );
+      float t = TransitionPosition * TransitionPosition;
 
-      graphics.RenderState.DepthBufferEnable = true;
+      Matrix translation = Matrix.Identity;
+      Vector3 position;
 
-      Model model = content.Load<Model>( "Models/block" );
-
-      for ( int i = 0; i < 4; ++i )
+      int colorIndex = 0;
+      foreach ( SignInSlot slot in slots )
       {
-        // platforms
-        foreach ( ModelMesh mesh in model.Meshes )
+        // get translation matrix
+        switch ( ScreenState )
         {
-          foreach ( BasicEffect effect in mesh.Effects )
-          {
-            effect.EnableDefaultLighting();
-            effect.View = view;
-            effect.Projection = proj;
-
-            Vector3 position = slots[i].Position;
-            position.Y -= scale / 8f;
-            effect.World = Matrix.CreateScale( scale ) * Matrix.CreateTranslation( position );
-          }
-          mesh.Draw();
+          case ScreenState.TransitionOn:
+            position = Vector3.Lerp( slot.ActivePosition, slot.TransitionOnPosition, t );
+            translation = Matrix.CreateTranslation( position );
+            break;
+          case ScreenState.Active:
+            translation = Matrix.CreateTranslation( slot.ActivePosition );
+            break;
+          case ScreenState.TransitionOff:
+            position = Vector3.Lerp( slot.ActivePosition, slot.TransitionOffPosition, t );
+            translation = Matrix.CreateTranslation( position );
+            break;
         }
 
-        // avatars
-        if ( slots[i].Avatar != null )
+        // draw box
+        Matrix world = boxScaleMatrix * translation;
+        GameCore game = ScreenManager.Game as GameCore;
+        foreach ( CustomModel.ModelPart part in boxModel.ModelParts )
         {
-          Avatar avatar = slots[i].Avatar;
-          Matrix matRot = Matrix.CreateWorld( Vector3.Zero, avatar.Direction, Vector3.Up );
-          Matrix matTrans = Matrix.CreateTranslation( slots[i].Position );
-          avatar.Renderer.World = Matrix.CreateScale( scale ) * matRot * matTrans;
+          float alpha = ( 1 - TransitionPosition ) * boxAlpha;
+          Vector4 color = new Vector4( game.PlayerColors[colorIndex++].ToVector3(), alpha );
+          part.EffectParamColor.SetValue( color );
+        }
+
+        device.RenderState.AlphaBlendEnable = true;
+        device.RenderState.DepthBufferEnable = true;
+        device.RenderState.CullMode = CullMode.CullClockwiseFace;
+        boxModel.Draw( camera.Position, world, view, projection );
+
+        device.RenderState.CullMode = CullMode.CullCounterClockwiseFace;
+        boxModel.Draw( camera.Position, world, view, projection );
+
+        // draw avatar
+        if ( slot.Slot.Avatar != null )
+        {
+          Avatar avatar = slot.Slot.Avatar;
+          Matrix matRot = Matrix.CreateWorld( Vector3.Zero, avatar.Direction, camera.Up );
+          avatar.Renderer.World = avatarScaleMatrix * matRot * translation;
           avatar.Renderer.View = view;
-          avatar.Renderer.Projection = proj;
+          avatar.Renderer.Projection = projection;
           avatar.Renderer.Draw( avatar.BoneTransforms, avatar.Expression );
         }
       }
+
+      base.Draw( gameTime );
+    }
+  }
+
+  public struct Slot
+  {
+    public Avatar Avatar;
+    public PlayerIndex Player;
+    public uint ID;
+  }
+
+  struct SignInSlot
+  {
+    public Slot Slot;
+    public bool Ready;
+    public Vector3 TransitionOnPosition;
+    public Vector3 TransitionOffPosition;
+    public Vector3 ActivePosition;
+    public List<int> CreatedBots;
+    public TextMenuItem NameItem;
+    public StaticImageMenuItem JoinItem;
+    public StaticImageMenuItem CPUItem;
+    public StaticImageMenuItem StartItem;
+    public StaticImageMenuItem ReadyItem;
+
+    const string CPUName = "CPU";
+
+    public string GetName()
+    {
+      if ( Slot.Player == (PlayerIndex)( -2 ) )
+        return null;
+      if ( Slot.Player == (PlayerIndex)( -1 ) )
+        return CPUName;
+      return SignedInGamer.SignedInGamers[Slot.Player].Gamertag;
     }
   }
 }

@@ -46,6 +46,8 @@ namespace Menu
     bool transitioningOff;
     float transitionTime;
 
+    SignInMenuScreen signInMenuScreen;
+
     #region Initialization
 
 
@@ -100,6 +102,11 @@ namespace Menu
       wheelMenu.AddEntry( entry );
 
       MenuItems.Add( wheelMenu );
+
+      signInMenuScreen = new SignInMenuScreen( ScreenManager );
+
+      // pre-load other stuff here
+      content.Load<Texture2D>( "Textures/messageBox" );
     }
 
     private void LoadTitleContent()
@@ -115,7 +122,7 @@ namespace Menu
       vertArray[3].TextureCoordinate = new Vector2( 0, 1 );
       vertexDeclaration = new VertexDeclaration( device, VertexPositionTexture.VertexElements );
 
-      screenEffect = content.Load<Effect>( "Effects/screenAlignedEffect" );
+      screenEffect = content.Load<Effect>( "Effects/screenAlignedEffect" ).Clone( device );
       screenEffect.CurrentTechnique = screenEffect.Techniques["Texture"];
       screenEffect.Parameters["ScreenWidth"].SetValue( viewport.Width );
       screenEffect.Parameters["ScreenHeight"].SetValue( viewport.Height );
@@ -205,7 +212,8 @@ namespace Menu
       }
 
       // 'Panic'
-      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], panicPositionSpring.GetDest()[1] - 600 * scale ) );
+      panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], 
+                                   panicPositionSpring.GetDest()[1] - 600 * scale ) );
       panicPositionSpring.Active = false;
     }
 
@@ -241,12 +249,7 @@ namespace Menu
     /// </summary>
     void PlayMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      /*/
-      LoadingScreen.Load( ScreenManager, true, e.PlayerIndex,
-                          new GameplayScreen() );
-      /*/
-      ScreenManager.AddScreen( new SignInMenuScreen(), e.PlayerIndex );
-      /**/
+      ScreenManager.AddScreen( signInMenuScreen, e.PlayerIndex );
     }
 
     /// <summary>
@@ -279,7 +282,7 @@ namespace Menu
     /// </summary>
     protected override void OnCancel( PlayerIndex playerIndex )
     {
-      const string message = "ZOMG! Do you really want to exit Avatar Hamster Panic?";
+      const string message = "Egads! Do you really want to exit Avatar Hamster Panic?";
 
       MessageBoxScreen confirmExitMessageBox = new MessageBoxScreen( message );
 
