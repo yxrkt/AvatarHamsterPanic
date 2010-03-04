@@ -9,6 +9,7 @@ using Physics;
 using AvatarHamsterPanic.Objects;
 using Menu;
 using Graphics;
+using Audio;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -20,6 +21,7 @@ namespace AvatarHamsterPanic.Objects
     static EffectParameter effectParameterProjection;
     static EffectParameter effectParameterEye;
     static VertexDeclaration vertexDeclaration;
+    static int lastDrawOrder = 11;
 
     public static float Size { get; private set; }
     public static float Height { get; private set; }
@@ -53,6 +55,7 @@ namespace AvatarHamsterPanic.Objects
       BoundingPolygon.Position = pos;
       BoundingPolygon.Flags = BodyFlags.Anchored;
       Screen.PhysicsSpace.AddBody( BoundingPolygon );
+      DrawOrder = lastDrawOrder++;
     }
 
     static FloorBlock()
@@ -165,6 +168,9 @@ namespace AvatarHamsterPanic.Objects
       }
 
       effect.End();
+
+      //graphics.RenderState.DepthBufferEnable = true;
+      //graphics.RenderState.DepthBufferWriteEnable = true;
     }
 
     private void SetRenderState( RenderState renderState )
@@ -176,8 +182,8 @@ namespace AvatarHamsterPanic.Objects
       renderState.DestinationBlend = Blend.InverseSourceAlpha;
       renderState.AlphaTestEnable = false;
 
-      renderState.DepthBufferEnable = true;
-      renderState.DepthBufferWriteEnable = true;
+      //renderState.DepthBufferEnable = false;
+      //renderState.DepthBufferWriteEnable = false;
     }
 
     private bool KillSelfIfPwnt( Collision result )
@@ -194,11 +200,12 @@ namespace AvatarHamsterPanic.Objects
           Screen.ObjectTable.MoveToTrash( this );
           alive = false;
 
-          //// add the exploding block particle system
+          // add the exploding block particle system
           Vector3 position = new Vector3( BoundingPolygon.Position, 0f );
           ModelExplosion explosion = ModelExplosion.CreateExplosion( position, Size, 
                                                                      ShatteredModel, explosionSettings );
           Screen.ParticleManager.Add( explosion );
+          GameCore.Instance.AudioManager.Play3DCue( "blockExplosion", DummyAudioEmitter.InstanceAtPos( position ), 1f );
 
           return false;
         }

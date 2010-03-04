@@ -310,8 +310,9 @@ float4 RotatingPixelShader(RotatingPixelShaderInput input) : COLOR0
   // Undo the offset used to control the rotation origin.
   textureCoordinate += 0.5;
 
-  float3 color = Colors[(int)(input.Color.g) % 3];
-  return tex2D(Sampler, textureCoordinate) * float4( color.r, color.g, color.b, input.Color.a );
+  int index = (int)(input.Color.g) % 3;
+  float3 color = Colors[clamp( index, 0, 2 )];
+  return tex2D(Sampler, textureCoordinate) * float4( color.rgb, input.Color.a );
 }
 
 

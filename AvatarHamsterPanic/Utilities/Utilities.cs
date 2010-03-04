@@ -93,3 +93,11 @@ public class DescendingComparer<T> : IComparer<T> where T : IComparable
     return y.CompareTo( x );
   }
 }
+
+public static class XACTHelper
+{
+  public static float GetDecibels( float volume )
+  {
+    return MathHelper.Lerp( -96, 6, volume );
+  }
+}

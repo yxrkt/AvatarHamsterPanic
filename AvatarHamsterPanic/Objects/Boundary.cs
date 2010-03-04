@@ -67,13 +67,15 @@ namespace AvatarHamsterPanic.Objects
       Right = right;
 
       lastFrame = new GameTime( TimeSpan.FromSeconds( 0 ), TimeSpan.FromSeconds( 0 ),
-                                TimeSpan.FromSeconds( 1f / 60f ), TimeSpan.FromSeconds( 1f / 60 ) );
+                                TimeSpan.FromSeconds( 1f / 30f ), TimeSpan.FromSeconds( 1f / 60 ) );
 
       this.rowSpacing = rowSpacing;
       this.rowStart = rowStart;
       minHoleDist = ( FloorBlock.Height + Size ) / 2f;
       lastHole = rowStart;
       lastGoldenShake = 0;
+
+      DrawOrder = 7;
 
       // this is for objects, such as powerups and players, so they can travel through the tubes
       objects = new List<BoundaryTubeObject>( 10 );
@@ -97,7 +99,7 @@ namespace AvatarHamsterPanic.Objects
       screen.PhysicsSpace.AddBody( polyRight );
 
       // model
-      cageModel = Screen.Content.Load<InstancedModel>( "Models/cage" );
+      cageModel = Screen.Content.Load<InstancedModel>( "Models/cageTile" );
       cageHoleModel = Screen.Content.Load<InstancedModel>( "Models/cageHole" );
       teeModel = Screen.Content.Load<InstancedModel>( "Models/tubeTee" );
       cupModel = Screen.Content.Load<InstancedModel>( "Models/tubeCup" );
@@ -336,6 +338,18 @@ namespace AvatarHamsterPanic.Objects
       Matrix view = Screen.View;
       Matrix proj = Screen.Projection;
       Vector3 eye = Screen.Camera.Position;
+
+      float tubeAlpha = .25f;
+      foreach ( InstancedModelPart part in cupModel.ModelParts )
+      {
+        Vector4 color = part.EffectParameterColor.GetValueVector4();
+        part.EffectParameterColor.SetValue( new Vector4( color.X, color.Y, color.Z, tubeAlpha ) );
+      }
+      foreach ( InstancedModelPart part in teeModel.ModelParts )
+      {
+        Vector4 color = part.EffectParameterColor.GetValueVector4();
+        part.EffectParameterColor.SetValue( new Vector4( color.X, color.Y, color.Z, tubeAlpha ) );
+      }
 
       cupModel.DrawTranslucentInstances( view, proj, eye );
       teeModel.DrawTranslucentInstances( view, proj, eye );

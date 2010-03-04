@@ -14,6 +14,7 @@ using System;
 using Microsoft.Xna.Framework.Content;
 using MathLibrary;
 using Graphics;
+using AvatarHamsterPanic;
 #endregion
 
 namespace Menu
@@ -23,6 +24,8 @@ namespace Menu
   /// </summary>
   class MainMenuScreen : MenuScreen
   {
+    #region Fields
+
     // 'Avatar'
     Texture2D avatarTexture;
     SpringInterpolater[] avatarVertSprings;
@@ -47,6 +50,9 @@ namespace Menu
     float transitionTime;
 
     SignInMenuScreen signInMenuScreen;
+    WheelMenu wheelMenu;
+
+    #endregion
 
     #region Initialization
 
@@ -77,9 +83,10 @@ namespace Menu
       Camera camera = new Camera( MathHelper.PiOver4, device.Viewport.AspectRatio, 
                                   1f, 100f, new Vector3( 0, 3f, 10 ), new Vector3( 0, 3f, 0 ) );
       float wheelScale = 2.5f;
-      WheelMenu wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
+      wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
 
       WheelMenuEntry entry;
+      wheelMenu.AcceptingInput = false;
 
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/playText" ) );
       entry.Selected += PlayMenuEntrySelected;
@@ -104,6 +111,8 @@ namespace Menu
       MenuItems.Add( wheelMenu );
 
       signInMenuScreen = new SignInMenuScreen( ScreenManager );
+
+      GameCore.Instance.AudioManager.Listener.Position = new Vector3( 0, 0, 10 );
 
       // pre-load other stuff here
       content.Load<Texture2D>( "Textures/messageBox" );
@@ -190,7 +199,11 @@ namespace Menu
       panicSizeSpring.Active = false;
 
       // set entries to their initial positions
-      MenuItems.GetObjects<WheelMenu>()[0].ConfigureEntries();
+      wheelMenu.ConfigureEntries();
+      wheelMenu.AcceptingInput = false;
+
+      // play intro sound effects
+      GameCore.Instance.AudioManager.Play2DCue( "intro", 1f );
     }
 
     private void InitializeTransitionOff()
@@ -215,6 +228,8 @@ namespace Menu
       panicPositionSpring.SetDest( new Vector2( panicPositionSpring.GetDest()[0], 
                                    panicPositionSpring.GetDest()[1] - 600 * scale ) );
       panicPositionSpring.Active = false;
+
+      wheelMenu.AcceptingInput = false;
     }
 
     private void SetSpringDests( Texture2D texture, Vector2 position, float scale, SpringInterpolater[] springs )
@@ -239,9 +254,8 @@ namespace Menu
 
     public override void HandleInput( InputState input )
     {
-      base.HandleInput( input ); // leave this trash in for now
-
-      // awesome wheel stuff!
+      if ( IsActive )
+        base.HandleInput( input );
     }
 
     /// <summary>
@@ -325,6 +339,7 @@ namespace Menu
       {
         transitioningOn = false;
         transitioningOff = false;
+        wheelMenu.AcceptingInput = true;
       }
 
       // transitioning on
@@ -369,7 +384,7 @@ namespace Menu
       }
 
       // update springs
-      float elapsed = Math.Min( (float)gameTime.ElapsedGameTime.TotalSeconds, 1f / 60f );
+      float elapsed = Math.Min( (float)gameTime.ElapsedGameTime.TotalSeconds, 1f / 30f );
 
       foreach ( SpringInterpolater spring in avatarVertSprings )
         spring.Update( elapsed );
@@ -421,7 +436,6 @@ namespace Menu
                         origin, panicSizeSpring.GetSource()[0], SpriteEffects.None, 0 );
       spriteBatch.End();
 
-      // draw the lame buttons
       base.Draw( gameTime );
     }
 

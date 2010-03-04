@@ -67,8 +67,8 @@ namespace Menu
     public override void Update( GameTime gameTime )
     {
       float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
-      if ( elapsed > 1f / 60f )
-        elapsed = 1f / 60f;
+      if ( elapsed > 1f / 30f )
+        elapsed = 1f / 30f;
       scaleSpring.Update( elapsed );
 
       base.Update( gameTime );

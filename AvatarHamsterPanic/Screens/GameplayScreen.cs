@@ -31,6 +31,7 @@ using Particle3DSample;
 using CustomModelSample;
 using Graphics;
 using Audio;
+using AvatarHamsterPanic;
 #endregion
 
 namespace Menu
@@ -56,7 +57,8 @@ namespace Menu
       }
     }
 
-    public AudioManager AudioManager { get; private set; }
+    public float AccumulatedTime { get; private set; }
+    public Cue BackgroundMusic { get; internal set; }
     public ContentManager Content { get; private set; }
     public bool CameraIsScrolling { get { return camIsScrolling; } }
     public bool GameOver { get { return gameEndTime != 0; } }
@@ -72,12 +74,12 @@ namespace Menu
     public float CountdownEnd { get; set; }
     public Rectangle SafeRect { get; private set; }
     public ParticleManager ParticleManager { get; private set; }
-    public static StringBuilder DebugString { get; set; }
     public PixieParticleSystem PixieParticleSystem { get; set; }
     public SparkParticleSystem SparkParticleSystem { get; set; }
     public PinkPixieParticleSystem PinkPixieParticleSystem { get; set; }
     public GameTime LastGameTime { get; private set; }
     public Slot[] Slots { get { return initSlotInfo; } }
+    public bool ShakeIsOut { get; set; }
 
     public const int BlocksPerRow = 8;
 
@@ -106,8 +108,12 @@ namespace Menu
     ScoreboardMenuScreen scoreboardMenuScreen;
     PauseMenuScreen pauseScreen;
 
-    long physicsTicks;
-    long updateTicks;
+    // Debug
+    string updateEntityMark = "Entity Update";
+    string updatePhysicsMark = "Physics";
+    string drawEntityMark = "Entity Draw";
+    string drawPostProcessMark = "Post Processing";
+    string drawParticleMark = "Particles Draw";
 
     RenderTarget2D basicSceneRenderTarget;
     RenderTarget2D maskRenderTarget;
@@ -122,7 +128,6 @@ namespace Menu
 
     static GameplayScreen()
     {
-      DebugString = new StringBuilder( 100 );
     }
 
 
@@ -151,10 +156,6 @@ namespace Menu
       // initialize physics
       PhysicsSpace = new PhysicsSpace();
       PhysicsSpace.Gravity = new Vector2( 0f, -5.5f );
-
-      // initialize audio
-      AudioManager = new AudioManager( game );
-      game.Components.Add( AudioManager );
 
       // render targets
       GraphicsDevice device = ScreenManager.GraphicsDevice;
@@ -252,15 +253,23 @@ namespace Menu
     {
       LaserBeam.Unload();
       PlayerAI.RemoveAllRows();
+      ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
+      for ( int i = 0; i < players.Count; ++i )
+        players[i].OnDestruct();
       ObjectTable.Clear();
       Game game = ScreenManager.Game;
-      game.Components.Remove( AudioManager );
       ParticleManager.Unload();
       components.Remove( ParticleManager );
       components.Remove( PixieParticleSystem );
       components.Remove( SparkParticleSystem );
       components.Remove( PinkPixieParticleSystem );
       Content.Unload();
+
+      if ( BackgroundMusic != null )
+      {
+        BackgroundMusic.Dispose();
+        BackgroundMusic = null;
+      }
 
       if ( nextInstance != null )
       {
@@ -292,9 +301,10 @@ namespace Menu
 
       if ( IsActive || ( ScreenState == ScreenState.TransitionOff && GameOver ) )
       {
-        long updateBegin = Stopwatch.GetTimestamp();
+        double elapsed = Math.Min( gameTime.ElapsedGameTime.TotalSeconds, 1.0 / 30.0 );
 
-        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
+        if ( BackgroundMusic == null )
+          BackgroundMusic = GameCore.Instance.AudioManager.Play2DCue( "banjoBreakdown", 1f );
 
         Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
                                                           Camera.Near, Camera.Far );
@@ -308,16 +318,16 @@ namespace Menu
         foreach ( DrawableGameComponent component in components )
           component.Update( gameTime );
 
-        long begin = Stopwatch.GetTimestamp();
+        GameCore.Instance.TimeRuler.BeginMark( 0, updatePhysicsMark, Color.Purple );
         PhysicsSpace.Update( elapsed );
-        physicsTicks += Stopwatch.GetTimestamp() - begin;
+        GameCore.Instance.TimeRuler.EndMark( 0, updatePhysicsMark );
 
         // avoid scrolling the camera while the countdown is running
         if ( CountdownTime < CountdownEnd )
           CountdownTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         UpdateCamera( (float)elapsed );
-        AudioListener listener = AudioManager.Listener;
+        AudioListener listener = GameCore.Instance.AudioManager.Listener;
         listener.Position = Camera.Position;
         listener.Forward = Vector3.Forward;
         listener.Up = Camera.Up;
@@ -329,19 +339,9 @@ namespace Menu
         {
           if ( gameEndTime > CelebrationTime )
           {
-            //foreach ( GameScreen screen in ScreenManager.GetScreens() )
-            //  screen.ExitScreen();
-            ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
-
-            for ( int i = 0; i < players.Count; ++i )
-            {
-              Player player = players.First( p => p.HUD.Place == ( i + 1 ) );
-              SignedInGamer gamer = (int)player.PlayerIndex < 0 ? null : SignedInGamer.SignedInGamers[player.PlayerIndex];
-              scoreboardMenuScreen.SetPlayer( i, player.PlayerNumber, player.Avatar, gamer, 
-                                              player.HUD.TotalScore, player.ID );
-            }
-
-            ScreenManager.AddScreen( scoreboardMenuScreen, null );
+            BackgroundMusic.Dispose();
+            BackgroundMusic = null;
+            TransitionToScoreboard();
             addedPodium = true;
           }
           else
@@ -349,19 +349,27 @@ namespace Menu
             gameEndTime += (float)elapsed;
           }
         }
+        else if ( GameOver )
+        {
+          BackgroundMusic.SetVariable( "Volume", XACTHelper.GetDecibels( 1 - TransitionPosition ) );
+        }
 
+        GameCore.Instance.TimeRuler.BeginMark( 0, updateEntityMark, Color.Red );
         ReadOnlyCollection<GameObject> objects = ObjectTable.AllObjects;
         int nObjects = objects.Count;
         for ( int i = 0; i < nObjects; ++i )
           objects[i].Update( gameTime );
+        GameCore.Instance.TimeRuler.EndMark( 0, updateEntityMark );
 
         // Cleanup
         ObjectTable.EmptyTrash();
         Pool.CleanUpAll();
 
-        updateTicks += Stopwatch.GetTimestamp() - updateBegin;
+        AccumulatedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
       }
     }
+
+    Func<Powerup, bool> powerupIsShake = ( p => p.Type == PowerupType.GoldenShake );
 
     public void EndGame()
     {
@@ -417,6 +425,7 @@ namespace Menu
 
       if ( ( input.IsPauseGame( null ) || gamePadDisconnected ) && ( ScreenState == ScreenState.Active ) && !GameOver )
       {
+        GameCore.Instance.AudioManager.Play2DCue( "pause", 1f );
         ScreenManager.AddScreen( pauseScreen, null );
       }
       else
@@ -447,15 +456,18 @@ namespace Menu
       spriteBatch.Draw( backgroundTexture, backgroundRect, Color.White );
       spriteBatch.End();
 
-      // draw 3D geometry
+      GameCore.Instance.TimeRuler.BeginMark( 1, drawEntityMark, Color.OrangeRed );
       List<GameObject> objects = ObjectTable.AllObjectsList;
       objects.Sort( ( a, b ) => a.DrawOrder.CompareTo( b.DrawOrder ) );
       foreach ( GameObject obj in objects )
         obj.Draw();
+      GameCore.Instance.TimeRuler.EndMark( 1, drawEntityMark );
 
-      // these are mostly particles
+      // particles
+      GameCore.Instance.TimeRuler.BeginMark( 1, drawParticleMark, Color.White );
       foreach ( DrawableGameComponent component in components )
         component.Draw( gameTime );
+      GameCore.Instance.TimeRuler.EndMark( 1, drawParticleMark );
 
       //DrawSafeRect( device );
 
@@ -466,8 +478,10 @@ namespace Menu
       Texture2D mask = maskRenderTarget.GetTexture();
 
       //post processing here
+      GameCore.Instance.TimeRuler.BeginMark( 1, drawPostProcessMark, Color.YellowGreen );
       Texture2D glow = PostProcessor.Glow( scene, mask );
       //Texture2D motionBlur = PostProcessor.MotionBlur( scene, mask );
+      GameCore.Instance.TimeRuler.EndMark( 1, drawPostProcessMark );
 
       // render scene to backbuffer
       spriteBatch.Begin( SpriteBlendMode.None, SpriteSortMode.Immediate, SaveStateMode.None );
@@ -482,12 +496,13 @@ namespace Menu
       Draw2D( spriteBatch );
       spriteBatch.End();
 
+      device.RenderState.AlphaTestEnable = false;
+      device.RenderState.DepthBufferEnable = true;
+      device.RenderState.DepthBufferWriteEnable = true;
+
       // If the game is transitioning on or off, fade it out to black.
       if ( TransitionPosition > 0 && !GameOver )
         ScreenManager.FadeBackBufferToBlack( 255 - TransitionAlpha );
-
-      Performance.Update( gameTime.ElapsedGameTime );
-      Performance.CountFrame();
     }
 
     private void Draw2D( SpriteBatch spriteBatch )
@@ -503,70 +518,7 @@ namespace Menu
         readyGoes[0].Draw2D();
 
       // debugging stuff
-      DebugString.Clear();
       Vector2 position = new Vector2( 20, 20 );
-      //spriteBatch.DrawString( gameFont, FormatDebugString(), position, Color.Tomato );
-      //spriteBatch.DrawString( gameFont, PhysicsManager.DebugString, position, Color.Black );
-    }
-
-    string strFrameRate = "FPS: ";
-    //string strPhysTicks = "Physics MS: ";
-    //string strCricleTicks = "TestVsCircle MS: ";
-    //string strPolygonTicks = "TestVsPolygon MS: ";
-    string strPolygonPercentage = "Polygon Percentage: ";
-    string strCirclePercentage = "Circle Percentage: ";
-    string strPhysicsPercentage = "Physics Percentage: ";
-    //string strLastImpulse = "Last Impulse: ";
-
-    private StringBuilder FormatDebugString()
-    {
-      DebugString.Clear();
-
-      // framerate
-      DebugString.Append( strFrameRate );
-      DebugString.AppendInt( Performance.FrameRate );
-      DebugString.Append( '\n' );
-
-      //// physics ticks
-      //DebugString.Append( strPhysTicks );
-      //DebugString.AppendInt( (int)( 1000 * (double)physicsTicks / (double)Stopwatch.Frequency ) );
-      //DebugString.Append( '\n' );
-
-      //// test vs circle ticks
-      //DebugString.Append( strCricleTicks );
-      //DebugString.AppendInt( (int)( 1000 * (double)PhysBody.TestVsCircleTicks / (double)Stopwatch.Frequency ) );
-      //DebugString.Append( '\n' );
-
-      //// test vs polygon ticks
-      //DebugString.Append( strPolygonTicks );
-      //DebugString.AppendInt( (int)( 1000 * (double)PhysBody.TestVsPolygonTicks / (double)Stopwatch.Frequency ) );
-      //DebugString.Append( '\n' );
-      int updateMS = (int)( 1000 * (double)updateTicks / (double)Stopwatch.Frequency );
-      int physMS = (int)( 1000 * (double)physicsTicks / (double)Stopwatch.Frequency );
-      int polyMS = (int)( 1000 * (double)PhysBody.TestVsPolygonTicks / (double)Stopwatch.Frequency );
-      int circleMS = (int)( 1000 * (double)PhysBody.TestVsCircleTicks / (double)Stopwatch.Frequency );
-
-      // percentage of time Physics is taking
-      DebugString.Append( strPhysicsPercentage );
-      DebugString.AppendInt( (int)( .5f + 100f * (float)physMS / (float)updateMS ) );
-      DebugString.Append( '\n' );
-
-      // percentage of time TestVsCircle is taking
-      DebugString.Append( strCirclePercentage );
-      DebugString.AppendInt( (int)( .5f + 100f * (float)circleMS / (float)physMS ) );
-      DebugString.Append( '\n' );
-
-      // percentage of time TestVsPolygon is taking
-      DebugString.Append( strPolygonPercentage );
-      DebugString.AppendInt( (int)( .5f + 100f * (float)polyMS / (float)physMS ) );
-      DebugString.Append( '\n' );
-
-      //// last collision impulse
-      //DebugString.Append( strLastImpulse );
-      //DebugString.Append( PhysicsSpace.LastImpulse );
-      //DebugString.Append( '\n' );
-
-      return DebugString;
     }
 
     #endregion
@@ -606,7 +558,6 @@ namespace Menu
       float leftBoundX = -.5f * stageWidth;
       FirstRow = lastRowY;
       Boundary boundary = new Boundary( this, leftBoundX, -leftBoundX, FirstRow, rowSpacing );
-      boundary.DrawOrder = 2;
       ObjectTable.Add( boundary );
 
       // starting shelves
@@ -756,19 +707,40 @@ namespace Menu
       }
 
       lastCamY = begCamPos;
-
     }
 
     private void UpdateWinCamera( float elapsed )
     {
-      if ( elapsed > 1f / 60f )
-        elapsed = 1f / 60f;
+      if ( elapsed > 1f / 30f )
+        elapsed = 1f / 30f;
 
       float u = winnerSpring.GetSource()[0];
       Camera.Target = new Vector3( winner.BoundingCircle.Position, 0 ) + winnerCameraOffset * u;
       Camera.Position = Camera.Target + Vector3.UnitZ * MathHelper.Lerp( cameraDistance, winCameraDistance, 1 - u );
 
       winnerSpring.Update( elapsed );
+    }
+
+    private void TransitionToScoreboard()
+    {
+      ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
+
+      Player[] playersInPlace = new Player[players.Count];
+
+      for ( int i = 0; i < players.Count; ++i )
+        playersInPlace[i] = players.First( p => p.PodiumPlace == ( i + 1 ) );
+
+      // if we add the players in the same loop, the number of wins changes,
+      // which is considered when sorting the players.
+      for ( int i = 0; i < players.Count; ++i )
+      {
+        Player player = playersInPlace[i];
+        SignedInGamer gamer = (int)player.PlayerIndex < 0 ? null : SignedInGamer.SignedInGamers[player.PlayerIndex];
+        scoreboardMenuScreen.SetPlayer( i, player.PlayerNumber, player.Avatar, gamer,
+                                        player.HUD.TotalScore, player.ID );
+      }
+
+      ScreenManager.AddScreen( scoreboardMenuScreen, null );
     }
 
     #endregion

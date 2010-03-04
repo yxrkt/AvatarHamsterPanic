@@ -55,11 +55,6 @@ namespace Physics
     public PhysBody Touching;
     public object Parent;
 
-    public static long TestVsCircleTicks = 0;
-    public static int TestVsCirlceHits = 0;
-    public static long TestVsPolygonTicks = 0;
-    public static int TestVsPolygonHits = 0;
-
     // Properties
     public List<PhysBody> CollisionList { get; private set; }
 

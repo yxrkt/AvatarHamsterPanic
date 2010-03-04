@@ -60,8 +60,8 @@ namespace Particle3DSample
       settings.MinStartSize = 0f;
       settings.MaxStartSize = .05f;
 
-      settings.MinMidSize = .05f;
-      settings.MaxMidSize = .15f;
+      settings.MinMidSize = .075f;
+      settings.MaxMidSize = .25f;
 
       settings.MinEndSize = 0;
       settings.MaxEndSize = 0;

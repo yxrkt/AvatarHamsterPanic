@@ -145,12 +145,12 @@ namespace CustomModelPipeline
         if ( material.Textures.ContainsKey( "Texture" ) )
         {
           effectMaterial.Textures.Add( "DiffuseMap", material.Textures["Texture"] );
-          context.Logger.LogImportantMessage( "Texture Channel: " + material.Textures["Texture"].Name );
+          //context.Logger.LogImportantMessage( "Texture Channel: " + material.Textures["Texture"].Name );
 
           if ( material.Textures.ContainsKey( "Bump0" ) )
           {
             effectMaterial.Textures.Add( "NormalMap", material.Textures["Bump0"] );
-            context.Logger.LogImportantMessage( "Bump0 Channel: " + material.Textures["Bump0"].Name );
+            //context.Logger.LogImportantMessage( "Bump0 Channel: " + material.Textures["Bump0"].Name );
           }
         }
 

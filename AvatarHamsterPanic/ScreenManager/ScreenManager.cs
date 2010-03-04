@@ -16,6 +16,9 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using CustomAvatarAnimationFramework;
 using AvatarHamsterPanic.Utilities;
+using AvatarHamsterPanic;
+using System.Linq;
+using Microsoft.Xna.Framework.Audio;
 #endregion
 
 namespace Menu
@@ -79,6 +82,8 @@ namespace Menu
       set { traceEnabled = value; }
     }
 
+    public Cue MenuTrack { get; internal set; }
+
 
     #endregion
 
@@ -102,6 +107,9 @@ namespace Menu
       base.Initialize();
 
       isInitialized = true;
+
+      MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", 1f );
+      MenuTrack.SetVariable( "Volume", XACTHelper.GetDecibels( 0 ) );
     }
 
 
@@ -113,7 +121,7 @@ namespace Menu
       // Load content belonging to the screen manager.
       ContentManager content = Game.Content;
 
-      ScreenRects.Initialize( Game );
+      //ScreenRects.Initialize( Game );
 
       spriteBatch = new SpriteBatch( GraphicsDevice );
       font = content.Load<SpriteFont>( "Fonts/menufont" );
@@ -250,7 +258,10 @@ namespace Menu
         screen.LoadContent();
       }
 
-      screens.Add( screen );
+      if ( screens.Count == 0 || screens.Last() != screen )
+      {
+        screens.Add( screen );
+      }
     }
 
 

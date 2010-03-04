@@ -35,12 +35,14 @@ namespace AvatarHamsterPanic.Objects
     static readonly Matrix scale = Matrix.CreateScale( size );
 
     readonly InstancedModel cageModel;
+    readonly InstancedModel hingeModel;
     readonly float deathLine;
 
     readonly Boundary boundary;
     readonly float topLine;
 
     CagePiece[] cagePieces;
+    Matrix[] hingeTransforms;
     SpringInterpolater angleSpring;
     float spacing;
 
@@ -60,12 +62,17 @@ namespace AvatarHamsterPanic.Objects
       int nCages = nMaxPlayers * nCagesPerBox;
       cagePieces = new CagePiece[nCages];
 
+      DrawOrder = 4;
+
       for ( int i = 0; i < nCages; ++i )
         cagePieces[i] = new CagePiece();
 
-      angleSpring = new SpringInterpolater( 1, 50, .5f * SpringInterpolater.GetCriticalDamping( 50 ) );
+      hingeTransforms = new Matrix[4];
+
+      angleSpring = new SpringInterpolater( 1, 50, SpringInterpolater.GetCriticalDamping( 50 ) );
 
       cageModel = screen.Content.Load<InstancedModel>( "Models/cage" );
+      hingeModel = screen.Content.Load<InstancedModel>( "Models/cageHinge" );
 
       // determine transforms for each piece
       boundary = screen.ObjectTable.GetObjects<Boundary>()[0];
@@ -93,10 +100,14 @@ namespace AvatarHamsterPanic.Objects
         cagePieces[i].Rotation = bottomStart;
         cagePieces[i].Transform = scale * bottomStart * cagePieces[i].Translation;
         cagePieces[i].Body = new PhysPolygon( size, .014f * size, new Vector2( pos.X + size / 2f, pos.Y ), 1f );
+        cagePieces[i].Body.Friction = 1.75f;
         cagePieces[i].Body.SetPivotPoint( new Vector2( -size / 2, 0f ) );
         cagePieces[i].Body.Flags = BodyFlags.Anchored;
         cagePieces[i].Body.Parent = this;
         Screen.PhysicsSpace.AddBody( cagePieces[i].Body );
+
+        hingeTransforms[i] = Matrix.CreateScale( size ) * 
+                             Matrix.CreateTranslation( new Vector3( cagePieces[i].Body.Position, 0 ) );
       }
 
       // all other cage pieces won't change
@@ -139,6 +150,7 @@ namespace AvatarHamsterPanic.Objects
       // swing open when countdown is over
       if ( Screen.CountdownTime > Screen.CountdownEnd && !angleSpring.Active )
       {
+        GameCore.Instance.AudioManager.Play2DCue( "squeek", 1f );
         angleSpring.SetDest( -MathHelper.PiOver2 );
         angleSpring.Active = true;
       }
@@ -165,7 +177,15 @@ namespace AvatarHamsterPanic.Objects
       foreach ( CagePiece piece in cagePieces )
         cageModel.AddInstance( piece.Transform );
 
-      // draw is called in the boundary
+      for ( int i = 0; i < nMaxPlayers; ++i )
+        hingeModel.AddInstance( hingeTransforms[i] );
+
+      Matrix view = Screen.View;
+      Matrix projection = Screen.Projection;
+      Vector3 eye = Screen.Camera.Position;
+
+      hingeModel.DrawInstances( view, projection, eye );
+      cageModel.DrawInstances( view, projection, eye );
     }
   }
 

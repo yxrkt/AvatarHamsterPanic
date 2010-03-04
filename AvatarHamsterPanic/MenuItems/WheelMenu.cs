@@ -10,6 +10,8 @@ using Graphics;
 using Microsoft.Xna.Framework.Graphics;
 using MathLibrary;
 using System.Diagnostics;
+using AvatarHamsterPanic;
+using Audio;
 
 namespace Menu
 {
@@ -25,6 +27,8 @@ namespace Menu
 
     SpringInterpolater rotateSpring;
     float angleStep;
+
+    public bool AcceptingInput { get; internal set; }
 
     // The wheel entries
     List<WheelMenuEntry> entries = new List<WheelMenuEntry>( 4 );
@@ -80,7 +84,7 @@ namespace Menu
       foreach ( CustomModel.ModelPart part in wheelModel.ModelParts )
       {
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
-        part.Effect.Parameters["Color"].SetValue( new Color( Color.RoyalBlue, 0 ).ToVector4() );
+        part.Effect.Parameters["Color"].SetValue( new Color( Color.LightGray, 0 ).ToVector4() );
       }
     }
 
@@ -122,8 +126,8 @@ namespace Menu
       }
 
       float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
-      if ( elapsed > 1f / 60f )
-        elapsed = 1f / 60f;
+      if ( elapsed > 1f / 30f )
+        elapsed = 1f / 30f;
 
       foreach ( WheelMenuEntry entry in entries )
         entry.Update( elapsed );
@@ -145,7 +149,12 @@ namespace Menu
     public void RotateCCW()
     {
       if ( rotateSpring.Active )
+      {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] - angleStep );
+        IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
+        GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
+        GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
+      }
       for ( int i = 0; i < entries.Count; ++i )
       {
         WheelMenuEntry entry = entries[i];
@@ -161,7 +170,13 @@ namespace Menu
     public void RotateCW()
     {
       if ( rotateSpring.Active )
+      {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] + angleStep );
+        IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
+        GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
+        GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
+      }
+
       for ( int i = 0; i < entries.Count; ++i )
       {
         WheelMenuEntry entry = entries[i];
@@ -176,6 +191,8 @@ namespace Menu
 
     protected internal override void OnSelect( PlayerIndex playerIndex )
     {
+      if ( !AcceptingInput ) return;
+
       foreach ( WheelMenuEntry entry in entries )
       {
         if ( entry.Active )

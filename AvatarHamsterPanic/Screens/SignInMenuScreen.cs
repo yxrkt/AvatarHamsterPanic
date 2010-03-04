@@ -13,6 +13,7 @@ using CustomModelSample;
 using Graphics;
 using AvatarHamsterPanic.Utilities;
 using System.Diagnostics;
+using AvatarHamsterPanic;
 
 namespace Menu
 {
@@ -33,6 +34,7 @@ namespace Menu
     readonly float joinHeight = .5f;
     readonly float cpuHeight = .55f;
     readonly float readyHeight = .8f;
+    readonly float screenScale;
 
     SignInSlot[] slots = new SignInSlot[4];
     bool autoSignIn = false;
@@ -66,6 +68,9 @@ namespace Menu
       Texture2D aStartTexture = content.Load<Texture2D>( "Textures/aStartText" );
       Texture2D readyTexture = content.Load<Texture2D>( "Textures/readyText" );
 
+      screenScale = device.Viewport.Height / 1080f;
+      textScale *= screenScale;
+
       Rectangle rectangle = ScreenRects.FourByThree;
 
       float x = textColumnStart * (float)rectangle.Width + (float)rectangle.X;
@@ -83,6 +88,7 @@ namespace Menu
         TextMenuItem textItem = new TextMenuItem( this, itemPosition, null, nameFont );
         textItem.Centered = true;
         textItem.MaxWidth = xStep;
+        textItem.Scale = screenScale;
         slots[i].NameItem = textItem;
         MenuItems.Add( textItem );
 
@@ -270,19 +276,23 @@ namespace Menu
         Slot[] initSlots = new Slot[4];
         for ( int i = 0; i < 4; ++i )
           initSlots[i] = slots[i].Slot;
+        GameCore.Instance.AudioManager.Play2DCue( "startGame", 1f );
+        ScreenManager.MenuTrack.Pause();
         LoadingScreen.Load( ScreenManager, true, playerIndex, new GameplayScreen( initSlots ) );
       }
     }
 
     public void OnButtonBHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
+      int numPlayers = slots.Count( s => s.Slot.Player != NoPlayer );
+
       if ( slot.Ready )
       {
         slot.Ready = false;
       }
-      else if ( slots.Count( s => s.Slot.Player != NoPlayer ) <= 1 )
+      else if ( numPlayers <= 1 )
       {
-        if ( slot.Slot.Player.IsPlayer() )
+        if ( numPlayers == 0 || numPlayers == 1 && slot.Slot.Player.IsPlayer() )
           OnCancel( playerIndex );
       }
       else if ( slot.CreatedBots.Count > 0 )
@@ -291,11 +301,13 @@ namespace Menu
         slot.CreatedBots.Remove( botIndex );
         slots[botIndex].Slot.Player = NoPlayer;
         slots[botIndex].Slot.Avatar = null;
+        GameCore.Instance.AudioManager.Play2DCue( "signOut", 1f );
       }
       else
       {
         slot.Slot.Player = NoPlayer;
         slot.Slot.Avatar = null;
+        GameCore.Instance.AudioManager.Play2DCue( "signOut", 1f );
       }
     }
 
@@ -309,6 +321,7 @@ namespace Menu
           slots[i].Slot.Avatar = new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
                                              1f, Vector3.UnitZ, Vector3.Zero );
           slots[(int)playerIndex].CreatedBots.Add( i );
+          GameCore.Instance.AudioManager.Play2DCue( "addCPU", 1f );
           return;
         }
       }
@@ -321,6 +334,7 @@ namespace Menu
                                      1f, Vector3.UnitZ, Vector3.Zero );
       foreach ( SignInSlot signInSlot in slots )
         signInSlot.CreatedBots.Remove( (int)playerIndex );
+      GameCore.Instance.AudioManager.Play2DCue( "signIn", 1f );
     }
 
     public override void Draw( GameTime gameTime )

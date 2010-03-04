@@ -62,9 +62,6 @@ namespace Physics
 
       if ( jc > -.7f )
         jc = -.7f;
-      //==
-      PhysicsSpace.LastImpulse = jc;
-      //==
 
       dotASq = Geometry.PerpDot( rA, fricDir ); dotASq *= dotASq;
       dotBSq = Geometry.PerpDot( rB, fricDir ); dotBSq *= dotBSq;

@@ -59,13 +59,16 @@ namespace AvatarHamsterPanic.Objects
     public TubeMaze( GameplayScreen screen, float z, float tubeSize )
       : base( screen )
     {
+      float alpha = .15f;
       colors = new Vector4[]
       {
-        new Vector4( 1f, .7f, .7f, .2f ),
-        new Vector4( .7f, 1f, .7f, .2f ),
-        new Vector4( .7f, .7f, 1f, .2f ),
-        new Vector4( 1f, 1f, .7f, .2f )
+        new Vector4( 1f, .7f, .7f, alpha ),
+        new Vector4( .7f, 1f, .7f, alpha ),
+        new Vector4( .7f, .7f, 1f, alpha ),
+        new Vector4( 1f, 1f, .7f,  alpha )
       };
+
+      DrawOrder = 0;
 
       ContentManager content = screen.Content;
 
@@ -154,7 +157,7 @@ namespace AvatarHamsterPanic.Objects
     {
       int nColors = colors.Length;
       float timePerColor = 4f;
-      float time = (float)gameTime.TotalGameTime.TotalSeconds;
+      float time = Screen.AccumulatedTime;
       float fakeTime = time / timePerColor;
 
       int a = (int)( fakeTime ) % nColors;

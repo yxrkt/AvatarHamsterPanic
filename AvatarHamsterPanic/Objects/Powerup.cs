@@ -51,8 +51,6 @@ namespace AvatarHamsterPanic.Objects
     static CustomModel laserModel;
     static CustomModel boltModel;
 
-    static readonly string tubePopSound = "tubePop";
-
     static Dictionary<CustomModel, Matrix> initialTransforms = 
       new Dictionary<CustomModel, Matrix>( 4 );
 
@@ -66,6 +64,7 @@ namespace AvatarHamsterPanic.Objects
     public CustomModel Model { get; private set; }
     public float Size { get; private set; }
     public PowerupType Type { get; private set; }
+    public float CollectedAt { get; private set; }
 
     bool inTube;
     Vector2 exitTubePos;
@@ -78,7 +77,10 @@ namespace AvatarHamsterPanic.Objects
         if ( !inTube )
         {
           exitTubePos = Body.Position;
-          Screen.AudioManager.Play3DCue( tubePopSound, this, 1 );
+          GameCore.Instance.AudioManager.Play3DCue( "tubePop", this, 1 );
+          GameCore.Instance.AudioManager.Play3DCue( "twinkle", this, 1 );
+          if ( Type == PowerupType.GoldenShake )
+            Screen.ShakeIsOut = true;
         }
       }
     }
@@ -106,7 +108,8 @@ namespace AvatarHamsterPanic.Objects
       foreach ( CustomModel.ModelPart part in goldShakeModel.ModelParts )
       {
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
-        part.EffectParamColor.SetValue( Color.Gold.ToVector4() );
+        part.EffectParamColor.SetValue( ColorHelper.ColorFromUintRgb( 0xCFB53B ).ToVector4() );
+        part.Effect.Parameters["Mask"].SetValue( MaskHelper.Glow( .85f ) );
       }
 
       shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
@@ -267,6 +270,8 @@ namespace AvatarHamsterPanic.Objects
       SizeSpring.Active = true;
       LockToPlayerSpring.Active = true;
       RotationSpring.Active = true;
+
+      DrawOrder = 6;
     }
 
     public override void Update( GameTime gameTime )
@@ -298,6 +303,8 @@ namespace AvatarHamsterPanic.Objects
 
     private void Die()
     {
+      if ( Type == PowerupType.GoldenShake )
+        Screen.ShakeIsOut = false;
       Screen.PhysicsSpace.RemoveBody( Body );
       Screen.ObjectTable.MoveToTrash( this );
       alive = false;
@@ -305,7 +312,7 @@ namespace AvatarHamsterPanic.Objects
 
     private void Rotate( GameTime gameTime )
     {
-      rotationAngle = .25f * MathHelper.TwoPi * /*/rotateTime/*/(float)gameTime.TotalGameTime.TotalSeconds/**/;
+      rotationAngle = .25f * MathHelper.TwoPi * /*/rotateTime/*/Screen.AccumulatedTime/**/;
       //rotateTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
 
@@ -420,6 +427,9 @@ namespace AvatarHamsterPanic.Objects
         Screen.ObjectTable.MoveToTrash( this );
         alive = false;
 
+        owner.Position = new Vector3( owner.BoundingCircle.Position, 0 );
+        GameCore.Instance.AudioManager.Play3DCue( "collect", owner, .8f );
+
         // make sparkle particles
         PixieParticleSystem system = Screen.PixieParticleSystem;
         for ( int i = 0; i < 20; ++i )
@@ -457,6 +467,9 @@ namespace AvatarHamsterPanic.Objects
 
         player.Powerup = this;
 
+        owner.Position = new Vector3( owner.BoundingCircle.Position, 0 );
+        GameCore.Instance.AudioManager.Play3DCue( "collect", owner, 1f );
+
         GameplayScreen.Instance.EndGame();
       }
 
@@ -479,7 +492,12 @@ namespace AvatarHamsterPanic.Objects
         SizeSpring.SetDest( .3f );
         RotationSpring.Active = false;
 
+        CollectedAt = screen.AccumulatedTime;
+
         player.Powerup = this;
+
+        owner.Position = new Vector3( owner.BoundingCircle.Position, 0 );
+        GameCore.Instance.AudioManager.Play3DCue( "sillySpin", owner, 1f );
       }
 
       return true;
@@ -490,13 +508,20 @@ namespace AvatarHamsterPanic.Objects
       ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
       for ( int i = 0; i < players.Count; ++i )
       {
-        if ( players[i] != owner )
-          players[i].Shrink();
+        Player player = players[i];
+        if ( player != owner )
+        {
+          player.Shrink();
+          player.Position = new Vector3( player.BoundingCircle.Position, 0 );
+          GameCore.Instance.AudioManager.Play3DCue( "shrimpDown", player, 1f );
+        }
       }
     }
 
     public void ActivateCrush()
     {
+      owner.Position = new Vector3( owner.BoundingCircle.Position, 0 );
+      GameCore.Instance.AudioManager.Play3DCue( "hammerFlame", owner, 1f );
       owner.Crush();
     }
 
@@ -511,8 +536,11 @@ namespace AvatarHamsterPanic.Objects
       for ( int i = 0; i < players.Count; ++i )
       {
         if ( players[i] != owner )
-          players[i].GetStunnedByLightning();
+          players[i].GetStunnedByLightning( owner );
       }
+
+      if ( players.Count > 1 )
+        GameCore.Instance.AudioManager.Play2DCue( "lightning", 1f );
     }
 
     #region IAudioEmitter Members

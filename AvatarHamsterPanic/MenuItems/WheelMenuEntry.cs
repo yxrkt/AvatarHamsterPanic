@@ -137,8 +137,8 @@ namespace Menu
 
     public void Update( float elapsed )
     {
-      if ( elapsed > 1f / 60f )
-        elapsed = 1f / 60f;
+      if ( elapsed > 1f / 30f )
+        elapsed = 1f / 30f;
       growSpring.Update( elapsed );
       extendedSpring.Update( elapsed );
     }

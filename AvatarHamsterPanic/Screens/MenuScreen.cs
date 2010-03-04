@@ -14,6 +14,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using AvatarHamsterPanic.Objects;
 using System.Collections.ObjectModel;
+using AvatarHamsterPanic;
 #endregion
 
 namespace Menu
@@ -73,17 +74,17 @@ namespace Menu
 
       PlayerIndex playerIndex;
 
-      if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
-        OnCancel( playerIndex );
-
       // If there is a wheel menu, handle left and right input
       if ( menuItems.AllObjectsList.Exists( item => item is WheelMenu ) )
       {
         WheelMenu wheel = menuItems.GetObjects<WheelMenu>()[0];
-        if ( input.IsMenuLeft( ControllingPlayer ) )
-          wheel.RotateCW();
-        if ( input.IsMenuRight( ControllingPlayer ) )
-          wheel.RotateCCW();
+        if ( wheel.AcceptingInput )
+        {
+          if ( input.IsMenuLeft( ControllingPlayer ) )
+            wheel.RotateCW();
+          if ( input.IsMenuRight( ControllingPlayer ) )
+            wheel.RotateCCW();
+        }
       }
       else if ( imageMenuEntries != null && imageMenuEntries.Count != 0 )
       {
@@ -96,6 +97,8 @@ namespace Menu
             selectedEntry = imageMenuEntries.Count - 1;
 
           imageMenuEntries[selectedEntry].Focused = true;
+
+          GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
         }
 
         // Move to the next menu entry?
@@ -107,6 +110,8 @@ namespace Menu
             selectedEntry = 0;
 
           imageMenuEntries[selectedEntry].Focused = true;
+
+          GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
         }
       }
       else if ( menuEntries != null && menuEntries.Count != 0 )
@@ -120,6 +125,8 @@ namespace Menu
             selectedEntry = menuEntries.Count - 1;
 
           menuEntries[selectedEntry].Focused = true;
+
+          GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
         }
 
         // Move to the next menu entry?
@@ -131,6 +138,8 @@ namespace Menu
             selectedEntry = 0;
 
           menuEntries[selectedEntry].Focused = true;
+
+          GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
         }
       }
 
@@ -151,6 +160,7 @@ namespace Menu
     /// </summary>
     protected virtual void OnSelectEntry( PlayerIndex playerIndex )
     {
+      GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
       if ( menuItems.AllObjectsList.Exists( item => item is WheelMenu ) )
       {
         menuItems.GetObjects<WheelMenu>()[0].OnSelect( playerIndex );
@@ -171,6 +181,7 @@ namespace Menu
     /// </summary>
     protected virtual void OnCancel( PlayerIndex playerIndex )
     {
+      GameCore.Instance.AudioManager.Play2DCue( "onCancel", 1f );
       ExitScreen();
     }
 

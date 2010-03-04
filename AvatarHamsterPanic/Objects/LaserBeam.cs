@@ -164,6 +164,9 @@ namespace AvatarHamsterPanic.Objects
       {
         player.TakeLaserUpAss( result );
         pwntPlayers.Add( player );
+
+        IAudioEmitter emitter = DummyAudioEmitter.InstanceAtPos( new Vector3( result.Intersection, 0 ) );
+        GameCore.Instance.AudioManager.Play3DCue( "laserHit", emitter, 1 );
       }
 
       return true;

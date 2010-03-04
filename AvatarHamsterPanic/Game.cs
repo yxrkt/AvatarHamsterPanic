@@ -14,9 +14,14 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Storage;
 using Menu;
 using System.Collections.Generic;
+using Debug;
+using Audio;
+using CustomModelSample;
+using CustomAvatarAnimationFramework;
+using AvatarHamsterPanic.Utilities;
 #endregion
 
-namespace AvatarHamsterPanic.Objects
+namespace AvatarHamsterPanic
 {
   /// <summary>
   /// Sample showing how to manage different game states, with transitions
@@ -26,13 +31,21 @@ namespace AvatarHamsterPanic.Objects
   /// </summary>
   public class GameCore : Game
   {
-    #region Fields
+    #region Fields and Properties
 
     GraphicsDeviceManager graphics;
     ScreenManager screenManager;
 
     public Dictionary<uint, int> PlayerWins { get; private set; }
     public Color[] PlayerColors { get; private set; }
+    public AudioManager AudioManager { get; private set; }
+
+    public DebugManager DebugManager { get; private set; }
+    public DebugCommandUI DebugCommand { get; private set; }
+    public FpsCounter FpsCounter { get; private set; }
+    public TimeRuler TimeRuler { get; private set; }
+
+    public static GameCore Instance { get; private set; }
 
     #endregion
 
@@ -51,24 +64,28 @@ namespace AvatarHamsterPanic.Objects
       PlayerWins = new Dictionary<uint, int>( 4 );
       PlayerColors = new Color[4]
       {
-        ColorHelper.ColorFromUintRgb( 0xAAEAFF ),
-        ColorHelper.ColorFromUintRgb( 0xF7A4A4 ),
-        ColorHelper.ColorFromUintRgb( 0xFFEB9B ),
-        ColorHelper.ColorFromUintRgb( 0xC2F2A2 ),
+        new Color( 10,  100, 220 ),
+        new Color( 200, 31,   7  ),
+        new Color( 240, 180,  0  ),
+        new Color( 80,  200, 10  ),
       };
 
-      /*/
-      graphics.PreferredBackBufferWidth = 1280;
-      graphics.PreferredBackBufferHeight = 720;
-      /*/
-      graphics.PreferredBackBufferWidth = 1920;
-      graphics.PreferredBackBufferHeight = 1080;
-      /**/
+      ///*/
+      //graphics.PreferredBackBufferWidth = 1280;
+      //graphics.PreferredBackBufferHeight = 720;
+      ///*/
+      //graphics.PreferredBackBufferWidth = 1920;
+      //graphics.PreferredBackBufferHeight = 1080;
+      ///**/
+
 
       graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
 
       IsFixedTimeStep = false;
-      graphics.SynchronizeWithVerticalRetrace = false;
+      graphics.SynchronizeWithVerticalRetrace = true;
+
+      AudioManager = new AudioManager( this );
+      Components.Add( AudioManager );
 
       // Create the screen manager component.
       screenManager = new ScreenManager( this );
@@ -76,17 +93,74 @@ namespace AvatarHamsterPanic.Objects
       Components.Add( screenManager );
 
       // Activate the first screens.
-      screenManager.AddScreen( new BackgroundScreen(), null );
-      screenManager.AddScreen( new MainMenuScreen(), null );
+      //screenManager.AddScreen( new BackgroundScreen(), null );
+      //screenManager.AddScreen( new MainMenuScreen(), null );
 
       // Avatars require GamerServices
       Components.Add( new GamerServicesComponent( this ) );
+
+      Instance = this;
+
+      // Debugging components
+      DebugManager = new DebugManager( this );
+      DebugManager.DrawOrder = 200;
+      Components.Add( DebugManager );
+      DebugCommand = new DebugCommandUI( this );
+      DebugCommand.DrawOrder = 200;
+      Components.Add( DebugCommand );
+      FpsCounter = new FpsCounter( this );
+      FpsCounter.DrawOrder = 200;
+      Components.Add( FpsCounter );
+      TimeRuler = new TimeRuler( this );
+      TimeRuler.DrawOrder = 200;
+      Components.Add( TimeRuler );
+    }
+
+    protected override void LoadContent()
+    {
+      base.LoadContent();
+      TimeRuler.Visible = true;
+      TimeRuler.ShowLog = true;
+      //FpsCounter.Visible = true;
+
+      graphics.PreferredBackBufferWidth  = graphics.GraphicsDevice.DisplayMode.Width;
+      graphics.PreferredBackBufferHeight = graphics.GraphicsDevice.DisplayMode.Height;
+      graphics.ApplyChanges();
+
+      ScreenRects.Initialize( this );
+
+      screenManager.AddScreen( new BackgroundScreen(), null );
+      screenManager.AddScreen( new MainMenuScreen(), null );
+
+      Content.Load<Effect>( "Effects/lineEffect" );
+      Content.Load<CustomModel>( "Models/hamsterBall" );
+      Content.Load<Texture2D>( "Textures/controls" );
+      Content.Load<Texture2D>( "Textures/loadingText" );
+      Content.Load<Texture2D>( "Textures/pressStartText" );
+
+      TimeRuler.StartFrame();
+      TimeRuler.BeginMark( 2, totalMark, Color.White );
     }
 
 
     #endregion
 
-    #region Draw
+    #region Update and Draw
+
+    string updateMark = "Update";
+    string drawMark = "Draw";
+    string totalMark = "Total";
+
+    protected override void Update( GameTime gameTime )
+    {
+      TimeRuler.EndMark( 2, totalMark );
+
+      TimeRuler.StartFrame();
+      TimeRuler.BeginMark( 2, totalMark, Color.White );
+      TimeRuler.BeginMark( 0, updateMark, Color.Yellow );
+      base.Update( gameTime );
+      TimeRuler.EndMark( 0, updateMark );
+    }
 
 
     /// <summary>
@@ -94,11 +168,13 @@ namespace AvatarHamsterPanic.Objects
     /// </summary>
     protected override void Draw( GameTime gameTime )
     {
+      TimeRuler.BeginMark( 1, drawMark, Color.SkyBlue );
       graphics.GraphicsDevice.RenderState.DepthBufferEnable = true;
       graphics.GraphicsDevice.Clear( Color.Black );
 
       // The real drawing happens inside the screen manager component.
       base.Draw( gameTime );
+      TimeRuler.EndMark( 1, drawMark );
     }
 
 

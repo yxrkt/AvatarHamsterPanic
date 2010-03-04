@@ -19,6 +19,7 @@ using Menu;
 using Graphics;
 using Audio;
 using System.Collections.ObjectModel;
+using Microsoft.Xna.Framework.Audio;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -39,11 +40,13 @@ namespace AvatarHamsterPanic.Objects
     static readonly float crushMass = 20f;
     static readonly float seizureDuration = .5f;
     static readonly float lightningStunDuration = 1f;
+    static readonly float boostLingerDuration = 1f;
 
     static readonly string pvpSound = "plasticHit";
     static readonly string pvBlockSound = "ballVBlock";
     static readonly string pvCageSound = "ballVCage";
     static readonly string laserShotSound = "laserShot";
+    static readonly string volumeVariable = "Volume";
 
     static Dictionary<string, uint> playerIDs = new Dictionary<string, uint>( 4 );
     static uint nextID = 1;
@@ -52,6 +55,7 @@ namespace AvatarHamsterPanic.Objects
     const float jumpTimeout = .125f;
     GameTime lastGameTime = new GameTime();
     float lastCollision;
+    float lastJump;
     float shrinkBegin;
     float crushBegin;
     float seizureBegin;
@@ -65,6 +69,11 @@ namespace AvatarHamsterPanic.Objects
     Vector3 soundVelocity;
     PlayerAI playerAI;
     AvatarAnimationPreset standAnim;
+    Cue boosterSound;
+    float boostCutoff;
+    List<Lightning> lightnings = new List<Lightning>( 4 );
+    CircularGlow glow;
+    SpringInterpolater glowSpring;
 
     static Random random = new Random();
 
@@ -87,6 +96,37 @@ namespace AvatarHamsterPanic.Objects
     public bool Crushing { get { return crushBegin != 0; } }
     public bool Seizuring { get { return seizureBegin != 0; } }
     public PlayerWinState WinState { get; set; }
+    public int PodiumPlace
+    {
+      get
+      {
+        ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
+
+        int place = 1;
+        for ( int i = 0; i < players.Count; ++i )
+        {
+          if ( players[i].HUD.TotalScore < HUD.TotalScore || i == PlayerNumber ) continue;
+
+          if ( players[i].HUD.TotalScore == HUD.TotalScore )
+          {
+            int myWins = 0;
+            if ( GameCore.Instance.PlayerWins.ContainsKey( ID ) )
+              myWins = GameCore.Instance.PlayerWins[ID];
+
+            int hisWins = 0;
+            if ( GameCore.Instance.PlayerWins.ContainsKey( players[i].ID ) )
+              hisWins = GameCore.Instance.PlayerWins[players[i].ID];
+
+            if ( myWins < hisWins || myWins == hisWins && PlayerNumber < players[i].PlayerNumber )
+              continue;
+          }
+
+          place++;
+        }
+
+        return place;
+      }
+    }
 
     public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos, uint id )
       : base( screen )
@@ -95,12 +135,12 @@ namespace AvatarHamsterPanic.Objects
       foreach ( CustomModelSample.CustomModel.ModelPart part in WheelModel.ModelParts )
       {
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
-        part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .3f ) );
+        part.Effect.Parameters["Color"].SetValue( new Vector4( .8f, .7f, 1f, .225f ) );
         part.Effect.Parameters["SpecularPower"].SetValue( 400 );
         part.Effect.Parameters["Mask"].SetValue( MaskHelper.MotionBlur( 1 ) );
       }
 
-      DrawOrder = 3;
+      DrawOrder = 8;
 
       WinState = PlayerWinState.None;
 
@@ -158,7 +198,28 @@ namespace AvatarHamsterPanic.Objects
       vertexDeclaration = new VertexDeclaration( screen.ScreenManager.GraphicsDevice, 
                                                  VertexPositionNormalTexture.VertexElements );
 
+      boosterSound = GameCore.Instance.AudioManager.Play2DCue( "booster", 1f );
+      boosterSound.Pause();
+
+      glow = new CircularGlow( new Vector3( BoundingCircle.Position, 0 ), Color.OrangeRed, Size );
+      glow.Player = this;
+      screen.ObjectTable.Add( glow );
+
+      glowSpring = new SpringInterpolater( 1, 500, .75f * SpringInterpolater.GetCriticalDamping( 500 ) );
+      glowSpring.Active = true;
+      glowSpring.SetSource( 0 );
+      glowSpring.SetDest( 0 );
+
       SetID( id );
+    }
+
+    public void OnDestruct()
+    {
+      boosterSound.Dispose();
+      boosterSound = null;
+      foreach ( Lightning lightning in lightnings )
+        Screen.ObjectTable.MoveToTrash( lightning );
+      lightnings.Clear();
     }
 
     public void GetWheelTransform( out Matrix transform )
@@ -221,7 +282,7 @@ namespace AvatarHamsterPanic.Objects
         {
           float volume = Math.Min( .75f, relVelMag / 6f );
           soundPosition = new Vector3( result.Intersection, 0 );
-          Screen.AudioManager.Play3DCue( pvpSound, this, volume );
+          GameCore.Instance.AudioManager.Play3DCue( pvpSound, this, volume );
         }
       }
 
@@ -233,7 +294,7 @@ namespace AvatarHamsterPanic.Objects
       PhysCircle circle = BoundingCircle;
 
       // keep track of last time of collision (for jumping)
-      lastCollision = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      lastCollision = Screen.AccumulatedTime;
 
       // set emitter position
       SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
@@ -251,7 +312,7 @@ namespace AvatarHamsterPanic.Objects
         {
           float volume = Math.Min( 1f, impulse / ( 5 * BoundingCircle.Mass ) );
           soundPosition = new Vector3( result.Intersection, 0 );
-          Screen.AudioManager.Play3DCue( sound, this, volume );
+          GameCore.Instance.AudioManager.Play3DCue( sound, this, volume );
         }
       }
 
@@ -297,13 +358,13 @@ namespace AvatarHamsterPanic.Objects
 
     public void Shrink()
     {
-      shrinkBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      shrinkBegin = Screen.AccumulatedTime;
       ScaleSpring.SetDest( shrinkSize * Size );
     }
 
     public void Crush()
     {
-      crushBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      crushBegin = Screen.AccumulatedTime;
       BoundingCircle.Velocity.Y -= 3f;
       BoundingCircle.Mass = crushMass;
     }
@@ -315,11 +376,11 @@ namespace AvatarHamsterPanic.Objects
       Vector2 rightPos = BoundingCircle.Position + offset;
 
       LaserBeam leftLaser = LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true );
-      Screen.AudioManager.Play3DCue( laserShotSound, leftLaser, 1 );
+      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, leftLaser, 1 );
       Screen.ObjectTable.Add( leftLaser );
 
       LaserBeam rightLaser = LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false );
-      Screen.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
+      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
       Screen.ObjectTable.Add( rightLaser );
     }
 
@@ -327,21 +388,26 @@ namespace AvatarHamsterPanic.Objects
     {
       if ( Respawning ) return;
 
-      seizureBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      seizureBegin = Screen.AccumulatedTime;
       seizureCollision = result;
       BoundingCircle.Flags |= BodyFlags.Anchored;
       BoundingCircle.Velocity = Vector2.Zero;
       BoundingCircle.AngularVelocity = 0;
     }
 
-    public void GetStunnedByLightning()
+    public void GetStunnedByLightning( Player attackingPlayer )
     {
       if ( Respawning ) return;
 
-      lightningStunBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      lightningStunBegin = Screen.AccumulatedTime;
       BoundingCircle.Flags = BodyFlags.Anchored;
       BoundingCircle.Velocity = Vector2.Zero;
       BoundingCircle.AngularVelocity = 0;
+
+      Lightning lightning = new Lightning( 5, Vector3.Zero, Vector3.Zero );
+      lightning.LinkToPlayers( attackingPlayer, this );
+      lightnings.Add( lightning );
+      Screen.ObjectTable.Add( lightning );
     }
 
     private void UpdateScale( float elapsed )
@@ -369,6 +435,8 @@ namespace AvatarHamsterPanic.Objects
         {
           shrinkBegin = 0;
           ScaleSpring.SetDest( 1 );
+          soundPosition = new Vector3( BoundingCircle.Position, 0 );
+          GameCore.Instance.AudioManager.Play3DCue( "shrimpUp", this, 1f );
         }
       }
 
@@ -406,6 +474,9 @@ namespace AvatarHamsterPanic.Objects
         {
           BoundingCircle.Flags = BodyFlags.None;
           lightningStunBegin = 0;
+          foreach ( Lightning lightning in lightnings )
+            Screen.ObjectTable.MoveToTrash( lightning );
+          lightnings.Clear();
         }
         else
         {
@@ -424,11 +495,8 @@ namespace AvatarHamsterPanic.Objects
       {
         if ( players[i] == this ) continue;
 
-        if ( players[i].HUD.Score > HUD.Score ||
-             players[i].HUD.Score == HUD.Score && players[i].PlayerNumber < PlayerNumber )
-        {
+        if ( players[i].HUD.Score > HUD.Score )
           place++;
-        }
       }
 
       HUD.Place = place;
@@ -440,6 +508,9 @@ namespace AvatarHamsterPanic.Objects
       crushBegin = 0;
       seizureBegin = 0;
       lightningStunBegin = 0;
+      foreach ( Lightning lightning in lightnings )
+        Screen.ObjectTable.MoveToTrash( lightning );
+      lightnings.Clear();
 
       //ScaleSpring.SetDest( 1 );
 
@@ -455,7 +526,7 @@ namespace AvatarHamsterPanic.Objects
     {
       lastGameTime = gameTime;
 
-      UpdatePowerupEffects( (float)gameTime.TotalGameTime.TotalSeconds );
+      UpdatePowerupEffects( Screen.AccumulatedTime );
 
       UpdateScale( (float)gameTime.ElapsedGameTime.TotalSeconds );
 
@@ -464,11 +535,17 @@ namespace AvatarHamsterPanic.Objects
       UpdateAvatar( gameTime );
       HUD.Update( gameTime );
 
+      UpdateBoostSound();
+      UpdateGlowEffect();
+
+      if ( !Screen.CameraIsScrolling ) return;
+
+      float deathLine = Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f;
+      bool hittingLine = BoundingCircle.Position.Y >= deathLine;
       if ( !Respawning )
       {
         // check if player should be pwnt
-        float deathLine = Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f;
-        if ( BoundingCircle.Position.Y >= deathLine && !Crushing )
+        if ( hittingLine && !Crushing )
         {
           ClearPowerupEffects();
           RespawnTime = 0f;
@@ -480,7 +557,8 @@ namespace AvatarHamsterPanic.Objects
       else
       {
         double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
-        RespawnTime += elapsed;
+        if ( !( hittingLine && RespawnTime + elapsed > respawnDuration ) )
+          RespawnTime += elapsed;
       }
     }
 
@@ -494,7 +572,10 @@ namespace AvatarHamsterPanic.Objects
       // powerups
       PlayerIndex playerIndex = PlayerIndex;
       if ( playerInput.ButtonXHit && Powerup != null && Powerup.Type != PowerupType.GoldenShake )
-        Powerup.Use();
+      {
+        if ( !Screen.GameOver )
+          Powerup.Use();
+      }
 
       // movement
       float forceY = 0f;
@@ -505,7 +586,7 @@ namespace AvatarHamsterPanic.Objects
       if ( playerInput.LeftTrigger != 0f )
       {
         Boosting = true;
-        forceX = -200f;
+        forceX = -20f * BoundingCircle.Mass;
         maxVelX = 6f;
       }
       if ( playerInput.RightTrigger != 0f )
@@ -519,7 +600,7 @@ namespace AvatarHamsterPanic.Objects
         }
         else
         {
-          forceX = 200f;
+          forceX = 20f * BoundingCircle.Mass;
           maxVelX = 6f;
         }
       }
@@ -566,20 +647,26 @@ namespace AvatarHamsterPanic.Objects
       }
 
       // jumping
-      float totalTime = (float)lastGameTime.TotalGameTime.TotalSeconds;
+      float totalTime = Screen.AccumulatedTime;
       if ( playerInput.ButtonAHit )
       {
-        if ( totalTime - lastCollision < jumpTimeout )
-          circle.Velocity += 2f * circle.TouchNormal;
+        if ( lastJump != lastCollision && totalTime - lastCollision < jumpTimeout )
+        {
+          Jump( circle );
+          lastJump = lastCollision;
+        }
         else
+        {
           jumpRegistered = totalTime;
+        }
       }
 
       if ( jumpRegistered != 0f )
       {
         if ( circle.Touching != null )
         {
-          circle.Velocity += 2f * circle.TouchNormal;
+          Jump( circle );
+          lastJump = lastCollision;
           jumpRegistered = 0f;
         }
         else if ( totalTime - jumpRegistered > jumpTimeout )
@@ -587,6 +674,102 @@ namespace AvatarHamsterPanic.Objects
           jumpRegistered = 0f;
         }
       }
+    }
+
+    private void Jump( PhysCircle circle )
+    {
+      circle.Velocity += 2f * circle.TouchNormal;
+      glowSpring.SetSource( 1f );
+      glow.Color.R = 255;
+      glow.Color.G = 225;
+      glow.Color.B = 0;
+    }
+
+    private void UpdateBoostSound()
+    {
+      if ( boosterSound != null )
+      {
+        if ( Boosting && HUD.Boost != 0 && boosterSound.IsPaused )
+        {
+          boostCutoff = 0;
+          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 ) );
+          boosterSound.Resume();
+        }
+        else if ( ( !Boosting || HUD.Boost == 0 ) && !boosterSound.IsPaused && boostCutoff == 0 )
+        {
+          boostCutoff = Screen.AccumulatedTime;
+        }
+      }
+      if ( boostCutoff != 0 )
+      {
+        float t = ( Screen.AccumulatedTime - boostCutoff ) / boostLingerDuration;
+        if ( t < 1 )
+        {
+          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 - t ) );
+        }
+        else
+        {
+          boosterSound.Pause();
+          boostCutoff = 0;
+        }
+      }
+    }
+
+    private void UpdateGlowEffect()
+    {
+      if ( Crushing )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 255;
+        glow.Color.G = 80;
+        glow.Color.B = 0;
+      }
+      else if ( Boosting && HUD.Boost > 0 )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 0;
+        glow.Color.G = 225;
+        glow.Color.B = 255;
+      }
+      else if ( Respawning )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 255;
+        glow.Color.G = 255;
+        glow.Color.B = 255;
+      }
+      else
+      {
+        glowSpring.SetDest( 0 );
+      }
+
+      float glowSize = glowSpring.GetSource()[0];
+      if ( glowSize < 0 )
+      {
+        glowSize = 0;
+        glowSpring.SetSource( 0 );
+      }
+
+      if ( Respawning && ( (int)( RespawnTime * 16f ) % 2 ) == 0 )
+        glowSize = 0;
+
+      glow.Color.A = (byte)( glowSize * 255f + .5f );
+
+      //if ( glowSpring.GetDest()[0] == 0 )
+      //{
+      //  glowSpring.K = 100;
+      //  glowSpring.B = SpringInterpolater.GetCriticalDamping( 100 );
+      //}
+      //else
+      //{
+      //  glowSpring.K = 500;
+      //  glowSpring.B = .5f * SpringInterpolater.GetCriticalDamping( 500 );
+      //}
+
+      glowSpring.Update( (float)lastGameTime.ElapsedGameTime.TotalSeconds );
     }
 
     private void GetPlayerInput( PlayerIndex playerIndex, InputState input, out PlayerInput playerInput )
@@ -610,11 +793,9 @@ namespace AvatarHamsterPanic.Objects
 
     public override void Draw()
     {
-      if ( Respawning && ( (int)( RespawnTime * 16f ) % 2 ) == 0 )
-        return;
-
       GraphicsDevice graphics = Screen.ScreenManager.GraphicsDevice;
       RenderState renderState = graphics.RenderState;
+
       renderState.CullMode = CullMode.CullCounterClockwiseFace;
       renderState.AlphaBlendEnable = false;
 
@@ -681,6 +862,7 @@ namespace AvatarHamsterPanic.Objects
     public Vector3 Position
     {
       get { return soundPosition; }
+      set { soundPosition = value; }
     }
 
     public Vector3 Forward
@@ -740,6 +922,13 @@ namespace AvatarHamsterPanic.Objects
       rows.Clear();
     }
 
+    static readonly float minimumWaitTime = 1f;
+    static readonly float hammerSpookThreshold = 1f;
+    static readonly float hammerSpeedThreshold = -3f;
+    static readonly float lightningAttackThreshold = 2.5f;
+    static readonly float lightningDefenseThreshold = .5f;
+    static readonly float shrimpThreshold = 2f * 2f;
+
     #endregion
 
     #region Instance Memebers
@@ -757,7 +946,7 @@ namespace AvatarHamsterPanic.Objects
     {
       //AI SUPERBRAIN GOES HERE
       playerInput.ButtonAHit = false;
-      playerInput.ButtonXHit = false;
+      playerInput.ButtonXHit = ShouldUsePowerup;
       playerInput.LeftTrigger = 0;
       playerInput.RightTrigger = 0;
       playerInput.LeftStick = Vector2.Zero;
@@ -832,6 +1021,68 @@ namespace AvatarHamsterPanic.Objects
       }
 
       return new Vector2( bestX, row.Key );
+    }
+
+    private bool ShouldUsePowerup
+    {
+      get
+      {
+        if ( player.Powerup == null )
+          return false;
+
+        if ( player.Screen.AccumulatedTime - player.Powerup.CollectedAt < minimumWaitTime )
+          return false;
+
+        if ( player.Screen.ShakeIsOut )
+          return true;
+
+        float deathLine = player.DeathLine + player.Screen.Camera.Position.Y 
+                                           - Player.Size * player.Scale / 2f;
+        PhysCircle circle = player.BoundingCircle;
+        ReadOnlyCollection<Player> players = player.Screen.ObjectTable.GetObjects<Player>();
+
+        switch ( player.Powerup.Type )
+        {
+          case PowerupType.Hammer:
+            if ( deathLine - circle.Position.Y < hammerSpookThreshold )
+              return true;
+            if ( circle.Velocity.Y < hammerSpeedThreshold && !player.Respawning )
+              return true;
+            break;
+          case PowerupType.Laser:
+            float shootRange = circle.Radius / 2;
+            for ( int i = 0; i < players.Count; ++i )
+            {
+              if ( i == player.PlayerNumber || players[i].Respawning ) continue;
+              if ( Math.Abs( circle.Position.Y - players[i].BoundingCircle.Position.Y ) < shootRange )
+                return true;
+            }
+            break;
+          case PowerupType.Lightning:
+            float springLine = player.Screen.Camera.Position.Y + FloorBlock.BirthLine * .2f;
+            for ( int i = 0; i < players.Count; ++i )
+            {
+              float distToDeath = deathLine - players[i].BoundingCircle.Position.Y;
+              if ( !players[i].Respawning && distToDeath < lightningAttackThreshold )
+                return true;
+              if ( players[i].BoundingCircle.Position.Y - springLine < lightningDefenseThreshold )
+                return true;
+            }
+
+            break;
+          case PowerupType.Shrimp:
+            for ( int i = 0; i < players.Count; ++i )
+            {
+              Vector2 enemyPos = players[i].BoundingCircle.Position;
+              float distSquared = Vector2.DistanceSquared( enemyPos, circle.Position );
+              if ( distSquared < shrimpThreshold )
+                return true;
+            }
+            break;
+        }
+
+        return false;
+      }
     }
 
     #endregion

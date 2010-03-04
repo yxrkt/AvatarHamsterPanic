@@ -11,6 +11,7 @@ using Graphics;
 using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Input;
 using Utilities;
+using AvatarHamsterPanic;
 
 namespace Menu
 {
@@ -27,6 +28,7 @@ namespace Menu
     const float swipeOutDuration = .75f;
     const float swipeInDuration = .75f;
 
+    float screenScale;
     CustomModel podiumModel;
     Texture2D swipeMask;
     Matrix podiumTransform;
@@ -66,6 +68,8 @@ namespace Menu
     SpriteFont scoreboardSubscriptFont;
     StringBuilder stringBuffer;
     string cpuNameString;
+    Effect addColorEffect;
+    Texture2D background;
 
     static readonly string[] placeStrings = { "st", "nd", "rd", "th" };
 
@@ -96,6 +100,8 @@ namespace Menu
 
       device = ScreenManager.GraphicsDevice;
       renderState = device.RenderState;
+
+      screenScale = (float)device.Viewport.Height / 1080f;
 
       screenTextureQuad = new VertexPositionTexture[4];
       screenTextureQuad[0].Position = new Vector3( 0, 0, 0 );
@@ -170,9 +176,11 @@ namespace Menu
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
       loserBoxTransform = Matrix.CreateTranslation( 3 * podiumSize, 0, 0 );
 
-      int rectWidth  = 900;
-      int rectHeight = 245;
-      scoreboardRect = new Rectangle( ( device.Viewport.Width - rectWidth ) / 2, 60, rectWidth, rectHeight );
+      int rectWidth  = (int)( 900 * screenScale + .5f );
+      int rectHeight = (int)( 245 * screenScale + .5f );
+      scoreboardRect = new Rectangle( ( device.Viewport.Width - rectWidth ) / 2,
+                                      (int)( 60 * screenScale + .5f ),
+                                      rectWidth, rectHeight );
 
       playerScoreBar = content.Load<Texture2D>( "Textures/playerScoreboardBar" );
       playerNameBox = content.Load<Texture2D>( "Textures/playerNameBox" );
@@ -180,22 +188,32 @@ namespace Menu
       winsText = content.Load<Texture2D>( "Textures/winsText" );
 
       playerScoreBarPositions = new Vector2[4];
-      int y = scoreboardRect.Top + 41;
+      int y = scoreboardRect.Top + (int)( 41 * screenScale + .5f );
       for ( int i = 0; i < 4; ++i )
       {
         playerScoreBarPositions[i] = new Vector2( scoreboardRect.Left + 1, y );
-        y += playerScoreBar.Height + 2;
+        y += (int)( playerScoreBar.Height * screenScale ) + (int)( 4 * screenScale + .5f );
       }
 
       playerNameBoxPositions = new Vector2[4];
       for ( int i = 0; i < 4; ++i )
-        playerNameBoxPositions[i] = new Vector2( scoreboardRect.Left + 58, playerScoreBarPositions[i].Y + 5 );
+      {
+        Vector2 pos = Vector2.Zero;
+        pos.X = scoreboardRect.Left + 58 * screenScale;
+        pos.Y = playerScoreBarPositions[i].Y + 5 * screenScale;
+        playerNameBoxPositions[i] = pos;
+      }
 
       scoreboardFont = content.Load<SpriteFont>( "Fonts/scoreboardFont" );
       scoreboardNumberFont = content.Load<SpriteFont>( "Fonts/scoreboardNumberFont" );
       scoreboardSubscriptFont = content.Load<SpriteFont>( "Fonts/scoreboardSubscriptFont" );
       stringBuffer = new StringBuilder( 2 );
       cpuNameString = "CPU";
+
+      addColorEffect = content.Load<Effect>( "Effects/addColorEffect" );
+      addColorEffect.CurrentTechnique = addColorEffect.Techniques[0];
+
+      background = content.Load<Texture2D>( "Textures/menuBackground" );
     }
 
     public override void LoadContent()
@@ -203,6 +221,7 @@ namespace Menu
       // Content is loaded in the constructor, so the GameplayScreen can load this screen's
       // content during its loading screen. This prevents spikes when transitioning to
       // this screen, which is very important for the swipe transition.
+      ScreenManager.MenuTrack.Resume();
     }
 
     public void SetPlayer( int index, int playerNumber, Avatar avatar, SignedInGamer gamer, int score, uint id )
@@ -280,6 +299,7 @@ namespace Menu
              input.IsNewButtonPress( Buttons.Start, null, out playerIndex ) )
         {
           ScreenManager.AddScreen( popupScreen, null );
+          GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
         }
       }
     }
@@ -321,6 +341,11 @@ namespace Menu
       Matrix view = camera.GetViewMatrix();
       Matrix projection = camera.GetProjectionMatrix();
 
+      spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
+      Rectangle viewportRect = new Rectangle( 0, 0, device.Viewport.Width, device.Viewport.Height );
+      spriteBatch.Draw( background, viewportRect, Color.White );
+      spriteBatch.End();
+
       DrawScoreboard();
 
       renderState.DepthBufferEnable = true;
@@ -352,7 +377,7 @@ namespace Menu
         spriteBatch.Begin();
         Color color = new Color( Color.White, .5f + .5f * (float)Math.Sin( elapsed * MathHelper.PiOver4 ) );
         spriteBatch.Draw( pressAToContinueText, pressAPosition, null, color, 0f,
-                          pressAOrigin, .65f, SpriteEffects.None, 0 );
+                          pressAOrigin, .65f * screenScale, SpriteEffects.None, 0 );
         spriteBatch.End();
       }
     }
@@ -361,56 +386,91 @@ namespace Menu
     {
       GameCore game = ScreenManager.Game as GameCore;
 
+      // background bars
       spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
-      spriteBatch.Draw( scoreText, new Vector2( scoreboardRect.X + 622, scoreboardRect.Y + 3 ), Color.White );
-      spriteBatch.Draw( winsText, new Vector2( scoreboardRect.X + 777, scoreboardRect.Y + 3 ), Color.White );
+      addColorEffect.Begin();
+      addColorEffect.CurrentTechnique.Passes.First().Begin();
       for ( int i = 0; i < 4; ++i )
       {
         if ( players[i].Avatar != null )
         {
-          // background bar
-          Color barColor = game.PlayerColors[players[i].PlayerNumber];
-          spriteBatch.Draw( playerScoreBar, playerScoreBarPositions[i], barColor );
+          Color barColor = new Color( game.PlayerColors[players[i].PlayerNumber], 1f );
+          spriteBatch.Draw( playerScoreBar, playerScoreBarPositions[i], null, barColor, 0f,
+                            Vector2.Zero, screenScale, SpriteEffects.None, 0f );
+        }
+      }
+      spriteBatch.End();
+      addColorEffect.CurrentTechnique.Passes.First().End();
+      addColorEffect.End();
+
+      spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
+      Vector2 scoreColPos = new Vector2( scoreboardRect.X + 622 * screenScale, scoreboardRect.Y + 3 * screenScale );
+      Vector2 winsColPos = new Vector2( scoreboardRect.X + 777 * screenScale, scoreboardRect.Y + 3 * screenScale );
+      spriteBatch.Draw( scoreText, scoreColPos, null, Color.White, 0f, 
+                        Vector2.Zero, screenScale, SpriteEffects.None, 0f );
+      spriteBatch.Draw( winsText, winsColPos, null, Color.White, 0f,
+                        Vector2.Zero, screenScale, SpriteEffects.None, 0f );
+      int prevScore = -1;
+      int prevPlace = -1;
+      for ( int i = 0; i < 4; ++i )
+      {
+        if ( players[i].Avatar != null )
+        {
+          int place = prevPlace;
+          if ( prevScore != players[i].Score )
+          {
+            place = ++prevPlace;
+            prevScore = players[i].Score;
+          }
+
+          Color textColor = Color.Black;
 
           // place
           stringBuffer.Clear();
-          stringBuffer.AppendInt( i + 1 );
-          string placeTag = placeStrings[i];
+          stringBuffer.AppendInt( place + 1 );
+          string placeTag = placeStrings[place];
           Vector2 placeNumberSize = scoreboardNumberFont.MeasureString( stringBuffer );
           Vector2 placeTagSize = scoreboardFont.MeasureString( placeTag );
           Vector2 placeNumberOrigin = new Vector2( ( placeNumberSize.X + placeTagSize.X ) / 2, placeNumberSize.Y );
-          Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X - 1, placeTagSize.Y + 12 );
-          Vector2 placePos = playerScoreBarPositions[i] + new Vector2( 34, 50 );
-          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, placePos, Color.Black, 0f,
-                                  placeNumberOrigin, 1, SpriteEffects.None, 0f );
-          spriteBatch.DrawString( scoreboardSubscriptFont, placeTag, placePos, Color.Black, 0f,
-                                  placeTagOrigin, 1, SpriteEffects.None, 0f );
+          Vector2 placeTagOrigin = new Vector2( placeNumberOrigin.X - placeNumberSize.X - 1, placeTagSize.Y + 12 * screenScale );
+          Vector2 placePos = playerScoreBarPositions[i] + new Vector2( 34, 50 ) * screenScale;
+          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, placePos, textColor, 0f,
+                                  placeNumberOrigin, screenScale, SpriteEffects.None, 0f );
+          spriteBatch.DrawString( scoreboardSubscriptFont, placeTag, placePos, textColor, 0f,
+                                  placeTagOrigin, screenScale, SpriteEffects.None, 0f );
 
           // name box
-          spriteBatch.Draw( playerNameBox, playerNameBoxPositions[i], Color.White );
+          spriteBatch.Draw( playerNameBox, playerNameBoxPositions[i], null, textColor, 0f,
+                            Vector2.Zero, screenScale, SpriteEffects.None, 0f );
 
           // name
-          Vector2 namePos = playerScoreBarPositions[i] + new Vector2( 64, 10 );
+          Vector2 namePos = playerScoreBarPositions[i] + new Vector2( 64, 10 ) * screenScale;
           if ( players[i].Gamer != null )
-            spriteBatch.DrawString( scoreboardFont, players[i].Gamer.Gamertag, namePos, Color.Black );
+          {
+            spriteBatch.DrawString( scoreboardFont, players[i].Gamer.Gamertag, namePos,
+                                    textColor, 0f, Vector2.Zero, screenScale, SpriteEffects.None, 0f );
+          }
           else
-            spriteBatch.DrawString( scoreboardFont, cpuNameString, namePos, Color.Black );
+          {
+            spriteBatch.DrawString( scoreboardFont, cpuNameString, namePos, textColor, 0f,
+                                    Vector2.Zero, screenScale, SpriteEffects.None, 0f );
+          }
 
           // score
           stringBuffer.Clear();
           stringBuffer.AppendInt( players[i].Score );
           Vector2 scoreOrigin = scoreboardNumberFont.MeasureString( stringBuffer ) / 2;
-          Vector2 scorePos = playerScoreBarPositions[i] + new Vector2( 674, 26 );
-          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, scorePos, Color.Black, 
-                                  0, scoreOrigin, 1, SpriteEffects.None, 0 );
+          Vector2 scorePos = playerScoreBarPositions[i] + new Vector2( 674, 26 ) * screenScale;
+          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, scorePos, textColor,
+                                  0, scoreOrigin, screenScale, SpriteEffects.None, 0 );
 
           // wins
           stringBuffer.Clear();
           stringBuffer.AppendInt( game.PlayerWins[popupScreen.Slots[players[i].PlayerNumber].ID] );
           Vector2 winsOrigin = scoreboardNumberFont.MeasureString( stringBuffer ) / 2;
-          Vector2 winsPos = playerScoreBarPositions[i] + new Vector2( 822, 26 );
-          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, winsPos, Color.Black,
-                                  0, winsOrigin, 1, SpriteEffects.None, 0 );
+          Vector2 winsPos = playerScoreBarPositions[i] + new Vector2( 822, 26 ) * screenScale;
+          spriteBatch.DrawString( scoreboardNumberFont, stringBuffer, winsPos, textColor,
+                                  0, winsOrigin, screenScale, SpriteEffects.None, 0 );
         }
       }
       spriteBatch.End();

@@ -139,6 +139,18 @@ namespace Audio
       base.Update( gameTime );
     }
 
+    public Cue CreateCue( string cueName )
+    {
+      return soundBank.GetCue( cueName );
+    }
+
+    public Cue Play2DCue( string cueName, float volume )
+    {
+      Cue cue = soundBank.GetCue( cueName );
+      cue.SetVariable( varVolume, MathHelper.Lerp( -96, 6, volume ) );
+      cue.Play();
+      return cue;
+    }
 
     /// <summary>
     /// Triggers a new 3D sound.
@@ -172,7 +184,7 @@ namespace Audio
       else
         cue3D.Cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volume ), -96, 6 ) );
       /*/
-      cue3D.Cue.SetVariable( varVolume, MathHelper.Lerp( -96, 6, volume ) );
+      cue3D.Cue.SetVariable( varVolume, XACTHelper.GetDecibels( volume ) );
       /**/
 
       cue3D.Cue.Play();

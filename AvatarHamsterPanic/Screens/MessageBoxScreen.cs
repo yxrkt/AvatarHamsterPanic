@@ -15,6 +15,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System.Text;
 using Utilities;
 using System.Collections.Generic;
+using AvatarHamsterPanic;
 #endregion
 
 namespace Menu
@@ -35,6 +36,7 @@ namespace Menu
     Texture2D messageBox;
     Rectangle outerRectangle;
     Rectangle innerRectangle;
+    float screenScale;
 
     #endregion
 
@@ -77,7 +79,8 @@ namespace Menu
         }
         else
         {
-          if ( font.MeasureString( message.Substring( lastLine, i - lastLine + 1 ) ).X > innerRectangle.Width )
+          float stringLength = font.MeasureString( message.Substring( lastLine, i - lastLine + 1 ) ).X;
+          if ( stringLength * screenScale > innerRectangle.Width )
           {
             buffer.Append( '\n' );
             lastLine = curWord;
@@ -96,12 +99,18 @@ namespace Menu
       font = ScreenManager.Font;
 
       messageBox = content.Load<Texture2D>( "Textures/messageBox" );
-      int x = ( device.Viewport.Width  - messageBox.Width  ) / 2;
-      int y = ( device.Viewport.Height - messageBox.Height ) / 2;
-      outerRectangle = new Rectangle( x, y, messageBox.Width, messageBox.Height );
-      innerRectangle = new Rectangle( x + textSidePadding, y + textTopPadding,
-                                      outerRectangle.Width - 2 * textSidePadding,
-                                      outerRectangle.Height - 2 * textTopPadding );
+
+      screenScale = device.Viewport.Height / 1080f;
+      int boxWidth  = (int)( messageBox.Width  * screenScale + .5f );
+      int boxHeight = (int)( messageBox.Height * screenScale + .5f );
+
+      int x = ( device.Viewport.Width  - boxWidth  ) / 2;
+      int y = ( device.Viewport.Height - boxHeight ) / 2;
+      outerRectangle = new Rectangle( x, y, boxWidth, boxHeight );
+      innerRectangle = new Rectangle( (int)( x + textSidePadding * screenScale ),
+                                      (int)( y + textTopPadding * screenScale ),
+                                      (int)( outerRectangle.Width - 2 * textSidePadding * screenScale ),
+                                      (int)( outerRectangle.Height - 2 * textTopPadding * screenScale ) );
 
       WrapMessage();
     }
@@ -115,16 +124,13 @@ namespace Menu
     {
       PlayerIndex playerIndex;
 
-      // We pass in our ControllingPlayer, which may either be null (to
-      // accept input from any player) or a specific index. If we pass a null
-      // controlling player, the InputState helper returns to us which player
-      // actually provided the input. We pass that through to our Accepted and
-      // Cancelled events, so they can tell which player triggered them.
       if ( input.IsMenuSelect( ControllingPlayer, out playerIndex ) )
       {
         // Raise the accepted event, then exit the message box.
         if ( Accepted != null )
           Accepted( this, new PlayerIndexEventArgs( playerIndex ) );
+
+        GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
 
         ExitScreen();
       }
@@ -133,6 +139,8 @@ namespace Menu
         // Raise the cancelled event, then exit the message box.
         if ( Cancelled != null )
           Cancelled( this, new PlayerIndexEventArgs( playerIndex ) );
+
+        GameCore.Instance.AudioManager.Play2DCue( "onCancel", 1f );
 
         ExitScreen();
       }
@@ -144,9 +152,6 @@ namespace Menu
     #region Draw
 
 
-    /// <summary>
-    /// Draws the message box.
-    /// </summary>
     public override void Draw( GameTime gameTime )
     {
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
@@ -160,36 +165,9 @@ namespace Menu
 
       spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
       spriteBatch.Draw( messageBox, outerRectangle, color );
-      spriteBatch.DrawString( font, message, textPosition, color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0 );
+      spriteBatch.DrawString( font, message, textPosition, color, 0f, Vector2.Zero,
+                              screenScale, SpriteEffects.None, 0 );
       spriteBatch.End();
-
-      //// Center the message text in the viewport.
-      //Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
-      //Vector2 viewportSize = new Vector2( viewport.Width, viewport.Height );
-      //Vector2 textSize = font.MeasureString( message );
-      //Vector2 textPosition = ( viewportSize - textSize ) / 2;
-
-      //// The background includes a border somewhat larger than the text itself.
-      //const int hPad = 32;
-      //const int vPad = 16;
-
-      //Rectangle backgroundRectangle = new Rectangle( (int)textPosition.X - hPad,
-      //                                               (int)textPosition.Y - vPad,
-      //                                               (int)textSize.X + hPad * 2,
-      //                                               (int)textSize.Y + vPad * 2 );
-
-      //// Fade the popup alpha during transitions.
-      //Color color = new Color( 255, 255, 255, TransitionAlpha );
-
-      //spriteBatch.Begin();
-
-      //// Draw the background rectangle.
-      //spriteBatch.Draw( gradientTexture, backgroundRectangle, color );
-
-      //// Draw the message box text.
-      //spriteBatch.DrawString( font, message, textPosition, color );
-
-      //spriteBatch.End();
     }
 
 

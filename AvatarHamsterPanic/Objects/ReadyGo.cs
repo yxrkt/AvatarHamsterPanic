@@ -6,20 +6,20 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Menu;
 using MathLibrary;
+using Microsoft.Xna.Framework.Content;
 
 namespace AvatarHamsterPanic.Objects
 {
   class ReadyGo : GameObject
   {
-    readonly string readyString = "Ready";
-    readonly string goString = "Go!";
+    readonly Texture2D readyTexture;
+    readonly Texture2D goTexture;
     readonly SpringInterpolater spring =
-      new SpringInterpolater( 1, 200, .5f * SpringInterpolater.GetCriticalDamping( 200 ) );
-    readonly SpriteFont font;
+      new SpringInterpolater( 1, 250, .5f * SpringInterpolater.GetCriticalDamping( 250 ) );
     readonly Vector2 position;
+    readonly float screenScale;
 
-    Vector2 origin;
-    string currentString;
+    Texture2D currentTexture;
     float postCountdownTime = 0;
 
     public ReadyGo( GameplayScreen screen, Vector2 position )
@@ -27,19 +27,25 @@ namespace AvatarHamsterPanic.Objects
     {
       this.position = position;
 
-      currentString = readyString;
+      ContentManager content = Screen.Content;
 
-      font = Screen.Content.Load<SpriteFont>( "Fonts/readyGoFont" );
-      origin = font.MeasureString( readyString ) / 2;
+      readyTexture = content.Load<Texture2D>( "Textures/bigReadyText" );
+      goTexture = content.Load<Texture2D>( "Textures/goText" );
+
+      currentTexture = readyTexture;
 
       spring.SetSource( 0 );
       spring.SetDest( 1 );
+
+      screenScale = Screen.ScreenManager.GraphicsDevice.Viewport.Height / 1080f;
     }
 
     public override void Update( GameTime gameTime )
     {
       float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+      if ( elapsed < 1f / 30f )
+        elapsed = 1f / 30f;
       spring.Update( elapsed );
 
       if ( Screen.CountdownTime > 1f && Screen.CountdownTime < Screen.CountdownEnd )
@@ -49,10 +55,9 @@ namespace AvatarHamsterPanic.Objects
       else if ( Screen.CountdownTime >= Screen.CountdownEnd )
       {
         // switch to "Go!"
-        if ( currentString == readyString )
+        if ( currentTexture == readyTexture )
         {
-          currentString = goString;
-          origin = font.MeasureString( goString ) / 2;
+          currentTexture = goTexture;
           spring.SetSource( 1.5f );
         }
 
@@ -79,9 +84,9 @@ namespace AvatarHamsterPanic.Objects
     public void Draw2D()
     {
       SpriteBatch spriteBatch = Screen.ScreenManager.SpriteBatch;
-
-      spriteBatch.DrawString( font, currentString, position, Color.Black, 0f,
-                              origin, spring.GetSource()[0], SpriteEffects.None, 0 );
+      Vector2 origin = new Vector2( currentTexture.Width, currentTexture.Height ) / 2;
+      spriteBatch.Draw( currentTexture, position, null, Color.White, 0f, origin,
+                        spring.GetSource()[0] * screenScale, SpriteEffects.None, 0 );
     }
   }
 }

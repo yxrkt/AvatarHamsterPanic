@@ -13,8 +13,6 @@ namespace Physics
 {
   public class PhysicsSpace
   {
-    public StringBuilder DebugString = new StringBuilder( 260 );
-    public static float LastImpulse = 0;
     public Vector2 Gravity = new Vector2( 0.0f, -10.0f );
 
     uint collisionIndex = 0;
@@ -178,14 +176,10 @@ namespace Physics
           }
 
           timeLeft -= bestTime;
-          //++nIterations;
-          if ( ++nIterations > 20 )
+          if ( ++nIterations > 30 )
             timeLeft = 0f;
         }
       }
-
-      //DebugString.Clear();
-      //DebugString.AppendInt( nIterations );
     }
 
     // private helpers

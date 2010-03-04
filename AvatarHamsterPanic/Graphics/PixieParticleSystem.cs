@@ -43,8 +43,8 @@ namespace Particle3DSample
 
       settings.EndVelocity = 1;
 
-      settings.MinRotateSpeed = -2;
-      settings.MaxRotateSpeed = 2;
+      settings.MinRotateSpeed = -1f;
+      settings.MaxRotateSpeed = 1f;
 
       settings.FadePower = 10;
 

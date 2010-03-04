@@ -72,7 +72,7 @@ namespace Particle3DSample
     public float EndVelocity = 1;
 
 
-    // Color the particles are multiplied by. Alpha is managed seperately.
+    // Color the particles are multiplied by. Alpha is handled seperately.
     public Vector3[] Colors = { Color.White.ToVector3(), Color.White.ToVector3(), Color.White.ToVector3() };
 
 
