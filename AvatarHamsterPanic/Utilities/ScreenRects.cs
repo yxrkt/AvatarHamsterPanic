@@ -14,9 +14,12 @@ namespace AvatarHamsterPanic.Utilities
     static GraphicsDevice device;
     static VertexDeclaration vertexDeclaration;
     static Rectangle fourByThree;
+    static Rectangle safeRegion;
     static VertexPositionColor[] fourByThreeVerts;
+    static VertexPositionColor[] safeRegionVerts;
 
     public static Rectangle FourByThree { get { return fourByThree; } }
+    public static Rectangle SafeRegion { get { return safeRegion; } }
 
     public static void Initialize( Game game )
     {
@@ -28,7 +31,10 @@ namespace AvatarHamsterPanic.Utilities
       screenEffect.Parameters["ScreenWidth"].SetValue( device.Viewport.Width );
       screenEffect.Parameters["ScreenHeight"].SetValue( device.Viewport.Height );
 
+      vertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
+
       InitializeFourByThree();
+      InitializeSafeRegion();
     }
 
     private static void InitializeFourByThree()
@@ -56,20 +62,48 @@ namespace AvatarHamsterPanic.Utilities
 
       fourByThree = new Rectangle( x, y, width, height );
 
-      // Initialize vertices and vertex declaration
-      fourByThreeVerts = new VertexPositionColor[]
-      {
-        new VertexPositionColor( new Vector3( fourByThree.X, fourByThree.Y, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( fourByThree.X, fourByThree.Y + fourByThree.Height - 1, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( fourByThree.X + fourByThree.Width, fourByThree.Y + fourByThree.Height - 1, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( fourByThree.X + fourByThree.Width, fourByThree.Y, 0 ), Color.Red ),
-        new VertexPositionColor( new Vector3( fourByThree.X, fourByThree.Y, 0 ), Color.Red ),
-      };
+      InitializeVertices( fourByThree, Color.Red, out fourByThreeVerts );
+    }
 
-      vertexDeclaration = new VertexDeclaration( device, VertexPositionColor.VertexElements );
+    private static void InitializeSafeRegion()
+    {
+      safeRegion = device.Viewport.TitleSafeArea;
+      int left   = Math.Max( safeRegion.Left, fourByThree.Left );
+      int right  = Math.Min( safeRegion.Right, fourByThree.Right );
+      int top    = Math.Max( safeRegion.Top, fourByThree.Top );
+      int bottom = Math.Min( safeRegion.Bottom, fourByThree.Bottom );
+      safeRegion = new Rectangle( left, top, right - left, bottom - top );
+
+      InitializeVertices( safeRegion, Color.Yellow, out safeRegionVerts );
+    }
+
+    private static void InitializeVertices( Rectangle rectangle, Color color, out VertexPositionColor[] vertices )
+    {
+      vertices = new VertexPositionColor[]
+      {
+        new VertexPositionColor( new Vector3( rectangle.X, rectangle.Y, 0 ), color ),
+        new VertexPositionColor( new Vector3( rectangle.X, rectangle.Y + rectangle.Height - 1, 0 ), color ),
+        new VertexPositionColor( new Vector3( rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height - 1, 0 ), color ),
+        new VertexPositionColor( new Vector3( rectangle.X + rectangle.Width, rectangle.Y, 0 ), color ),
+        new VertexPositionColor( new Vector3( rectangle.X, rectangle.Y, 0 ), color ),
+      };
     }
 
     public static void DrawFourByThreeRect()
+    {
+      if ( device == null )
+        throw new InvalidOperationException( "Initialize must be called before using ScreenDebug" );
+
+      device.VertexDeclaration = vertexDeclaration;
+
+      screenEffect.Begin();
+      screenEffect.CurrentTechnique.Passes[0].Begin();
+      device.DrawUserPrimitives( PrimitiveType.LineStrip, fourByThreeVerts, 0, 4 );
+      screenEffect.CurrentTechnique.Passes[0].End();
+      screenEffect.End();
+    }
+
+    public static void DrawSafeRegion()
     {
       if ( device == null )
         throw new InvalidOperationException( "Initialize must be called before using ScreenDebug" );

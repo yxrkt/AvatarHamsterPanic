@@ -660,7 +660,7 @@ namespace Menu
     {
       if ( elapsed == 0f ) return;
 
-      float scrollLine = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
+      float scrollLine  = .2f * FloorBlock.BirthLine;  // camera will be pulled by a spring
       float scrollLine2 = .7f * FloorBlock.BirthLine;  // camera will be snapped down
 
       float prevY = Camera.Position.Y;

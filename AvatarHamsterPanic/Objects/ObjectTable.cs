@@ -97,8 +97,11 @@ namespace AvatarHamsterPanic.Objects
       foreach ( BaseType obj in trash )
       {
         objInArray[0] = obj;
-        cleaner[obj.GetType()]( table[obj.GetType()], objInArray );
-        ( (List<BaseType>)table[typeof( BaseType )] ).Remove( obj );
+        if ( cleaner.ContainsKey( obj.GetType() ) )
+        {
+          cleaner[obj.GetType()]( table[obj.GetType()], objInArray );
+          ( (List<BaseType>)table[typeof( BaseType )] ).Remove( obj );
+        }
       }
       trash.Clear();
     }

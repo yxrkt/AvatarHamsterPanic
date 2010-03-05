@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using Utilities;
 using MathLibrary;
 using Menu;
+using AvatarHamsterPanic.Utilities;
 
 namespace AvatarHamsterPanic.Objects
 {
@@ -52,7 +53,7 @@ namespace AvatarHamsterPanic.Objects
 
     static readonly string[] placeStrings = { "st", "nd", "rd", "th" };
     static int xPadding = 10;
-    static int yPadding = 10;
+    static int yPadding = -55;
 
     public Player Player { get; private set; }
     public int Score { get; private set; }
@@ -80,7 +81,7 @@ namespace AvatarHamsterPanic.Objects
       Score = 0;
       Boost = 1f;
 
-      Rectangle fourByThree = screen.SafeRect;
+      Rectangle safeRect = ScreenRects.SafeRegion;
 
       screenScale = GameCore.Instance.GraphicsDevice.Viewport.Height / 1080f;
       float ss = screenScale;
@@ -91,8 +92,8 @@ namespace AvatarHamsterPanic.Objects
       int hudWidth  = (int)( hudTexture.Width * screenScale );
       int hudHeight = (int)( hudTexture.Height * screenScale );
 
-      int x0 = xPadding + fourByThree.X + Player.PlayerNumber * ( fourByThree.Width - hudWidth - 2 * xPadding ) / 3;
-      int y0 = -Math.Abs( yPadding ) + fourByThree.Y + fourByThree.Height - hudHeight;
+      int x0 = xPadding + safeRect.X + Player.PlayerNumber * ( safeRect.Width - hudWidth - 2 * xPadding ) / 3;
+      int y0 = -(int)( yPadding * screenScale + .5f ) + safeRect.Y + safeRect.Height - hudHeight;
 
       hudRect = new Rectangle( x0, y0, hudWidth, hudHeight );
 
