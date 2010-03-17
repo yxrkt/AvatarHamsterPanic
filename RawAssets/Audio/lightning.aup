@@ -1,0 +1,47 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE project PUBLIC "-//audacityproject-1.3.0//DTD//EN" "http://audacity.sourceforge.net/xml/audacityproject-1.3.0.dtd" >
+<project xmlns="http://audacity.sourceforge.net/xml/" projname="lightning_data" version="1.3.0" audacityversion="1.3.11-beta" sel0="0.0000000000" sel1="0.0000000000" vpos="0" h="0.0000000000" zoom="303.2963663311" rate="44100">
+	<tags>
+		<tag name="id3v2" value="1"/>
+	</tags>
+	<wavetrack name="Lightning bolt strike thunder_BLASTWAVEFX_09773 1" channel="0" linked="1" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="112978">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000078.au" len="112978" min="-0.793793" max="0.850159" rms="0.103046"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="Lightning bolt strike thunder_BLASTWAVEFX_09773" channel="1" linked="0" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="112978">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000d5d.au" len="112978" min="-0.802368" max="0.865967" rms="0.11113"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="Audio Track" channel="0" linked="1" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.47148603">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="100037">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000746.au" len="100037" min="-0.793793" max="0.850159" rms="0.103056"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="Audio Track" channel="1" linked="0" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.47148603">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="100037">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000e78.au" len="100037" min="-0.802368" max="0.865967" rms="0.111124"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+</project>

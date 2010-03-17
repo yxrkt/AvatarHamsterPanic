@@ -1,0 +1,33 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE project PUBLIC "-//audacityproject-1.3.0//DTD//EN" "http://audacity.sourceforge.net/xml/audacityproject-1.3.0.dtd" >
+<project xmlns="http://audacity.sourceforge.net/xml/" projname="sillyspins_data" version="1.3.0" audacityversion="1.3.11-beta" sel0="2.0801921208" sel1="2.9243865931" vpos="0" h="0.0000000000" zoom="247.5732865508" rate="44100">
+	<tags>
+		<tag name="id3v2" value="1"/>
+	</tags>
+	<wavetrack name="drunkendrill 1" channel="0" linked="1" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="146244">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000c0f.au" len="91202" min="-0.144836" max="0.06073" rms="0.02671"/>
+				</waveblock>
+				<waveblock start="91202">
+					<simpleblockfile filename="e0000e5e.au" len="55042" min="-0.14035" max="0.054382" rms="0.027383"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="drunkendrill" channel="1" linked="0" mute="0" solo="0" height="150" minimized="0" rate="44100" gain="1" pan="0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="146244">
+				<waveblock start="0">
+					<simpleblockfile filename="e000074a.au" len="91202" min="-0.144836" max="0.060699" rms="0.02671"/>
+				</waveblock>
+				<waveblock start="91202">
+					<simpleblockfile filename="e0000995.au" len="55042" min="-0.14035" max="0.054382" rms="0.027383"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+</project>
