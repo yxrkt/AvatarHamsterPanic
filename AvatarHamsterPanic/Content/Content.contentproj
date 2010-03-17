@@ -370,13 +370,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Models\podium2.X">
-      <Name>podium2</Name>
-      <Importer>XImporter</Importer>
-      <Processor>CustomModelProcessor</Processor>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Textures\swipeMask.png">
       <Name>swipeMask</Name>
       <Importer>TextureImporter</Importer>

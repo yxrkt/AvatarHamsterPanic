@@ -15,6 +15,8 @@ using Microsoft.Xna.Framework.Content;
 using MathLibrary;
 using Graphics;
 using AvatarHamsterPanic;
+using AvatarHamsterPanic.Objects;
+using Microsoft.Xna.Framework.GamerServices;
 #endregion
 
 namespace Menu
@@ -79,6 +81,11 @@ namespace Menu
 
       Camera camera = new Camera( MathHelper.PiOver4, device.Viewport.AspectRatio, 
                                   1f, 100f, new Vector3( 0, 3f, 10 ), new Vector3( 0, 3f, 0 ) );
+
+      // this should prevent spikes in sign-in screen when creating first avatar
+      new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
+                                                  1f, Vector3.UnitZ, Vector3.Zero );
+
       float wheelScale = 2.5f;
       wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
 
