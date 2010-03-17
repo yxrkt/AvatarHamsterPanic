@@ -21,6 +21,7 @@ namespace AvatarHamsterPanic.Objects
 
     Texture2D currentTexture;
     float postCountdownTime = 0;
+    bool playReady = true;
 
     public ReadyGo( GameplayScreen screen, Vector2 position )
       : base( screen )
@@ -50,6 +51,11 @@ namespace AvatarHamsterPanic.Objects
 
       if ( Screen.CountdownTime > 1f && Screen.CountdownTime < Screen.CountdownEnd )
       {
+        if ( playReady )
+        {
+          GameCore.Instance.AudioManager.Play2DCue( "ready", 1f );
+          playReady = false;
+        }
         spring.Active = true;
       }
       else if ( Screen.CountdownTime >= Screen.CountdownEnd )
@@ -59,6 +65,7 @@ namespace AvatarHamsterPanic.Objects
         {
           currentTexture = goTexture;
           spring.SetSource( 1.5f );
+          GameCore.Instance.AudioManager.Play2DCue( "go", 1f );
         }
 
         // scale down "Go!" here

@@ -132,9 +132,14 @@ namespace AvatarHamsterPanic.Objects
       scoreSpring.Active = true;
       scoreString = new StringBuilder( 1 );
 
+      //// score popup
+      //scorePopup = new PopupText( ss, scorePos + new Vector2( -25f, -120f ) * screenScale,
+      //                            scorePos + new Vector2( -15f, -15f ) * screenScale, 1f );
       // score popup
-      scorePopup = new PopupText( ss, scorePos + new Vector2( -25f, -120f ) * screenScale,
-                                  scorePos + new Vector2( -15f, -15f ) * screenScale, 1f );
+      float yMax = GameCore.Instance.DisplayGamertags ? -50f : -10f;
+      float yMin = GameCore.Instance.DisplayGamertags ? 0f : 40f;
+      scorePopup = new PopupText( ss, new Vector2( 0f, yMax ) * screenScale,
+                                  new Vector2( 0, yMin ) * screenScale, 1f );
 
       // place
       placePos = new Vector2( x0 + 36 * ss, y0 + 91 * ss );
@@ -186,10 +191,11 @@ namespace AvatarHamsterPanic.Objects
 
       spriteBatch.Begin(); // resume...
 
+      Color playerColor = GameCore.Instance.PlayerColors[Player.PlayerNumber];
+
       // draw the base object
-      GameCore game = Player.Screen.ScreenManager.Game as GameCore;
       spriteBatch.Draw( hudCageTexture, hudRect, Color.White );
-      spriteBatch.Draw( hudTexture, hudRect, /**/Color.White/*/game.PlayerColors[Player.PlayerNumber]/**/ );
+      spriteBatch.Draw( hudTexture, hudRect, /**/Color.White/*/playerColor/**/ );
 
       // profile picture
       if ( profile != null )
@@ -209,7 +215,7 @@ namespace AvatarHamsterPanic.Objects
 
       // score popup
       if ( scorePopup.Active )
-        scorePopup.Draw( spriteBatch, scoreFont, Color.Black );
+        scorePopup.Draw( spriteBatch, scoreFont, playerColor, Player.Tag.TagScreenPosition );
 
       // place
       placeNumber[0] = (char)( '0' + Place );

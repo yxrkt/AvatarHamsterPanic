@@ -19,9 +19,6 @@ using AvatarHamsterPanic;
 
 namespace Menu
 {
-  /// <summary>
-  /// The main menu screen is the first thing displayed when the game starts up.
-  /// </summary>
   class MainMenuScreen : MenuScreen
   {
     #region Fields
@@ -50,6 +47,9 @@ namespace Menu
     float transitionTime;
 
     SignInMenuScreen signInMenuScreen;
+    OptionsMenuScreen optionsMenuScreen;
+    CreditsMenuScreen creditsMenuScreen;
+    HighscoreScreen highscoreScreen;
     WheelMenu wheelMenu;
 
     #endregion
@@ -57,9 +57,6 @@ namespace Menu
     #region Initialization
 
 
-    /// <summary>
-    /// Constructor fills in the menu contents.
-    /// </summary>
     public MainMenuScreen()
     {
       transitioningOn = false;
@@ -111,6 +108,9 @@ namespace Menu
       MenuItems.Add( wheelMenu );
 
       signInMenuScreen = new SignInMenuScreen( ScreenManager );
+      optionsMenuScreen = new OptionsMenuScreen( ScreenManager );
+      creditsMenuScreen = new CreditsMenuScreen( ScreenManager );
+      highscoreScreen = new HighscoreScreen( ScreenManager );
 
       GameCore.Instance.AudioManager.Listener.Position = new Vector3( 0, 0, 10 );
 
@@ -204,6 +204,9 @@ namespace Menu
 
       // play intro sound effects
       GameCore.Instance.AudioManager.Play2DCue( "intro", 1f );
+
+      // set wheel to pi over 4
+      wheelMenu.Angle = MathHelper.PiOver4;
     }
 
     private void InitializeTransitionOff()
@@ -258,42 +261,28 @@ namespace Menu
         base.HandleInput( input );
     }
 
-    /// <summary>
-    /// Event handler for when the Play menu entry is selected.
-    /// </summary>
     void PlayMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
       ScreenManager.AddScreen( signInMenuScreen, e.PlayerIndex );
     }
 
-    /// <summary>
-    /// Event handler for when the Leaderboard menu entry is selected.
-    /// </summary>
     void LeaderboardMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      ScreenManager.AddScreen( new LeaderboardMenuScreen(), e.PlayerIndex );
+      //ScreenManager.AddScreen( new LeaderboardMenuScreen(), e.PlayerIndex );
+      ScreenManager.AddScreen( highscoreScreen, e.PlayerIndex );
     }
 
-    /// <summary>
-    /// Event handler for when the Options menu entry is selected.
-    /// </summary>
     void OptionsMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      ScreenManager.AddScreen( new OptionsMenuScreen(), e.PlayerIndex );
+      ScreenManager.AddScreen( optionsMenuScreen, e.PlayerIndex );
     }
 
-    /// <summary>
-    /// Event handler for when the Credits menu entry is selected.
-    /// </summary>
     void CreditsMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      ScreenManager.AddScreen( new CreditsMenuScreen(), e.PlayerIndex );
+      ScreenManager.AddScreen( creditsMenuScreen, e.PlayerIndex );
     }
 
 
-    /// <summary>
-    /// When the user cancels the main menu, ask if they want to exit the sample.
-    /// </summary>
     protected override void OnCancel( PlayerIndex playerIndex )
     {
       const string message = "Egads! Do you really want to exit Avatar Hamster Panic?";
@@ -306,10 +295,6 @@ namespace Menu
     }
 
 
-    /// <summary>
-    /// Event handler for when the user selects ok on the "are you sure
-    /// you want to exit" message box.
-    /// </summary>
     void ConfirmExitMessageBoxAccepted( object sender, PlayerIndexEventArgs e )
     {
       ScreenManager.Game.Exit();

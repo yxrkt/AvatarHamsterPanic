@@ -28,6 +28,8 @@ namespace Menu
     SpringInterpolater rotateSpring;
     float angleStep;
 
+    public float Angle { get { return angle; } set { angle = value; } }
+
     public bool AcceptingInput { get; internal set; }
 
     // The wheel entries
@@ -152,7 +154,7 @@ namespace Menu
       {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] - angleStep );
         IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
-        GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
+        //GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
         GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
       }
       for ( int i = 0; i < entries.Count; ++i )
@@ -173,7 +175,7 @@ namespace Menu
       {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] + angleStep );
         IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
-        GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
+        //GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
         GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
       }
 

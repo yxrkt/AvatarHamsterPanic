@@ -200,6 +200,10 @@ namespace AvatarHamsterPanic.Objects
           Screen.ObjectTable.MoveToTrash( this );
           alive = false;
 
+          // rumble the controller
+          if ( player.PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.RumbleLow( player.PlayerIndex, .25f, .3f );
+
           // add the exploding block particle system
           Vector3 position = new Vector3( BoundingPolygon.Position, 0f );
           ModelExplosion explosion = ModelExplosion.CreateExplosion( position, Size, 

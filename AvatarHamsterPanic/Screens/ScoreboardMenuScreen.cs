@@ -70,6 +70,8 @@ namespace Menu
     string cpuNameString;
     Effect addColorEffect;
     Texture2D background;
+    bool scoresRecorded;
+
 
     static readonly string[] placeStrings = { "st", "nd", "rd", "th" };
 
@@ -85,8 +87,7 @@ namespace Menu
       podiumModel = content.Load<CustomModel>( "Models/podium" );
       foreach ( CustomModel.ModelPart part in podiumModel.ModelParts )
       {
-        part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
-        part.EffectParamColor.SetValue( Color.White.ToVector4() );
+        part.Effect.CurrentTechnique = part.Effect.Techniques["DiffuseColor"];
       }
 
       swipeMask = content.Load<Texture2D>( "Textures/swipeMask" );
@@ -214,6 +215,8 @@ namespace Menu
       addColorEffect.CurrentTechnique = addColorEffect.Techniques[0];
 
       background = content.Load<Texture2D>( "Textures/menuBackground" );
+
+      scoresRecorded = false;
     }
 
     public override void LoadContent()
@@ -230,6 +233,12 @@ namespace Menu
       players[index].Gamer  = gamer;
       players[index].Score  = score;
       players[index].PlayerNumber = playerNumber;
+
+      //// record high score
+      //if ( gamer != null && !Guide.IsTrialMode )
+      //{
+      //  HighscoreComponent.Global.SetNewScore( gamer.PlayerIndex, (long)score, "" );
+      //}
 
       // stuff for keeping track of wins
       popupScreen.SetPlayerID( playerNumber, id );
@@ -319,18 +328,39 @@ namespace Menu
       }
       else if ( elapsed < swipeOutDuration + swipeInDuration )
       {
-        Draw();
-        //float t = swipeInDuration - ( elapsed - swipeOutDuration );
-        //float r = (float)Math.Sqrt( dadtIn * t / MathHelper.Pi );
-        float u = /*/r / maskRadius/*/1 - ( elapsed - swipeOutDuration ) / swipeInDuration/**/;
-        DrawSwipe( u );
+        if ( !scoresRecorded )
+        {
+          if ( elapsed != swipeOutDuration )
+          {
+            elapsed = swipeOutDuration;
+          }
+          else
+          {
+            //record scores...in the middle of draw!!
+            foreach ( ScoreboardPlayer player in players )
+            {
+              if ( player.Gamer != null )
+                HighscoreComponent.Global.SetNewScore( player.Gamer.PlayerIndex, (long)player.Score, "" );
+              scoresRecorded = true;
+            }
+          }
+        }
+        else
+        {
+          Draw();
+          //float t = swipeInDuration - ( elapsed - swipeOutDuration );
+          //float r = (float)Math.Sqrt( dadtIn * t / MathHelper.Pi );
+          float u = /*/r / maskRadius/*/1 - ( elapsed - swipeOutDuration ) / swipeInDuration/**/;
+          DrawSwipe( u );
+        }
       }
       else
       {
         Draw();
       }
 
-      elapsed += (float)gameTime.ElapsedGameTime.TotalSeconds;
+      if ( scoresRecorded || elapsed < swipeOutDuration )
+        elapsed += (float)gameTime.ElapsedGameTime.TotalSeconds;
     }
 
     private void Draw()
@@ -493,6 +523,7 @@ namespace Menu
       renderState.AlphaBlendEnable = true;
       renderState.SourceBlend = Blend.Zero;
       renderState.DestinationBlend = Blend.One;
+      renderState.AlphaTestEnable = true;
 
       device.VertexDeclaration = effect.TextureVertexDeclaration;
       effect.Technique = ScreenQuadEffectTechnique.Texture;

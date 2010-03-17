@@ -30,7 +30,7 @@ namespace AvatarHamsterPanic.Objects
       this.timeout = timeout;
       this.text = new StringBuilder( 4 );
 
-      PositionSpring = new SpringInterpolater( 2, 600f, SpringInterpolater.GetCriticalDamping( 600f ) );
+      PositionSpring = new SpringInterpolater( 2, 300f, SpringInterpolater.GetCriticalDamping( 300f ) );
       ScaleSpring = new SpringInterpolater( 1, 700f, .25f * SpringInterpolater.GetCriticalDamping( 700f ) );
       ResetSprings();
     }
@@ -50,7 +50,6 @@ namespace AvatarHamsterPanic.Objects
           ScaleSpring.B = SpringInterpolater.GetCriticalDamping( ScaleSpring.K );
           ScaleSpring.SetDest( 0f );
           PositionSpring.SetDest( hidePos );
-          PositionSpring.Active = true;
         }
 
         if ( ScaleSpring.GetSource()[0] < .05f )
@@ -69,8 +68,6 @@ namespace AvatarHamsterPanic.Objects
 
     public void Add( int n )
     {
-      time = 0f;
-
       if ( !Active )
       {
         Active = true;
@@ -80,7 +77,7 @@ namespace AvatarHamsterPanic.Objects
       else
       {
         number += n;
-        if ( ScaleSpring.GetDest()[0] != size )
+        if ( time > timeout )
         {
           ScaleSpring.SetDest( size );
           ScaleSpring.B = .25f * SpringInterpolater.GetCriticalDamping( ScaleSpring.K );
@@ -91,29 +88,37 @@ namespace AvatarHamsterPanic.Objects
           ScaleSpring.SetSource( 1.3f * ScaleSpring.GetSource()[0] );
         }
       }
+
+      time = 0f;
     }
 
     public void Draw( SpriteBatch spriteBatch, SpriteFont font, Color color )
+    {
+      Draw( spriteBatch, font, color, Vector2.Zero );
+    }
+
+    public void Draw( SpriteBatch spriteBatch, SpriteFont font, Color color, Vector2 origin )
     {
       text.Remove( 0, text.Length );
       if ( number >= 0 )
         text.Append( '+' );
       text.AppendInt( number );
-      Vector2 origin = font.MeasureString( text ) / 2f;
+      Vector2 fontOrigin = font.MeasureString( text ) / 2f;
       float[] source = PositionSpring.GetSource();
       Vector2 position = new Vector2( source[0], source[1] );
-      spriteBatch.DrawString( font, text, position, color, 0f, origin, ScaleSpring.GetSource()[0], SpriteEffects.None, 0f );
+      spriteBatch.DrawString( font, text, position + origin, color, 0f, fontOrigin, 
+                              ScaleSpring.GetSource()[0], SpriteEffects.None, 0f );
     }
 
     private void ResetSprings()
     {
-      PositionSpring.SetSource( showPos );
-      PositionSpring.SetDest( hidePos );
+      //PositionSpring.SetSource( showPos );
+      PositionSpring.SetDest( showPos );
       ScaleSpring.SetSource( 0f );
       ScaleSpring.SetDest( size );
       ScaleSpring.B = .25f * SpringInterpolater.GetCriticalDamping( ScaleSpring.K );
       ScaleSpring.Active = true;
-      PositionSpring.Active = false;
+      PositionSpring.Active = true;
     }
   }
 }

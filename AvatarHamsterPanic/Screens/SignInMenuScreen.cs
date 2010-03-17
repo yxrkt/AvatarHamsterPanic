@@ -39,6 +39,9 @@ namespace Menu
     SignInSlot[] slots = new SignInSlot[4];
     bool autoSignIn = false;
     bool toggleAutoSignIn = false;
+    bool eventSet = false;
+    TextMenuItem nagText;
+    GameTime lastGameTime;
 
     public SignInMenuScreen( ScreenManager screenManager )
     {
@@ -80,6 +83,17 @@ namespace Menu
       float joinY = joinHeight * (float)rectangle.Height + (float)rectangle.Y;
       float cpuY = cpuHeight * (float)rectangle.Height + (float)rectangle.Y;
       float readyY = readyHeight * (float)rectangle.Height + (float)rectangle.Y;
+
+      // Full version required for multiplayer
+      Vector2 nagPos = new Vector2( device.Viewport.Width / 2, device.Viewport.Height * .14f );
+      nagText = new TextMenuItem( this, nagPos, "Full version required for multiplayer.", nameFont );
+      nagText.TransitionOnPosition = nagPos;
+      nagText.TransitionOffPosition = nagPos;
+      nagText.Centered = true;
+      nagText.Color = Color.DarkOrange;
+      nagText.DeathBegin = .01f;
+      MenuItems.Add( nagText );
+
 
       for ( int i = 0; i < 4; ++i )
       {
@@ -154,12 +168,20 @@ namespace Menu
       // going from main menu to this screen
 
       ClearSlots();
-      SignedInGamer.SignedIn += PlayerSignedIn;
+      if ( !eventSet )
+      {
+        SignedInGamer.SignedIn += PlayerSignedIn;
+        eventSet = true;
+      }
     }
 
     public override void UnloadContent()
     {
-      SignedInGamer.SignedIn -= PlayerSignedIn;
+      if ( eventSet )
+      {
+        SignedInGamer.SignedIn -= PlayerSignedIn;
+        eventSet = false;
+      }
     }
 
     void PlayerSignedIn( object sender, SignedInEventArgs e )
@@ -175,6 +197,7 @@ namespace Menu
 
     public override void Update( GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen )
     {
+      lastGameTime = gameTime;
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
 
       for ( int i = 0; i < 4; ++i )
@@ -198,7 +221,7 @@ namespace Menu
         }
 
         // update 'start' and 'ready'
-        if ( slots[i].Slot.Player.IsPlayer() )
+        if ( slots[i].Slot.Player.IsHuman() )
         {
           if ( slots[i].Ready )
           {
@@ -219,7 +242,10 @@ namespace Menu
       }
 
       if ( toggleAutoSignIn )
+      {
         autoSignIn = false;
+        toggleAutoSignIn = false;
+      }
     }
 
     public override void HandleInput( InputState input )
@@ -246,34 +272,42 @@ namespace Menu
     {
       if ( slot.Slot.Player < PlayerIndex.One )
       {
-        bool found = false;
-        foreach ( SignedInGamer gamer in Gamer.SignedInGamers )
+        if ( Guide.IsTrialMode && slots.Count( s => s.Slot.Player.IsHuman() ) > 0 )
         {
-          if ( gamer.PlayerIndex == playerIndex )
-          {
-            found = true;
-            break;
-          }
-        }
-
-        if ( !found )
-        {
-          Guide.ShowSignIn( 4, false );
-          autoSignIn = true;
+          nagText.DeathBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
         }
         else
         {
-          AddPlayer( ref slot, playerIndex );
+          bool found = false;
+          foreach ( SignedInGamer gamer in Gamer.SignedInGamers )
+          {
+            if ( gamer.PlayerIndex == playerIndex )
+            {
+              found = true;
+              break;
+            }
+          }
+
+          if ( !found )
+          {
+            Guide.ShowSignIn( 4, false );
+            autoSignIn = true;
+          }
+          else
+          {
+            AddPlayer( ref slot, playerIndex );
+          }
         }
       }
       else if ( slot.Ready == false )
       {
+        GameCore.Instance.AudioManager.Play2DCue( "readyUp", 1f );
         slot.Ready = true;
       }
 
-      if ( slots.Count( s => s.Slot.Player.IsPlayer() ) != 0 )
+      if ( slots.Count( s => s.Slot.Player.IsHuman() ) != 0 )
       {
-        if ( slots.Count( s => s.Slot.Player.IsPlayer() && !s.Ready ) == 0 )
+        if ( slots.Count( s => s.Slot.Player.IsHuman() && !s.Ready ) == 0 )
         {
           Slot[] initSlots = new Slot[4];
           for ( int i = 0; i < 4; ++i )
@@ -288,6 +322,7 @@ namespace Menu
     public void OnButtonBHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
       int numPlayers = slots.Count( s => s.Slot.Player != NoPlayer );
+      int numHumans = slots.Count( s => s.Slot.Player.IsHuman() );
 
       if ( slot.Ready )
       {
@@ -295,7 +330,7 @@ namespace Menu
       }
       else if ( numPlayers <= 1 )
       {
-        if ( numPlayers == 0 || numPlayers == 1 && slot.Slot.Player.IsPlayer() )
+        if ( numHumans == 0 || numPlayers == 0 || numPlayers == 1 && slot.Slot.Player.IsHuman() )
           OnCancel( playerIndex );
       }
       else if ( slot.CreatedBots.Count > 0 )

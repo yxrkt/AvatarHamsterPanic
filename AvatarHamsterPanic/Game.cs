@@ -39,6 +39,16 @@ namespace AvatarHamsterPanic
     public Dictionary<uint, int> PlayerWins { get; private set; }
     public Color[] PlayerColors { get; private set; }
     public AudioManager AudioManager { get; private set; }
+    public bool DisplayGamertags { get; set; }
+    public bool ShareHighScores
+    {
+      get { return HighscoreComponent.Global.Enabled; }
+      set { HighscoreComponent.Global.Enabled = value; }
+    }
+    public float SoundEffectsVolume { get; set; }
+    public float MusicVolume { get; set; }
+
+    public RumbleComponent Rumble { get; private set; }
 
     public DebugManager DebugManager { get; private set; }
     public DebugCommandUI DebugCommand { get; private set; }
@@ -65,19 +75,10 @@ namespace AvatarHamsterPanic
       PlayerColors = new Color[4]
       {
         new Color( 10,  100, 220 ),
-        new Color( 200, 31,   7  ),
-        new Color( 240, 180,  0  ),
-        new Color( 80,  200, 10  ),
+        new Color( 200,  31,   7 ),
+        new Color( 240, 180,   0 ),
+        new Color( 80,  200,  10 ),
       };
-
-      ///*/
-      //graphics.PreferredBackBufferWidth = 1280;
-      //graphics.PreferredBackBufferHeight = 720;
-      ///*/
-      //graphics.PreferredBackBufferWidth = 1920;
-      //graphics.PreferredBackBufferHeight = 1080;
-      ///**/
-
 
       graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
 
@@ -92,12 +93,24 @@ namespace AvatarHamsterPanic
 
       Components.Add( screenManager );
 
+      HighscoreComponent highscoreComponent = new HighscoreComponent( this, null, "Avatar Hamster Panic" );
+      HighscoreComponent.Global = highscoreComponent;
+      Components.Add( highscoreComponent );
+
       // Activate the first screens.
       //screenManager.AddScreen( new BackgroundScreen(), null );
       //screenManager.AddScreen( new MainMenuScreen(), null );
 
+      DisplayGamertags = true;
+      ShareHighScores = true;
+      SoundEffectsVolume = 1f;
+      MusicVolume = 1f;
+
       // Avatars require GamerServices
       Components.Add( new GamerServicesComponent( this ) );
+
+      Rumble = new RumbleComponent( this );
+      Components.Add( Rumble );
 
       Instance = this;
 

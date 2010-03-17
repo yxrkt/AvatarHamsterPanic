@@ -234,6 +234,7 @@ namespace Particle3DSample
       parameters["FadePower"].SetValue( settings.FadePower );
       parameters["AlignWithVelocity"].SetValue( settings.AlignWithVelocity );
       parameters["Colors"].SetValue( settings.Colors );
+      parameters["Mask"].SetValue( settings.Mask );
 
       parameters["RotateSpeed"].SetValue(
         new Vector2( settings.MinRotateSpeed, settings.MaxRotateSpeed ) );

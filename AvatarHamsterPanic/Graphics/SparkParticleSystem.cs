@@ -12,6 +12,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Graphics;
 #endregion
 
 namespace Particle3DSample
@@ -55,6 +56,8 @@ namespace Particle3DSample
 
       settings.MinEndSize = .01f;
       settings.MaxEndSize = .03f;
+
+      settings.Mask = MaskHelper.Glow( 1 );
     }
   }
 }

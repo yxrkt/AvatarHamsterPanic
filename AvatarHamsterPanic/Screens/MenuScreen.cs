@@ -143,21 +143,18 @@ namespace Menu
         }
       }
 
-      // Accept or cancel the menu? We pass in our ControllingPlayer, which may
-      // either be null (to accept input from any player) or a specific index.
-      // If we pass a null controlling player, the InputState helper returns to
-      // us which player actually provided the input. We pass that through to
-      // OnSelectEntry and OnCancel, so they can tell which player triggered them.
+
       if ( input.IsMenuSelect( ControllingPlayer, out playerIndex ) )
         OnSelectEntry( playerIndex );
+      else if ( input.IsMenuRight( playerIndex, out playerIndex ) )
+        OnIncrementEntry( playerIndex );
+      else if ( input.IsMenuLeft( playerIndex, out playerIndex ) )
+        OnDecrementEntry( playerIndex );
       else if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
         OnCancel( playerIndex );
     }
 
 
-    /// <summary>
-    /// Handler for when the user has chosen a menu entry.
-    /// </summary>
     protected virtual void OnSelectEntry( PlayerIndex playerIndex )
     {
       GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
@@ -176,9 +173,24 @@ namespace Menu
     }
 
 
-    /// <summary>
-    /// Handler for when the user has cancelled the menu.
-    /// </summary>
+    protected virtual void OnIncrementEntry( PlayerIndex playerIndex )
+    {
+      if ( MenuEntries != null && MenuEntries.Count != 0 )
+      {
+        MenuEntries[selectedEntry].OnIncrement( playerIndex );
+      }
+    }
+
+
+    protected virtual void OnDecrementEntry( PlayerIndex playerIndex )
+    {
+      if ( MenuEntries != null && MenuEntries.Count != 0 )
+      {
+        MenuEntries[selectedEntry].OnDecrement( playerIndex );
+      }
+    }
+
+
     protected virtual void OnCancel( PlayerIndex playerIndex )
     {
       GameCore.Instance.AudioManager.Play2DCue( "onCancel", 1f );
@@ -186,9 +198,6 @@ namespace Menu
     }
 
 
-    /// <summary>
-    /// Helper overload makes it easy to use OnCancel as a MenuEntry event handler.
-    /// </summary>
     protected void OnCancel( object sender, PlayerIndexEventArgs e )
     {
       OnCancel( e.PlayerIndex );

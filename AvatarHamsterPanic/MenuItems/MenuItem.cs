@@ -11,8 +11,8 @@ namespace Menu
     #region Fields
 
 
-    protected float selectionFade; // Tracks a fading selection effect on the entry.
-    protected Vector2 curPos;      // Current position.
+    protected Vector2 curPos; // position that should be used 
+                              // when drawing the item
 
 
     #endregion
@@ -24,11 +24,11 @@ namespace Menu
     public float Scale { get; set; }
     public float Z { get; set; }
     public bool Hidden { get; set; }
-    public Vector2 Dimensions { get; set; }
-    public Vector2 Origin { get; set; }
-    public Vector2 Position { get; set; }
-    public Vector2 TransitionOnPosition { get; set; }
-    public Vector2 TransitionOffPosition { get; set; }
+    public Vector2 Dimensions;
+    public Vector2 Origin;
+    public Vector2 Position;
+    public Vector2 TransitionOnPosition;
+    public Vector2 TransitionOffPosition;
     public bool Focused { get; set; }
 
 
@@ -37,42 +37,24 @@ namespace Menu
     #region Events
 
 
-    /// <summary>
-    /// Event raised when the menu entry is selected.
-    /// </summary>
     public event EventHandler<PlayerIndexEventArgs> Selected;
 
-    /// <summary>
-    /// Method for raising the Selected event.
-    /// </summary>
     protected internal virtual void OnSelect( PlayerIndex playerIndex )
     {
       if ( Selected != null )
         Selected( this, new PlayerIndexEventArgs( playerIndex ) );
     }
 
-    /// <summary>
-    /// Event raised when 'left' is pressed on menu item.
-    /// </summary>
     public event EventHandler<PlayerIndexEventArgs> Decremented;
 
-    /// <summary>
-    /// Method for raising the Decremented event.
-    /// </summary>
     protected internal virtual void OnDecrement( PlayerIndex playerIndex )
     {
       if ( Decremented != null )
         Decremented( this, new PlayerIndexEventArgs( playerIndex ) );
     }
 
-    /// <summary>
-    /// Event raised when 'right' is pressed on menu item.
-    /// </summary>
     public event EventHandler<PlayerIndexEventArgs> Incremented;
 
-    /// <summary>
-    /// Method for raising the Incremented event.
-    /// </summary>
     protected internal virtual void OnIncrement( PlayerIndex playerIndex )
     {
       if ( Incremented != null )
@@ -86,7 +68,6 @@ namespace Menu
 
     public MenuItem( MenuScreen screen, Vector2 position )
     {
-      selectionFade = 0f;
       Screen = screen;
       Position = position;
       Z = 0f;
@@ -102,12 +83,6 @@ namespace Menu
 
     public virtual void Update( GameTime gameTime )
     {
-      float fadeSpeed = (float)gameTime.ElapsedGameTime.TotalSeconds * 4f;
-
-      if ( Focused )
-        selectionFade = Math.Min( selectionFade + fadeSpeed, 1f );
-      else
-        selectionFade = Math.Max( selectionFade - fadeSpeed, 0f );
     }
 
     public virtual void UpdateTransition( float transitionPosition, ScreenState state )

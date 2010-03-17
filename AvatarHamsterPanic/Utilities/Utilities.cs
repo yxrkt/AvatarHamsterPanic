@@ -80,9 +80,14 @@ public static class ColorHelper
 
 public static class PlayerIndexHelper
 {
-  public static bool IsPlayer( this PlayerIndex playerIndex )
+  public static bool IsHuman( this PlayerIndex playerIndex )
   {
     return ( playerIndex >= PlayerIndex.One && playerIndex <= PlayerIndex.Four );
+  }
+
+  public static bool IsPlayer( this PlayerIndex playerIndex )
+  {
+    return ( playerIndex >= (PlayerIndex)(-1) && playerIndex <= PlayerIndex.Four );
   }
 }
 

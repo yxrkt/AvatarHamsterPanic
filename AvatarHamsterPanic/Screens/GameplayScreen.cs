@@ -107,6 +107,7 @@ namespace Menu
     bool addedPodium = false;
     ScoreboardMenuScreen scoreboardMenuScreen;
     PauseMenuScreen pauseScreen;
+    GameTimer gameClock;
 
     // Debug
     string updateEntityMark = "Entity Update";
@@ -155,7 +156,7 @@ namespace Menu
 
       // initialize physics
       PhysicsSpace = new PhysicsSpace();
-      PhysicsSpace.Gravity = new Vector2( 0f, -5.5f );
+      PhysicsSpace.Gravity = new Vector2( 0f, -8f );
 
       // render targets
       GraphicsDevice device = ScreenManager.GraphicsDevice;
@@ -232,6 +233,9 @@ namespace Menu
 
       lastCamY = Camera.Position.Y;
       SpawnRows(); // spawn additional rows before loading screen is over
+
+      gameClock = new GameTimer( TimeSpan.FromMinutes( 2 ) );
+      ObjectTable.Add( gameClock );
 
       ScreenManager.Game.ResetElapsedTime();
     }
@@ -326,7 +330,8 @@ namespace Menu
         if ( CountdownTime < CountdownEnd )
           CountdownTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        UpdateCamera( (float)elapsed );
+        if ( !( GameOver && winner == null ) )
+          UpdateCamera( (float)elapsed );
         AudioListener listener = GameCore.Instance.AudioManager.Listener;
         listener.Position = Camera.Position;
         listener.Forward = Vector3.Forward;
@@ -507,11 +512,17 @@ namespace Menu
 
     private void Draw2D( SpriteBatch spriteBatch )
     {
+      gameClock.Draw2D();
+
       // player HUDs
       ReadOnlyCollection<Player> players = ObjectTable.GetObjects<Player>();
       int nPlayers = players.Count;
       for ( int i = 0; i < nPlayers; ++i )
+      {
         players[i].HUD.Draw();
+        if ( GameCore.Instance.DisplayGamertags )
+          players[i].Tag.Draw();
+      }
 
       ReadOnlyCollection<ReadyGo> readyGoes = ObjectTable.GetObjects<ReadyGo>();
       if ( readyGoes != null && readyGoes.Count != 0 )
@@ -630,16 +641,7 @@ namespace Menu
     {
       for ( int i = 0; i < 4; ++i )
       {
-        if ( initSlotInfo == null )
-        {
-          if ( i < Gamer.SignedInGamers.Count )
-          {
-            Avatar avatar = new Avatar( Gamer.SignedInGamers[i].Avatar, AvatarAnimationPreset.Stand0,
-                                        Player.Size, Vector3.UnitX, Vector3.Zero );
-            ObjectTable.Add( new Player( this, i, (PlayerIndex)i, avatar, shelf.GetPlayerPos( i ), 0 ) );
-          }
-        }
-        else if ( i < initSlotInfo.Length && initSlotInfo[i].Avatar != null )
+        if ( i < initSlotInfo.Length && initSlotInfo[i].Avatar != null )
         {
           initSlotInfo[i].Avatar.Scale = Player.Size;
           ObjectTable.Add( new Player( this, i, initSlotInfo[i].Player, initSlotInfo[i].Avatar,
@@ -650,7 +652,7 @@ namespace Menu
 
     private void UpdateCamera( float elapsed )
     {
-      if ( GameOver )
+      if ( GameOver && winner != null )
         UpdateWinCamera( elapsed );
       else
         UpdateCameraScroll( elapsed );

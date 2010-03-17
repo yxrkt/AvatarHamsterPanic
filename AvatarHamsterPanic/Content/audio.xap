@@ -16,8 +16,8 @@ Global Settings
     Header File = audio.h;
     Exclude Category Names = 0;
     Exclude Variable Names = 0;
-    Last Modified Low = 1252335748;
-    Last Modified High = 30063373;
+    Last Modified Low = 2418409743;
+    Last Modified High = 30065600;
 
     Category
     {
@@ -238,7 +238,7 @@ Global Settings
 
         RPC Curve
         {
-            Name = Sound::084f3ba4-a7c1-4adc-b770-6ef70052f0eb;
+            Name = Sound::aafa6257-06e1-4dba-adc3-0b6ae9636051;
             Property = 0;
             Sound = 1;
             Line Color = 4287024805;
@@ -275,12 +275,14 @@ Wave Bank
     Windows Bank Path Edited = 0;
     Seek Tables = 1;
     Compression Preset Name = <none>;
-    Xbox Bank Last Modified Low = 1252365045;
-    Xbox Bank Last Modified High = 30063373;
-    PC Bank Last Modified Low = 148574309;
-    PC Bank Last Modified High = 30059210;
-    Bank Last Revised Low = 1128156060;
-    Bank Last Revised High = 30063373;
+    Xbox Bank Last Modified Low = 2121651811;
+    Xbox Bank Last Modified High = 30064035;
+    PC Bank Last Modified Low = 2418439040;
+    PC Bank Last Modified High = 30065600;
+    Header Last Modified Low = 0;
+    Header Last Modified High = 0;
+    Bank Last Revised Low = 1984132280;
+    Bank Last Revised High = 30064035;
 
     Wave
     {
@@ -1132,6 +1134,98 @@ Wave Bank
             Last Modified High = 30063372;
         }
     }
+
+    Wave
+    {
+        Name = fanfare;
+        File = Sounds\fanfare.wav;
+        Build Settings Last Modified Low = 3849186294;
+        Build Settings Last Modified High = 30063962;
+
+        Cache
+        {
+            Format Tag = 0;
+            Channels = 2;
+            Sampling Rate = 44100;
+            Bits Per Sample = 1;
+            Play Region Offset = 44;
+            Play Region Length = 422540;
+            Loop Region Offset = 0;
+            Loop Region Length = 0;
+            File Type = 1;
+            Last Modified Low = 1238223360;
+            Last Modified High = 30063966;
+        }
+    }
+
+    Wave
+    {
+        Name = ready;
+        File = Sounds\ready.wav;
+        Build Settings Last Modified Low = 4026149880;
+        Build Settings Last Modified High = 30063988;
+
+        Cache
+        {
+            Format Tag = 0;
+            Channels = 2;
+            Sampling Rate = 44100;
+            Bits Per Sample = 1;
+            Play Region Offset = 96;
+            Play Region Length = 130948;
+            Loop Region Offset = 0;
+            Loop Region Length = 0;
+            File Type = 1;
+            Last Modified Low = 4290049315;
+            Last Modified High = 30063986;
+        }
+    }
+
+    Wave
+    {
+        Name = go;
+        File = Sounds\go.wav;
+        Build Settings Last Modified Low = 4026149880;
+        Build Settings Last Modified High = 30063988;
+
+        Cache
+        {
+            Format Tag = 0;
+            Channels = 2;
+            Sampling Rate = 44100;
+            Bits Per Sample = 1;
+            Play Region Offset = 96;
+            Play Region Length = 94816;
+            Loop Region Offset = 0;
+            Loop Region Length = 0;
+            File Type = 1;
+            Last Modified Low = 3924339832;
+            Last Modified High = 30063987;
+        }
+    }
+
+    Wave
+    {
+        Name = readyUp;
+        File = Sounds\readyUp.wav;
+        Build Settings Last Modified Low = 1931349077;
+        Build Settings Last Modified High = 30064035;
+
+        Cache
+        {
+            Format Tag = 0;
+            Channels = 2;
+            Sampling Rate = 44100;
+            Bits Per Sample = 1;
+            Play Region Offset = 96;
+            Play Region Length = 93356;
+            Loop Region Offset = 0;
+            Loop Region Length = 0;
+            File Type = 1;
+            Last Modified Low = 1752042436;
+            Last Modified High = 30064035;
+        }
+    }
 }
 
 Sound Bank
@@ -1141,15 +1235,15 @@ Sound Bank
     Windows File = Win\Sound Bank.xsb;
     Xbox Bank Path Edited = 0;
     Windows Bank Path Edited = 0;
-    Bank Last Modified Low = 76776156;
-    Bank Last Modified High = 30063375;
+    Bank Last Modified Low = 3632462933;
+    Bank Last Modified High = 30065603;
     Header Last Modified High = 0;
     Header Last Modified Low = 0;
 
     Sound
     {
         Name = plasticHit;
-        Volume = -1200;
+        Volume = -2850;
         Pitch = 0;
         Priority = 0;
 
@@ -1201,7 +1295,7 @@ Sound Bank
     Sound
     {
         Name = ballVBlock;
-        Volume = -730;
+        Volume = 210;
         Pitch = 0;
         Priority = 0;
 
@@ -1305,7 +1399,7 @@ Sound Bank
     Sound
     {
         Name = ballVCage2;
-        Volume = -1200;
+        Volume = -1140;
         Pitch = 0;
         Priority = 0;
 
@@ -1357,7 +1451,7 @@ Sound Bank
     Sound
     {
         Name = ballVCage3;
-        Volume = -1200;
+        Volume = -1320;
         Pitch = 0;
         Priority = 0;
 
@@ -1409,7 +1503,7 @@ Sound Bank
     Sound
     {
         Name = ballVCage4;
-        Volume = -1200;
+        Volume = -1260;
         Pitch = 0;
         Priority = 0;
 
@@ -2588,7 +2682,7 @@ Sound Bank
     Sound
     {
         Name = collect;
-        Volume = 600;
+        Volume = -1200;
         Pitch = 0;
         Priority = 0;
 
@@ -2692,7 +2786,7 @@ Sound Bank
     Sound
     {
         Name = booster;
-        Volume = -3360;
+        Volume = -3650;
         Pitch = 0;
         Priority = 0;
 
@@ -3100,6 +3194,214 @@ Sound Bank
                     Bank Index = 0;
                     Entry Name = menuLoop;
                     Entry Index = 36;
+                    Weight = 255;
+                    Weight Min = 0;
+                }
+            }
+        }
+    }
+
+    Sound
+    {
+        Name = fanfare;
+        Volume = -1200;
+        Pitch = 0;
+        Priority = 0;
+
+        Category Entry
+        {
+            Name = Default;
+        }
+
+        RPC Entry
+        {
+            RPC Name = VolumeVariation;
+        }
+
+        Track
+        {
+            Volume = 0;
+            Use Filter = 0;
+
+            Play Wave Event
+            {
+                Break Loop = 0;
+                Use Speaker Position = 0;
+                Use Center Speaker = 1;
+                New Speaker Position On Loop = 1;
+                Speaker Position Angle = 0.000000;
+                Speaer Position Arc = 0.000000;
+
+                Event Header
+                {
+                    Timestamp = 0;
+                    Relative = 0;
+                    Random Recurrence = 0;
+                    Random Offset = 0;
+                }
+
+                Wave Entry
+                {
+                    Bank Name = Wave Bank;
+                    Bank Index = 0;
+                    Entry Name = fanfare;
+                    Entry Index = 37;
+                    Weight = 255;
+                    Weight Min = 0;
+                }
+            }
+        }
+    }
+
+    Sound
+    {
+        Name = ready;
+        Volume = -1200;
+        Pitch = 0;
+        Priority = 0;
+
+        Category Entry
+        {
+            Name = Default;
+        }
+
+        RPC Entry
+        {
+            RPC Name = VolumeVariation;
+        }
+
+        Track
+        {
+            Volume = 0;
+            Use Filter = 0;
+
+            Play Wave Event
+            {
+                Break Loop = 0;
+                Use Speaker Position = 0;
+                Use Center Speaker = 1;
+                New Speaker Position On Loop = 1;
+                Speaker Position Angle = 0.000000;
+                Speaer Position Arc = 0.000000;
+
+                Event Header
+                {
+                    Timestamp = 0;
+                    Relative = 0;
+                    Random Recurrence = 0;
+                    Random Offset = 0;
+                }
+
+                Wave Entry
+                {
+                    Bank Name = Wave Bank;
+                    Bank Index = 0;
+                    Entry Name = ready;
+                    Entry Index = 38;
+                    Weight = 255;
+                    Weight Min = 0;
+                }
+            }
+        }
+    }
+
+    Sound
+    {
+        Name = go;
+        Volume = -1200;
+        Pitch = 0;
+        Priority = 0;
+
+        Category Entry
+        {
+            Name = Default;
+        }
+
+        RPC Entry
+        {
+            RPC Name = VolumeVariation;
+        }
+
+        Track
+        {
+            Volume = 0;
+            Use Filter = 0;
+
+            Play Wave Event
+            {
+                Break Loop = 0;
+                Use Speaker Position = 0;
+                Use Center Speaker = 1;
+                New Speaker Position On Loop = 1;
+                Speaker Position Angle = 0.000000;
+                Speaer Position Arc = 0.000000;
+
+                Event Header
+                {
+                    Timestamp = 0;
+                    Relative = 0;
+                    Random Recurrence = 0;
+                    Random Offset = 0;
+                }
+
+                Wave Entry
+                {
+                    Bank Name = Wave Bank;
+                    Bank Index = 0;
+                    Entry Name = go;
+                    Entry Index = 39;
+                    Weight = 255;
+                    Weight Min = 0;
+                }
+            }
+        }
+    }
+
+    Sound
+    {
+        Name = readyUp;
+        Volume = -1200;
+        Pitch = 0;
+        Priority = 0;
+
+        Category Entry
+        {
+            Name = Default;
+        }
+
+        RPC Entry
+        {
+            RPC Name = VolumeVariation;
+        }
+
+        Track
+        {
+            Volume = 0;
+            Use Filter = 0;
+
+            Play Wave Event
+            {
+                Break Loop = 0;
+                Use Speaker Position = 0;
+                Use Center Speaker = 1;
+                New Speaker Position On Loop = 1;
+                Speaker Position Angle = 0.000000;
+                Speaer Position Arc = 0.000000;
+
+                Event Header
+                {
+                    Timestamp = 0;
+                    Relative = 0;
+                    Random Recurrence = 0;
+                    Random Offset = 0;
+                }
+
+                Wave Entry
+                {
+                    Bank Name = Wave Bank;
+                    Bank Index = 0;
+                    Entry Name = readyUp;
+                    Entry Index = 40;
                     Weight = 255;
                     Weight Min = 0;
                 }
@@ -3734,6 +4036,86 @@ Sound Bank
         {
             Name = menuLoop;
             Index = 36;
+            Weight Min = 0;
+            Weight Max = 255;
+        }
+    }
+
+    Cue
+    {
+        Name = fanfare;
+
+        Variation
+        {
+            Variation Type = 3;
+            Variation Table Type = 1;
+            New Variation on Loop = 0;
+        }
+
+        Sound Entry
+        {
+            Name = fanfare;
+            Index = 37;
+            Weight Min = 0;
+            Weight Max = 255;
+        }
+    }
+
+    Cue
+    {
+        Name = ready;
+
+        Variation
+        {
+            Variation Type = 3;
+            Variation Table Type = 1;
+            New Variation on Loop = 0;
+        }
+
+        Sound Entry
+        {
+            Name = ready;
+            Index = 38;
+            Weight Min = 0;
+            Weight Max = 255;
+        }
+    }
+
+    Cue
+    {
+        Name = go;
+
+        Variation
+        {
+            Variation Type = 3;
+            Variation Table Type = 1;
+            New Variation on Loop = 0;
+        }
+
+        Sound Entry
+        {
+            Name = go;
+            Index = 39;
+            Weight Min = 0;
+            Weight Max = 255;
+        }
+    }
+
+    Cue
+    {
+        Name = readyUp;
+
+        Variation
+        {
+            Variation Type = 3;
+            Variation Table Type = 1;
+            New Variation on Loop = 0;
+        }
+
+        Sound Entry
+        {
+            Name = readyUp;
+            Index = 40;
             Weight Min = 0;
             Weight Max = 255;
         }

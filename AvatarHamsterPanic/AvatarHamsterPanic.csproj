@@ -79,10 +79,16 @@
     <Compile Include="Debug\StringBuilderExtension.cs" />
     <Compile Include="Debug\TimeRuler.cs" />
     <Compile Include="Graphics\ScreenQuadEffect.cs" />
+    <Compile Include="Utilities\HighscoreComponent.cs" />
+    <Compile Include="Screens\HighscoreScreen.cs" />
+    <Compile Include="MenuItems\BooleanMenuItem.cs" />
     <Compile Include="MenuItems\ImageMenuEntry.cs" />
+    <Compile Include="MenuItems\SliderMenuItem.cs" />
     <Compile Include="MenuItems\WheelMenu.cs" />
     <Compile Include="MenuItems\WheelMenuEntry.cs" />
     <Compile Include="Objects\CircularGlow.cs" />
+    <Compile Include="Objects\GameTimer.cs" />
+    <Compile Include="Objects\PlayerTag.cs" />
     <Compile Include="Physics\CollisionDetector.cs" />
     <Compile Include="Graphics\CustomModel.cs" />
     <Compile Include="Graphics\CustomModelReader.cs" />
@@ -90,6 +96,7 @@
     <Compile Include="Game.cs" />
     <Compile Include="Physics\CollisionResolver.cs" />
     <Compile Include="Physics\PhysicsSpace.cs" />
+    <Compile Include="Utilities\RumbleComponent.cs" />
     <Compile Include="Screens\ScoreboardMenuScreen.cs" />
     <Compile Include="Screens\ScoreboardPopupMenuScreen.cs" />
     <Compile Include="Utilities\Geometry.cs" />
@@ -113,7 +120,7 @@
     <Compile Include="Utilities\Interpolater.cs" />
     <Compile Include="MenuItems\MenuItem.cs" />
     <Compile Include="MenuItems\StaticImageMenuItem.cs" />
-    <Compile Include="MenuItems\MenuText.cs" />
+    <Compile Include="MenuItems\TextMenuItem.cs" />
     <Compile Include="Objects\Avatar.cs" />
     <Compile Include="Objects\Boundary.cs" />
     <Compile Include="Graphics\Camera.cs" />

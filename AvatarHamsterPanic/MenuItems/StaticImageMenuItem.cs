@@ -35,6 +35,7 @@ namespace Menu
       TransitionOnPosition = position;
       spriteBatch = Screen.ScreenManager.SpriteBatch;
       Dimensions = new Vector2( texture.Width, texture.Height );
+      Origin = Dimensions / 2;
       Tint = Color.White;
       Fade = true;
       scaleSpring = new SpringInterpolater( 1, 700, .35f * SpringInterpolater.GetCriticalDamping( 700 ) );
@@ -69,7 +70,7 @@ namespace Menu
       if ( Fade )
         color.A = Screen.TransitionAlpha;
 
-      spriteBatch.Draw( texture, curPos, null, color, 0f, Dimensions / 2, 
+      spriteBatch.Draw( texture, curPos, null, color, 0f, Origin, 
                         scaleSpring.GetSource()[0], SpriteEffects.None, 0 );
     }
   }

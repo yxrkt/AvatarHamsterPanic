@@ -100,6 +100,8 @@ namespace MathLibrary
 
   class SpringInterpolater : Interpolater
   {
+    public const float MaxStep = 1f / 30f;
+
     public float K { get; set; }
     public float B { get; set; }
 
@@ -119,15 +121,18 @@ namespace MathLibrary
     {
       if ( Active && elapsed != 0f )
       {
+        float step = elapsed;
+        if ( step > MaxStep )
+          step = MaxStep;
         for ( int i = 0; i < dims; ++i )
         {
-          float vel = ( source[i] - prev[i] ) / elapsed;
+          float vel = ( source[i] - prev[i] ) / step;
           float dist = dest[i] - source[i];
           float force = K * dist + vel * B;
-          vel += ( force * elapsed );
+          vel += ( force * step );
 
           prev[i] = source[i];
-          source[i] += ( vel * elapsed );
+          source[i] += ( vel * step );
         }
       }
     }

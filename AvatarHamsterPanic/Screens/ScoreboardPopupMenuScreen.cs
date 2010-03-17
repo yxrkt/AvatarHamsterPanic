@@ -79,7 +79,8 @@ namespace Menu
 
     void ViewHighScores( object sender, PlayerIndexEventArgs e )
     {
-      ScreenManager.AddScreen( new LeaderboardMenuScreen(), null );
+      //ScreenManager.AddScreen( new LeaderboardMenuScreen(), null );
+      ScreenManager.AddScreen( new HighscoreScreen( ScreenManager ), e.PlayerIndex );
       fadeBackBuffer = true;
     }
 

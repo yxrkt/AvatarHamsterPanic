@@ -130,5 +130,8 @@ namespace Particle3DSample
     // Alpha blending settings.
     public Blend SourceBlend = Blend.SourceAlpha;
     public Blend DestinationBlend = Blend.InverseSourceAlpha;
+
+    // Post processing effects
+    public Vector4 Mask = Vector4.Zero;
   }
 }

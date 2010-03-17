@@ -110,6 +110,7 @@ namespace AvatarHamsterPanic.Objects
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
         part.EffectParamColor.SetValue( ColorHelper.ColorFromUintRgb( 0xCFB53B ).ToVector4() );
         part.Effect.Parameters["Mask"].SetValue( MaskHelper.Glow( .85f ) );
+        part.Effect.Parameters["SpecularPower"].SetValue( 180 );
       }
 
       shrimpModel = content.Load<CustomModel>( "Models/shrimp" );
@@ -162,6 +163,7 @@ namespace AvatarHamsterPanic.Objects
       {
         part.Effect.CurrentTechnique = part.Effect.Techniques["Color"];
         part.Effect.Parameters["Color"].SetValue( colors[i++] );
+        //part.Effect.Parameters["Mask"].SetValue( MaskHelper.Glow( .85f ) );
       }
     }
 
@@ -452,8 +454,11 @@ namespace AvatarHamsterPanic.Objects
       if ( owner != null ) return true; // maybe have the powerup avoid the player?
 
       Player player = result.BodyB.Parent as Player;
-      if ( player != null && player.Powerup == null )
+      if ( player != null )
       {
+        if ( player.Powerup != null )
+          player.Powerup.Use();
+
         UpdateSelf -= SineWave;
         UpdateSelf += LockToPlayer;
 
@@ -468,7 +473,8 @@ namespace AvatarHamsterPanic.Objects
         player.Powerup = this;
 
         owner.Position = new Vector3( owner.BoundingCircle.Position, 0 );
-        GameCore.Instance.AudioManager.Play3DCue( "collect", owner, 1f );
+        GameCore.Instance.AudioManager.Play3DCue( "collect", owner, .9f );
+        GameCore.Instance.AudioManager.Play2DCue( "fanfare", 1f );
 
         GameplayScreen.Instance.EndGame();
       }
@@ -540,7 +546,11 @@ namespace AvatarHamsterPanic.Objects
       }
 
       if ( players.Count > 1 )
+      {
         GameCore.Instance.AudioManager.Play2DCue( "lightning", 1f );
+        if ( owner.PlayerIndex.IsHuman() )
+          GameCore.Instance.Rumble.RumbleHigh( owner.PlayerIndex, .4f, .3f );
+      }
     }
 
     #region IAudioEmitter Members

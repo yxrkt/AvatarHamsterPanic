@@ -26,6 +26,7 @@ float StretchVelocity;
 float StretchFactor;
 bool AlignWithVelocity;
 int FadePower;
+float4 Mask;
 
 
 // These float2 parameters describe the min and max of a range.
@@ -279,14 +280,22 @@ struct RotatingPixelShaderInput
 #endif
 };
 
+struct PixelShaderOutput
+{
+  float4 Color : COLOR0;
+  float4 Mask  : COLOR1;
+};
+
 
 // Pixel shader for drawing particles that can rotate. It is not actually
 // possible to rotate a point sprite, so instead we rotate our texture
 // coordinates. Leaving the sprite the regular way up but rotating the
 // texture has the exact same effect as if we were able to rotate the
 // point sprite itself.
-float4 RotatingPixelShader(RotatingPixelShaderInput input) : COLOR0
+PixelShaderOutput RotatingPixelShader( RotatingPixelShaderInput input )
 {
+  PixelShaderOutput output;
+
   float2 textureCoordinate = input.TextureCoordinate;
 
   // We want to rotate around the middle of the particle, not the origin,
@@ -312,7 +321,12 @@ float4 RotatingPixelShader(RotatingPixelShaderInput input) : COLOR0
 
   int index = (int)(input.Color.g) % 3;
   float3 color = Colors[clamp( index, 0, 2 )];
-  return tex2D(Sampler, textureCoordinate) * float4( color.rgb, input.Color.a );
+  output.Color = tex2D(Sampler, textureCoordinate) * float4( color.rgb, input.Color.a );
+  if ( output.Color.a != 0 )
+    output.Mask = Mask;
+  else
+    output.Mask = float4( 0, 0, 0, 0 );
+  return output;
 }
 
 

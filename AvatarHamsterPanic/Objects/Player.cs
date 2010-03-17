@@ -25,6 +25,8 @@ namespace AvatarHamsterPanic.Objects
 {
   class Player : GameObject, IAudioEmitter
   {
+    #region Static Fields
+
     static readonly float particleCoordU = (float)Math.Cos( MathHelper.ToRadians( 15 ) );
     static readonly float particleCoordV = (float)Math.Sin( MathHelper.ToRadians( 15 ) );
 
@@ -32,15 +34,16 @@ namespace AvatarHamsterPanic.Objects
 
     static readonly float baseMass = 10f;
     static readonly float density = baseMass / Geometry.SphereVolume( Size / 2 );
-    static readonly float respawnDuration = 1f;
+    static readonly float respawnDuration = 1.25f;
     static readonly float shrinkDuration = 10f;
     static readonly float shrinkSize = .35f;
     //static readonly float squashSize;
-    static readonly float crushDuration = .75f;
+    static readonly float crushDuration = .6f;
     static readonly float crushMass = 20f;
     static readonly float seizureDuration = .5f;
     static readonly float lightningStunDuration = 1f;
     static readonly float boostLingerDuration = 1f;
+    static readonly float boostRumbleStrength = .17f;
 
     static readonly string pvpSound = "plasticHit";
     static readonly string pvBlockSound = "ballVBlock";
@@ -51,11 +54,17 @@ namespace AvatarHamsterPanic.Objects
     static Dictionary<string, uint> playerIDs = new Dictionary<string, uint>( 4 );
     static uint nextID = 1;
 
-    float jumpRegistered;
+    static Random random = new Random();
+
+    #endregion
+
+    #region Fields
+
+    //float jumpRegistered;
     const float jumpTimeout = .125f;
     GameTime lastGameTime = new GameTime();
     float lastCollision;
-    float lastJump;
+    //float lastJump;
     float shrinkBegin;
     float crushBegin;
     float seizureBegin;
@@ -75,7 +84,9 @@ namespace AvatarHamsterPanic.Objects
     CircularGlow glow;
     SpringInterpolater glowSpring;
 
-    static Random random = new Random();
+    #endregion
+
+    #region Properties
 
     public float Scale { get; private set; }
     public SpringInterpolater ScaleSpring { get; private set; }
@@ -91,6 +102,7 @@ namespace AvatarHamsterPanic.Objects
     public double RespawnTime { get; private set; }
     public bool Respawning { get { return RespawnTime < respawnDuration; } }
     public PlayerHUD HUD { get; private set; }
+    public PlayerTag Tag { get; private set; }
     public Powerup Powerup { get; set; }
     public float DeathLine { get; private set; }
     public bool Crushing { get { return crushBegin != 0; } }
@@ -103,21 +115,36 @@ namespace AvatarHamsterPanic.Objects
         ReadOnlyCollection<Player> players = Screen.ObjectTable.GetObjects<Player>();
 
         int place = 1;
-        for ( int i = 0; i < players.Count; ++i )
+        int playerIndex = -1;
+        for ( int i = 0; i < 4; ++i )
         {
-          if ( players[i].HUD.TotalScore < HUD.TotalScore || i == PlayerNumber ) continue;
+          if ( !Screen.Slots[i].Player.IsPlayer() ) continue;
+          playerIndex++;
 
-          if ( players[i].HUD.TotalScore == HUD.TotalScore )
+          Player player = players[playerIndex];
+
+          if ( player.HUD.TotalScore < HUD.TotalScore || i == PlayerNumber ) continue;
+
+          if ( player.HUD.TotalScore == HUD.TotalScore )
           {
+            if ( Powerup != null && Powerup.Type == PowerupType.GoldenShake )
+              continue;
+
+            if ( player.Powerup != null && player.Powerup.Type == PowerupType.GoldenShake )
+            {
+              place++;
+              continue;
+            }
+
             int myWins = 0;
             if ( GameCore.Instance.PlayerWins.ContainsKey( ID ) )
               myWins = GameCore.Instance.PlayerWins[ID];
 
             int hisWins = 0;
-            if ( GameCore.Instance.PlayerWins.ContainsKey( players[i].ID ) )
-              hisWins = GameCore.Instance.PlayerWins[players[i].ID];
+            if ( GameCore.Instance.PlayerWins.ContainsKey( player.ID ) )
+              hisWins = GameCore.Instance.PlayerWins[player.ID];
 
-            if ( myWins < hisWins || myWins == hisWins && PlayerNumber < players[i].PlayerNumber )
+            if ( myWins < hisWins || myWins == hisWins && PlayerNumber < player.PlayerNumber )
               continue;
           }
 
@@ -127,6 +154,10 @@ namespace AvatarHamsterPanic.Objects
         return place;
       }
     }
+
+    #endregion
+
+    #region Initialization
 
     public Player( GameplayScreen screen, int playerNumber, PlayerIndex playerIndex, Avatar avatar, Vector2 pos, uint id )
       : base( screen )
@@ -161,8 +192,8 @@ namespace AvatarHamsterPanic.Objects
 
       PlayerIndex = playerIndex;
       PlayerNumber = playerNumber;
-      BoostBurnRate = 2f;
-      BoostRechargeRate = .125f;
+      BoostBurnRate = 1f;
+      BoostRechargeRate = .25f;
 
       Avatar = avatar;
       BoundingCircle = new PhysCircle( Size / 2f, pos, 10f );
@@ -210,6 +241,8 @@ namespace AvatarHamsterPanic.Objects
       glowSpring.SetSource( 0 );
       glowSpring.SetDest( 0 );
 
+      Tag = new PlayerTag( this, screen.Content.Load<SpriteFont>( "Fonts/playerTagFont" ) );
+
       SetID( id );
     }
 
@@ -222,192 +255,178 @@ namespace AvatarHamsterPanic.Objects
       lightnings.Clear();
     }
 
-    public void GetWheelTransform( out Matrix transform )
-    {
-      Matrix matTrans, matRot, matScale;
-      Matrix.CreateTranslation( BoundingCircle.Position.X, BoundingCircle.Position.Y, 0f, out matTrans );
-      Matrix.CreateRotationZ( BoundingCircle.Angle, out matRot );
-      Matrix.CreateScale( Size * Scale, out matScale );
+    #endregion
 
-      Matrix.Multiply( ref matScale, ref matRot, out transform );
-      Matrix.Multiply( ref transform, ref matTrans, out transform );
-    }
+    #region Update and Draw
 
-    private void SetID( uint id )
+    public override void Update( GameTime gameTime )
     {
-      if ( id == 0 )
+      lastGameTime = gameTime;
+
+      UpdatePowerupEffects( Screen.AccumulatedTime );
+
+      UpdateScale( (float)gameTime.ElapsedGameTime.TotalSeconds );
+
+      UpdatePlace();
+
+      UpdateAvatar( gameTime );
+      Tag.Update( gameTime );
+      HUD.Update( gameTime );
+
+      UpdateBoostSound();
+      UpdateGlowEffect();
+
+      if ( !Screen.CameraIsScrolling ) return;
+
+      float deathLine = Screen.Camera.Position.Y + DeathLine + Size * Scale / 2f;
+      bool hittingLine = BoundingCircle.Position.Y >= deathLine;
+      if ( !Respawning )
       {
-        if ( PlayerIndex >= PlayerIndex.One )
+        // check if player should be pwnt
+        if ( hittingLine && !Crushing )
         {
-          string gamertag = SignedInGamer.SignedInGamers[PlayerIndex].Gamertag;
-          if ( playerIDs.ContainsKey( gamertag ) )
-          {
-            ID = playerIDs[gamertag];
-          }
-          else
-          {
-            ID = nextID++;
-            playerIDs.Add( gamertag, ID );
-          }
-        }
-        else
-        {
-          ID = nextID++;
+          ClearPowerupEffects();
+          RespawnTime = 0f;
+          if ( !Screen.GameOver )
+            HUD.AddPoints( -3 );
+          BoundingCircle.Velocity.Y = Math.Min( BoundingCircle.Velocity.Y, 1.5f * Screen.CameraScrollSpeed );
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.RumbleLow( PlayerIndex, .25f, .5f );
         }
       }
       else
       {
-        ID = id;
+        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
+        if ( !( hittingLine && RespawnTime + elapsed > respawnDuration ) )
+          RespawnTime += elapsed;
       }
     }
 
-    private bool HandleCollision( Collision result )
-    {
-      //Player playerB = result.BodyB.Parent as Player;
-      //if ( playerB != null )
-      //{
-      //  // squash him if he's tiny and touching another object
-      //  if ( playerB.Scale < squashSize * Size )//&& result.BodyB.Touching != result.BodyA )
-      //  {
-      //    Debug.WriteLine( "Squash!" );
-      //  }
-      //}
-
-      // play collision sound
-      Player playerB = result.BodyB.Parent as Player;
-      if ( playerB != null )
-      {
-        float relVelMag = ( result.BodyA.Velocity - result.BodyB.Velocity ).Length();
-        if ( relVelMag > 1f )
-        {
-          float volume = Math.Min( .75f, relVelMag / 6f );
-          soundPosition = new Vector3( result.Intersection, 0 );
-          GameCore.Instance.AudioManager.Play3DCue( pvpSound, this, volume );
-        }
-      }
-
-      return true;
-    }
-
-    private bool HandleCollisionResponse( Collision result )
+    private void UpdateAvatar( GameTime gameTime )
     {
       PhysCircle circle = BoundingCircle;
+      Avatar.Position = new Vector3( circle.Position.X, circle.Position.Y - ( Scale * Size ) / 2.3f, 0f );
 
-      // keep track of last time of collision (for jumping)
-      lastCollision = Screen.AccumulatedTime;
+      double absAngVel = Math.Abs( (double)circle.AngularVelocity );
 
-      // set emitter position
-      SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
+      // update avatar's animation
+      double idleThresh = .1;
+      double walkThresh = 4.0;
+      double animScaleFactor = .20;
 
-      string sound = null;
-      if ( result.BodyB.Parent is FloorBlock )
-        sound = pvBlockSound;
-      if ( result.BodyB.Parent is Boundary || result.BodyB.Parent is Shelves )
-        sound = pvCageSound;
-
-      if ( sound != null )
+      if ( absAngVel <= idleThresh )
       {
-        float impulse = result.BodyA.LastImpulse.Length();
-        if ( impulse > .5f )
+        Avatar.SetAnimation( standAnim );
+        Avatar.Update( gameTime.ElapsedGameTime, true );
+      }
+      else
+      {
+        Avatar.Direction = new Vector3( BoundingCircle.AngularVelocity < 0f ? 1f : -1f, 0f, 0f );
+        if ( absAngVel <= walkThresh )
         {
-          float volume = Math.Min( 1f, impulse / ( 5 * BoundingCircle.Mass ) );
-          soundPosition = new Vector3( result.Intersection, 0 );
-          GameCore.Instance.AudioManager.Play3DCue( sound, this, volume );
+          animScaleFactor = 1.0;
+          Avatar.SetAnimation( walkAnim );
+        }
+        else
+        {
+          Avatar.SetAnimation( runAnim );
+        }
+        double animScale = animScaleFactor * absAngVel;
+        Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );
+      }
+    }
+
+    private void UpdateBoostSound()
+    {
+      if ( boosterSound != null )
+      {
+        if ( Boosting && HUD.Boost != 0 && ( boosterSound.IsPaused || boostCutoff != 0 ) )
+        {
+          boostCutoff = 0;
+          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 ) );
+          boosterSound.Resume();
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.TurnOnHigh( PlayerIndex, boostRumbleStrength );
+        }
+        else if ( ( !Boosting || HUD.Boost == 0 ) && !boosterSound.IsPaused && boostCutoff == 0 )
+        {
+          boostCutoff = Screen.AccumulatedTime;
         }
       }
+      if ( boostCutoff != 0 )
+      {
+        float t = ( Screen.AccumulatedTime - boostCutoff ) / boostLingerDuration;
+        if ( t < 1 )
+        {
+          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 - t ) );
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.TurnOnHigh( PlayerIndex, boostRumbleStrength * ( 1 - t ) );
+        }
+        else
+        {
+          boosterSound.Pause();
+          boostCutoff = 0;
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.TurnOffHigh( PlayerIndex );
+        }
+      }
+    }
 
-      //// play collision sound
-      //Player playerB = result.BodyB.Parent as Player;
-      //if ( playerB != null )
+    private void UpdateGlowEffect()
+    {
+      if ( Crushing )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 255;
+        glow.Color.G = 80;
+        glow.Color.B = 0;
+      }
+      else if ( Boosting && HUD.Boost > 0 )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 0;
+        glow.Color.G = 225;
+        glow.Color.B = 255;
+      }
+      else if ( Respawning )
+      {
+        if ( glowSpring.GetDest()[0] != 1f )
+          glowSpring.SetDest( 1f );
+        glow.Color.R = 255;
+        glow.Color.G = 255;
+        glow.Color.B = 255;
+      }
+      else
+      {
+        glowSpring.SetDest( 0 );
+      }
+
+      float glowSize = glowSpring.GetSource()[0];
+      if ( glowSize < 0 )
+      {
+        glowSize = 0;
+        glowSpring.SetSource( 0 );
+      }
+
+      if ( Respawning && ( (int)( RespawnTime * 16f ) % 2 ) == 0 )
+        glowSize = 0;
+
+      glow.Color.A = (byte)( glowSize * 255f + .5f );
+
+      //if ( glowSpring.GetDest()[0] == 0 )
       //{
-      //  float impulseMag = result.BodyB.LastImpulse.Length();
-      //  //if ( impulseMag > .5f )
-      //  {
-      //    float volume = Math.Min( .85f, impulseMag / 30f );
-      //    soundPosition = new Vector3( result.Intersection, 0 );
-      //    Screen.AudioManager.Play3DCue( plasticHitSound, this, volume );
-      //  }
+      //  glowSpring.K = 100;
+      //  glowSpring.B = SpringInterpolater.GetCriticalDamping( 100 );
+      //}
+      //else
+      //{
+      //  glowSpring.K = 500;
+      //  glowSpring.B = .5f * SpringInterpolater.GetCriticalDamping( 500 );
       //}
 
-      Vector3 position = new Vector3( result.Intersection, 0f );
-      //emitter.Position = position;
-
-      // spit some particles
-      Vector2 r = Vector2.Normalize( result.Intersection - result.BodyA.Position );
-      Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
-      Vector2 dir = circle.Velocity;
-
-      Vector2 vpn = Vector2.Normalize( vp );
-      Vector3 direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
-      //factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
-
-      Vector2 sum = vp + dir;
-      if ( sum != Vector2.Zero )
-      {
-        float sumLength = sum.Length();
-        if ( sumLength > .25f )
-        {
-          float coneAngle = MathHelper.ToRadians( 30 );
-          Vector3 velocity = random.NextConeDirection( random.NextFloat( 2, 4 ) * direction, coneAngle );
-          sparkSystem.AddParticle( position, velocity );
-        }
-      }
-
-      return true;
-    }
-
-    public void Shrink()
-    {
-      shrinkBegin = Screen.AccumulatedTime;
-      ScaleSpring.SetDest( shrinkSize * Size );
-    }
-
-    public void Crush()
-    {
-      crushBegin = Screen.AccumulatedTime;
-      BoundingCircle.Velocity.Y -= 3f;
-      BoundingCircle.Mass = crushMass;
-    }
-
-    public void Laser()
-    {
-      Vector2 offset   = new Vector2( 1.5f * BoundingCircle.Radius, 0 );
-      Vector2 leftPos  = BoundingCircle.Position - offset;
-      Vector2 rightPos = BoundingCircle.Position + offset;
-
-      LaserBeam leftLaser = LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true );
-      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, leftLaser, 1 );
-      Screen.ObjectTable.Add( leftLaser );
-
-      LaserBeam rightLaser = LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false );
-      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
-      Screen.ObjectTable.Add( rightLaser );
-    }
-
-    public void TakeLaserUpAss( Collision result )
-    {
-      if ( Respawning ) return;
-
-      seizureBegin = Screen.AccumulatedTime;
-      seizureCollision = result;
-      BoundingCircle.Flags |= BodyFlags.Anchored;
-      BoundingCircle.Velocity = Vector2.Zero;
-      BoundingCircle.AngularVelocity = 0;
-    }
-
-    public void GetStunnedByLightning( Player attackingPlayer )
-    {
-      if ( Respawning ) return;
-
-      lightningStunBegin = Screen.AccumulatedTime;
-      BoundingCircle.Flags = BodyFlags.Anchored;
-      BoundingCircle.Velocity = Vector2.Zero;
-      BoundingCircle.AngularVelocity = 0;
-
-      Lightning lightning = new Lightning( 5, Vector3.Zero, Vector3.Zero );
-      lightning.LinkToPlayers( attackingPlayer, this );
-      lightnings.Add( lightning );
-      Screen.ObjectTable.Add( lightning );
+      glowSpring.Update( (float)lastGameTime.ElapsedGameTime.TotalSeconds );
     }
 
     private void UpdateScale( float elapsed )
@@ -502,66 +521,6 @@ namespace AvatarHamsterPanic.Objects
       HUD.Place = place;
     }
 
-    private void ClearPowerupEffects()
-    {
-      //shrinkBegin = 0;
-      crushBegin = 0;
-      seizureBegin = 0;
-      lightningStunBegin = 0;
-      foreach ( Lightning lightning in lightnings )
-        Screen.ObjectTable.MoveToTrash( lightning );
-      lightnings.Clear();
-
-      //ScaleSpring.SetDest( 1 );
-
-      if ( BoundingCircle.Flags.HasFlags( BodyFlags.Anchored ) )
-      {
-        BoundingCircle.Flags = BodyFlags.None;
-        BoundingCircle.Velocity = Vector2.Zero;
-        BoundingCircle.AngularVelocity = 0;
-      }
-    }
-
-    public override void Update( GameTime gameTime )
-    {
-      lastGameTime = gameTime;
-
-      UpdatePowerupEffects( Screen.AccumulatedTime );
-
-      UpdateScale( (float)gameTime.ElapsedGameTime.TotalSeconds );
-
-      UpdatePlace();
-
-      UpdateAvatar( gameTime );
-      HUD.Update( gameTime );
-
-      UpdateBoostSound();
-      UpdateGlowEffect();
-
-      if ( !Screen.CameraIsScrolling ) return;
-
-      float deathLine = Screen.Camera.Position.Y + DeathLine - Size * Scale / 2f;
-      bool hittingLine = BoundingCircle.Position.Y >= deathLine;
-      if ( !Respawning )
-      {
-        // check if player should be pwnt
-        if ( hittingLine && !Crushing )
-        {
-          ClearPowerupEffects();
-          RespawnTime = 0f;
-          if ( !Screen.GameOver )
-            HUD.AddPoints( -5 );
-          BoundingCircle.Velocity.Y = Math.Min( BoundingCircle.Velocity.Y, Screen.CameraScrollSpeed );
-        }
-      }
-      else
-      {
-        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
-        if ( !( hittingLine && RespawnTime + elapsed > respawnDuration ) )
-          RespawnTime += elapsed;
-      }
-    }
-
     public void HandleInput( InputState input )
     {
       PlayerInput playerInput;
@@ -571,7 +530,8 @@ namespace AvatarHamsterPanic.Objects
 
       // powerups
       PlayerIndex playerIndex = PlayerIndex;
-      if ( playerInput.ButtonXHit && Powerup != null && Powerup.Type != PowerupType.GoldenShake )
+      if ( ( playerInput.ButtonXHit || playerInput.ButtonYHit ) &&
+           Powerup != null && Powerup.Type != PowerupType.GoldenShake )
       {
         if ( !Screen.GameOver )
           Powerup.Use();
@@ -582,24 +542,27 @@ namespace AvatarHamsterPanic.Objects
       float forceX = 0f;
       float maxVelX = 4f;
 
+      bool leftHeld = ( playerInput.LeftStick.X < 0 || playerInput.LeftDpad ) &&
+                      !( playerInput.LeftStick.X > 0 || playerInput.RightDpad );
+      bool rightHeld = ( playerInput.LeftStick.X > 0 || playerInput.RightDpad ) &&
+                       !( playerInput.LeftStick.X < 0 || playerInput.LeftDpad );
+
       Boosting = false;
-      if ( playerInput.LeftTrigger != 0f )
+      if ( !Screen.GameOver )
       {
-        Boosting = true;
-        forceX = -20f * BoundingCircle.Mass;
-        maxVelX = 6f;
-      }
-      if ( playerInput.RightTrigger != 0f )
-      {
-        Boosting = true;
-        if ( forceX != 0f )
+        if ( playerInput.LeftTrigger != 0f || playerInput.LeftBumper ||
+             ( playerInput.ButtonBDown && leftHeld ) ||
+             ( playerInput.ButtonBDown && !rightHeld && circle.Velocity.X < 0 ) )
         {
-          forceX = 0f;
-          forceY = 40f;
-          maxVelX = 4f;
+          Boosting = true;
+          forceX = -20f * BoundingCircle.Mass;
+          maxVelX = 6f;
         }
-        else
+        else if ( playerInput.RightTrigger != 0f || playerInput.RightBumper ||
+             ( playerInput.ButtonBDown && rightHeld ) ||
+             ( playerInput.ButtonBDown && !leftHeld && circle.Velocity.X > 0 ) )
         {
+          Boosting = true;
           forceX = 20f * BoundingCircle.Mass;
           maxVelX = 6f;
         }
@@ -609,6 +572,10 @@ namespace AvatarHamsterPanic.Objects
 
       float torqueScale = -100f;
       float torque = torqueScale * playerInput.LeftStick.X;
+      if ( playerInput.LeftDpad )
+        torque = -torqueScale;
+      else if ( playerInput.RightDpad )
+        torque = torqueScale;
 
       float elapsed = (float)lastGameTime.ElapsedGameTime.TotalSeconds;
 
@@ -631,9 +598,15 @@ namespace AvatarHamsterPanic.Objects
       if ( Boosting )
       {
         if ( circle.Velocity.X < 0f && forceX < 0f )
-          forceX = Math.Max( forceX, PhysBody.GetForceRequired( -maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, elapsed ) );
+        {
+          forceX = Math.Max( forceX, PhysBody.GetForceRequired( -maxVelX, circle.Velocity.X,
+                                                                circle.Force.X, circle.Mass, elapsed ) );
+        }
         else if ( circle.Velocity.X > 0f && forceX > 0f )
-          forceX = Math.Min( forceX, PhysBody.GetForceRequired( maxVelX, circle.Velocity.X, circle.Force.X, circle.Mass, elapsed ) );
+        {
+          forceX = Math.Min( forceX, PhysBody.GetForceRequired( maxVelX, circle.Velocity.X,
+                                                                circle.Force.X, circle.Mass, elapsed ) );
+        }
 
         float maxBurn = BoostBurnRate * elapsed;
         float burn = Math.Min( HUD.Boost, maxBurn );
@@ -644,9 +617,14 @@ namespace AvatarHamsterPanic.Objects
       else
       {
         HUD.Boost = MathHelper.Clamp( HUD.Boost + BoostRechargeRate * elapsed, 0f, 1f );
+
+        if ( playerInput.LeftStick.Y < -.75f || playerInput.DownDpad )
+        {
+          //circle.Force += 1.0f * Screen.PhysicsSpace.Gravity;
+        }
       }
 
-      // jumping
+      /*/// jumping
       float totalTime = Screen.AccumulatedTime;
       if ( playerInput.ButtonAHit )
       {
@@ -674,121 +652,19 @@ namespace AvatarHamsterPanic.Objects
           jumpRegistered = 0f;
         }
       }
-    }
-
-    private void Jump( PhysCircle circle )
-    {
-      circle.Velocity += 2f * circle.TouchNormal;
-      glowSpring.SetSource( 1f );
-      glow.Color.R = 255;
-      glow.Color.G = 225;
-      glow.Color.B = 0;
-    }
-
-    private void UpdateBoostSound()
-    {
-      if ( boosterSound != null )
+      /*/
+      // updward boosting
+      if ( playerInput.ButtonADown && HUD.Boost != 0 && !Screen.GameOver )
       {
-        if ( Boosting && HUD.Boost != 0 && boosterSound.IsPaused )
-        {
-          boostCutoff = 0;
-          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 ) );
-          boosterSound.Resume();
-        }
-        else if ( ( !Boosting || HUD.Boost == 0 ) && !boosterSound.IsPaused && boostCutoff == 0 )
-        {
-          boostCutoff = Screen.AccumulatedTime;
-        }
-      }
-      if ( boostCutoff != 0 )
-      {
-        float t = ( Screen.AccumulatedTime - boostCutoff ) / boostLingerDuration;
-        if ( t < 1 )
-        {
-          boosterSound.SetVariable( volumeVariable, XACTHelper.GetDecibels( 1 - t ) );
-        }
-        else
-        {
-          boosterSound.Pause();
-          boostCutoff = 0;
-        }
-      }
-    }
+        float maxBurn = BoostBurnRate * elapsed;
+        float burn = Math.Min( HUD.Boost, maxBurn );
+        HUD.Boost -= burn;
 
-    private void UpdateGlowEffect()
-    {
-      if ( Crushing )
-      {
-        if ( glowSpring.GetDest()[0] != 1f )
-          glowSpring.SetDest( 1f );
-        glow.Color.R = 255;
-        glow.Color.G = 80;
-        glow.Color.B = 0;
+        Boosting = true;
+        float boostScale = burn / maxBurn;
+        circle.Force += 2f * circle.Mass * -Screen.PhysicsSpace.Gravity * boostScale;
       }
-      else if ( Boosting && HUD.Boost > 0 )
-      {
-        if ( glowSpring.GetDest()[0] != 1f )
-          glowSpring.SetDest( 1f );
-        glow.Color.R = 0;
-        glow.Color.G = 225;
-        glow.Color.B = 255;
-      }
-      else if ( Respawning )
-      {
-        if ( glowSpring.GetDest()[0] != 1f )
-          glowSpring.SetDest( 1f );
-        glow.Color.R = 255;
-        glow.Color.G = 255;
-        glow.Color.B = 255;
-      }
-      else
-      {
-        glowSpring.SetDest( 0 );
-      }
-
-      float glowSize = glowSpring.GetSource()[0];
-      if ( glowSize < 0 )
-      {
-        glowSize = 0;
-        glowSpring.SetSource( 0 );
-      }
-
-      if ( Respawning && ( (int)( RespawnTime * 16f ) % 2 ) == 0 )
-        glowSize = 0;
-
-      glow.Color.A = (byte)( glowSize * 255f + .5f );
-
-      //if ( glowSpring.GetDest()[0] == 0 )
-      //{
-      //  glowSpring.K = 100;
-      //  glowSpring.B = SpringInterpolater.GetCriticalDamping( 100 );
-      //}
-      //else
-      //{
-      //  glowSpring.K = 500;
-      //  glowSpring.B = .5f * SpringInterpolater.GetCriticalDamping( 500 );
-      //}
-
-      glowSpring.Update( (float)lastGameTime.ElapsedGameTime.TotalSeconds );
-    }
-
-    private void GetPlayerInput( PlayerIndex playerIndex, InputState input, out PlayerInput playerInput )
-    {
-      if ( playerIndex < PlayerIndex.One )
-      {
-        playerAI.GetInput( out playerInput );
-      }
-      else
-      {
-        playerInput.ButtonAHit = input.IsNewButtonPress( Buttons.A, playerIndex, out playerIndex );
-        playerInput.ButtonXHit = input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex );
-
-        GamePadState gamePadState = input.CurrentGamePadStates[(int)playerIndex];
-
-        playerInput.LeftTrigger = gamePadState.Triggers.Left;
-        playerInput.RightTrigger = gamePadState.Triggers.Right;
-        playerInput.LeftStick = gamePadState.ThumbSticks.Left;
-      }
+      /**/
     }
 
     public override void Draw()
@@ -823,39 +699,273 @@ namespace AvatarHamsterPanic.Objects
       WheelModel.Draw( Screen.Camera.Position, transform, Screen.View, Screen.Projection );
     }
 
-    private void UpdateAvatar( GameTime gameTime )
+    #endregion
+
+    #region Public Methods
+
+    public void GetWheelTransform( out Matrix transform )
     {
-      PhysCircle circle = BoundingCircle;
-      Avatar.Position = new Vector3( circle.Position.X, circle.Position.Y - ( Scale * Size ) / 2.3f, 0f );
+      Matrix matTrans, matRot, matScale;
+      Matrix.CreateTranslation( BoundingCircle.Position.X, BoundingCircle.Position.Y, 0f, out matTrans );
+      Matrix.CreateRotationZ( BoundingCircle.Angle, out matRot );
+      Matrix.CreateScale( Size * Scale, out matScale );
 
-      double absAngVel = Math.Abs( (double)circle.AngularVelocity );
+      Matrix.Multiply( ref matScale, ref matRot, out transform );
+      Matrix.Multiply( ref transform, ref matTrans, out transform );
+    }
 
-      // update avatar's animation
-      double idleThresh = .1;
-      double walkThresh = 4.0;
-      double animScaleFactor = .20;
+    public void Shrink()
+    {
+      shrinkBegin = Screen.AccumulatedTime;
+      ScaleSpring.SetDest( shrinkSize * Size );
+    }
 
-      if ( absAngVel <= idleThresh )
+    public void Crush()
+    {
+      crushBegin = Screen.AccumulatedTime;
+      BoundingCircle.Velocity.Y -= 3f;
+      BoundingCircle.Mass = crushMass;
+    }
+
+    public void Laser()
+    {
+      Vector2 offset = new Vector2( 1.5f * BoundingCircle.Radius, 0 );
+      Vector2 leftPos = BoundingCircle.Position - offset;
+      Vector2 rightPos = BoundingCircle.Position + offset;
+
+      LaserBeam leftLaser = LaserBeam.CreateBeam( leftPos, Vector2.Zero, this, true );
+      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, leftLaser, 1 );
+      Screen.ObjectTable.Add( leftLaser );
+
+      LaserBeam rightLaser = LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false );
+      GameCore.Instance.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
+      Screen.ObjectTable.Add( rightLaser );
+
+      if ( PlayerIndex.IsHuman() )
+        GameCore.Instance.Rumble.RumbleHigh( PlayerIndex, .4f, .3f );
+    }
+
+    public void TakeLaserUpAss( Collision result )
+    {
+      if ( Respawning ) return;
+
+      seizureBegin = Screen.AccumulatedTime;
+      seizureCollision = result;
+      BoundingCircle.Flags |= BodyFlags.Anchored;
+      BoundingCircle.Velocity = Vector2.Zero;
+      BoundingCircle.AngularVelocity = 0;
+
+      if ( PlayerIndex.IsHuman() )
+        GameCore.Instance.Rumble.RumbleHigh( PlayerIndex, .4f, seizureDuration );
+    }
+
+    public void GetStunnedByLightning( Player attackingPlayer )
+    {
+      if ( Respawning ) return;
+
+      lightningStunBegin = Screen.AccumulatedTime;
+      BoundingCircle.Flags = BodyFlags.Anchored;
+      BoundingCircle.Velocity = Vector2.Zero;
+      BoundingCircle.AngularVelocity = 0;
+
+      Lightning lightning = new Lightning( 5, Vector3.Zero, Vector3.Zero );
+      lightning.LinkToPlayers( attackingPlayer, this );
+      lightnings.Add( lightning );
+      Screen.ObjectTable.Add( lightning );
+
+      if ( PlayerIndex.IsHuman() )
+        GameCore.Instance.Rumble.RumbleLow( PlayerIndex, .3f, lightningStunDuration );
+    }
+
+    #endregion
+
+    #region Private Helpers
+
+    private void SetID( uint id )
+    {
+      if ( id == 0 )
       {
-        Avatar.SetAnimation( standAnim );
-        Avatar.Update( gameTime.ElapsedGameTime, true );
-      }
-      else
-      {
-        Avatar.Direction = new Vector3( BoundingCircle.AngularVelocity < 0f ? 1f : -1f, 0f, 0f );
-        if ( absAngVel <= walkThresh )
+        if ( PlayerIndex >= PlayerIndex.One )
         {
-          animScaleFactor = 1.0;
-          Avatar.SetAnimation( walkAnim );
+          string gamertag = SignedInGamer.SignedInGamers[PlayerIndex].Gamertag;
+          if ( playerIDs.ContainsKey( gamertag ) )
+          {
+            ID = playerIDs[gamertag];
+          }
+          else
+          {
+            ID = nextID++;
+            playerIDs.Add( gamertag, ID );
+          }
         }
         else
         {
-          Avatar.SetAnimation( runAnim );
+          ID = nextID++;
         }
-        double animScale = animScaleFactor * absAngVel;
-        Avatar.Update( TimeSpan.FromSeconds( animScale * gameTime.ElapsedGameTime.TotalSeconds ), true );
+      }
+      else
+      {
+        ID = id;
       }
     }
+
+    private bool HandleCollision( Collision result )
+    {
+      //Player playerB = result.BodyB.Parent as Player;
+      //if ( playerB != null )
+      //{
+      //  // squash him if he's tiny and touching another object
+      //  if ( playerB.Scale < squashSize * Size )//&& result.BodyB.Touching != result.BodyA )
+      //  {
+      //    Debug.WriteLine( "Squash!" );
+      //  }
+      //}
+
+      // play collision sound
+      Player playerB = result.BodyB.Parent as Player;
+      if ( playerB != null )
+      {
+        float relVelMag = ( result.BodyA.Velocity - result.BodyB.Velocity ).Length();
+        if ( relVelMag > 2f )
+        {
+          float volume = Math.Min( .75f, relVelMag / 100f );
+          soundPosition = new Vector3( result.Intersection, 0 );
+          GameCore.Instance.AudioManager.Play3DCue( pvpSound, this, volume );
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.RumbleHigh( PlayerIndex, .2f, .15f );
+        }
+      }
+
+      return true;
+    }
+
+    private bool HandleCollisionResponse( Collision result )
+    {
+      PhysCircle circle = BoundingCircle;
+
+      // keep track of last time of collision (for jumping)
+      lastCollision = Screen.AccumulatedTime;
+
+      // set emitter position
+      SparkParticleSystem sparkSystem = Screen.SparkParticleSystem;
+
+      string sound = null;
+      if ( result.BodyB.Parent is FloorBlock )
+        sound = pvBlockSound;
+      if ( result.BodyB.Parent is Boundary || result.BodyB.Parent is Shelves )
+        sound = pvCageSound;
+
+      if ( sound != null )
+      {
+        float impulse = result.BodyA.LastImpulse.Length();
+        if ( impulse > 10f )
+        {
+          float volume = Math.Min( 1f, impulse / ( 100 * BoundingCircle.Mass ) );
+          soundPosition = new Vector3( result.Intersection, 0 );
+          GameCore.Instance.AudioManager.Play3DCue( sound, this, volume );
+          if ( PlayerIndex.IsHuman() )
+            GameCore.Instance.Rumble.RumbleHigh( PlayerIndex, .2f, .15f );
+        }
+      }
+
+      //// play collision sound
+      //Player playerB = result.BodyB.Parent as Player;
+      //if ( playerB != null )
+      //{
+      //  float impulseMag = result.BodyB.LastImpulse.Length();
+      //  //if ( impulseMag > .5f )
+      //  {
+      //    float volume = Math.Min( .85f, impulseMag / 30f );
+      //    soundPosition = new Vector3( result.Intersection, 0 );
+      //    Screen.AudioManager.Play3DCue( plasticHitSound, this, volume );
+      //  }
+      //}
+
+      Vector3 position = new Vector3( result.Intersection, 0f );
+      //emitter.Position = position;
+
+      // spit some particles
+      Vector2 r = Vector2.Normalize( result.Intersection - result.BodyA.Position );
+      Vector2 vp = circle.AngularVelocity * circle.Radius * new Vector2( -r.Y, r.X );
+      Vector2 dir = circle.Velocity;
+
+      Vector2 vpn = Vector2.Normalize( vp );
+      Vector3 direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
+      //factory.Direction = new Vector3( particleCoordU * vpn + particleCoordV * -r, 0f );
+
+      Vector2 sum = vp + dir;
+      if ( sum != Vector2.Zero )
+      {
+        float sumLength = sum.Length();
+        if ( sumLength > .25f )
+        {
+          float coneAngle = MathHelper.ToRadians( 30 );
+          Vector3 velocity = random.NextConeDirection( random.NextFloat( 2, 4 ) * direction, coneAngle );
+          sparkSystem.AddParticle( position, velocity );
+        }
+      }
+
+      return true;
+    }
+
+    private void ClearPowerupEffects()
+    {
+      //shrinkBegin = 0;
+      crushBegin = 0;
+      seizureBegin = 0;
+      lightningStunBegin = 0;
+      foreach ( Lightning lightning in lightnings )
+        Screen.ObjectTable.MoveToTrash( lightning );
+      lightnings.Clear();
+
+      //ScaleSpring.SetDest( 1 );
+
+      if ( BoundingCircle.Flags.HasFlags( BodyFlags.Anchored ) )
+      {
+        BoundingCircle.Flags = BodyFlags.None;
+        BoundingCircle.Velocity = Vector2.Zero;
+        BoundingCircle.AngularVelocity = 0;
+      }
+    }
+
+    private void Jump( PhysCircle circle )
+    {
+      circle.Velocity += 2f * circle.TouchNormal;
+      glowSpring.SetSource( 1f );
+      glow.Color.R = 255;
+      glow.Color.G = 225;
+      glow.Color.B = 0;
+    }
+
+    private void GetPlayerInput( PlayerIndex playerIndex, InputState input, out PlayerInput playerInput )
+    {
+      if ( playerIndex < PlayerIndex.One )
+      {
+        playerAI.GetInput( out playerInput );
+      }
+      else
+      {
+        playerInput.ButtonAHit = input.IsNewButtonPress( Buttons.A, playerIndex, out playerIndex );
+        playerInput.ButtonBHit = input.IsNewButtonPress( Buttons.B, playerIndex, out playerIndex );
+        playerInput.ButtonXHit = input.IsNewButtonPress( Buttons.X, playerIndex, out playerIndex );
+        playerInput.ButtonYHit = input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex );
+        playerInput.ButtonADown = input.CurrentGamePadStates[(int)playerIndex].IsButtonDown( Buttons.A );
+        playerInput.ButtonBDown = input.CurrentGamePadStates[(int)playerIndex].IsButtonDown( Buttons.B );
+        
+        GamePadState gamePadState = input.CurrentGamePadStates[(int)playerIndex];
+
+        playerInput.LeftTrigger = gamePadState.Triggers.Left;
+        playerInput.RightTrigger = gamePadState.Triggers.Right;
+        playerInput.LeftBumper = gamePadState.IsButtonDown( Buttons.LeftShoulder );
+        playerInput.RightBumper = gamePadState.IsButtonDown( Buttons.RightShoulder );
+        playerInput.LeftStick = gamePadState.ThumbSticks.Left;
+        playerInput.LeftDpad = gamePadState.DPad.Left == ButtonState.Pressed;
+        playerInput.RightDpad = gamePadState.DPad.Right == ButtonState.Pressed;
+        playerInput.DownDpad = gamePadState.DPad.Down == ButtonState.Pressed;
+      }
+    }
+
+    #endregion
 
     #region IAudioEmitter Members
 
@@ -893,10 +1003,19 @@ namespace AvatarHamsterPanic.Objects
   struct PlayerInput
   {
     public bool ButtonAHit;
+    public bool ButtonADown;
+    public bool ButtonBHit;
+    public bool ButtonBDown;
     public bool ButtonXHit;
+    public bool ButtonYHit;
     public float LeftTrigger;
     public float RightTrigger;
     public Vector2 LeftStick;
+    public bool LeftDpad;
+    public bool RightDpad;
+    public bool LeftBumper;
+    public bool RightBumper;
+    public bool DownDpad;
   }
 
   class PlayerAI
@@ -946,10 +1065,19 @@ namespace AvatarHamsterPanic.Objects
     {
       //AI SUPERBRAIN GOES HERE
       playerInput.ButtonAHit = false;
+      playerInput.ButtonADown = false;
+      playerInput.ButtonBHit = false;
+      playerInput.ButtonBDown = false;
       playerInput.ButtonXHit = ShouldUsePowerup;
+      playerInput.ButtonYHit = false;
       playerInput.LeftTrigger = 0;
       playerInput.RightTrigger = 0;
       playerInput.LeftStick = Vector2.Zero;
+      playerInput.LeftDpad = false;
+      playerInput.DownDpad = false;
+      playerInput.RightDpad = false;
+      playerInput.LeftBumper = false;
+      playerInput.RightBumper = false;
 
       // No stage data yet
       if ( rows.Count == 0 || !player.Screen.CameraIsScrolling )
@@ -975,7 +1103,7 @@ namespace AvatarHamsterPanic.Objects
       {
         if ( circle.Touching != null )
         {
-          // move to middle of hole
+          playerInput.DownDpad = true;
         }
       }
       else

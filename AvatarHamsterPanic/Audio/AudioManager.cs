@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using System;
+using AvatarHamsterPanic;
 #endregion
 
 namespace Audio
@@ -33,6 +34,12 @@ namespace Audio
 
     // Instance variables
     static readonly string varVolume = "Volume";
+    static readonly List<String> songNames = new List<string>( 2 );
+
+    static AudioManager()
+    {
+      songNames.Add( "banjoBreakdown" );
+    }
 
 
     // The listener describes the ear which is hearing 3D sounds.
@@ -147,7 +154,11 @@ namespace Audio
     public Cue Play2DCue( string cueName, float volume )
     {
       Cue cue = soundBank.GetCue( cueName );
-      cue.SetVariable( varVolume, MathHelper.Lerp( -96, 6, volume ) );
+      float volScale = songNames.Contains( cueName ) ? 
+                       GameCore.Instance.MusicVolume :
+                       GameCore.Instance.SoundEffectsVolume;
+      //cue.SetVariable( varVolume, MathHelper.Lerp( -96, 6, volume * volScale ) );
+      cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volScale * volume ), -96, 6 ) );
       cue.Play();
       return cue;
     }
@@ -177,14 +188,15 @@ namespace Audio
       // Set the 3D position of this cue, and then play it.
       Apply3D( cue3D );
 
+      float volScale = GameCore.Instance.SoundEffectsVolume;
       // Set volume of cue
-      /*/
+      /**/
       if ( volume <= 0 )
         cue3D.Cue.SetVariable( varVolume, -96 );
       else
-        cue3D.Cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volume ), -96, 6 ) );
+        cue3D.Cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volume * volScale ), -96, 6 ) );
       /*/
-      cue3D.Cue.SetVariable( varVolume, XACTHelper.GetDecibels( volume ) );
+      cue3D.Cue.SetVariable( varVolume, XACTHelper.GetDecibels( volume * volScale ) );
       /**/
 
       cue3D.Cue.Play();

@@ -146,7 +146,8 @@ namespace Menu
 
           do {
             input.Update();
-          } while ( !input.IsNewButtonPress( Buttons.Start, null, out actingPlayer ) );
+          } while ( !input.IsNewButtonPress( Buttons.Start, null, out actingPlayer ) &&
+                    !input.IsNewButtonPress( Buttons.A, null, out actingPlayer ) );
 
           backgroundThreadExit.Set();
           backgroundThread.Join();
