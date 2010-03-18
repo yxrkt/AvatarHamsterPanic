@@ -79,6 +79,7 @@
     <Compile Include="Debug\StringBuilderExtension.cs" />
     <Compile Include="Debug\TimeRuler.cs" />
     <Compile Include="Graphics\ScreenQuadEffect.cs" />
+    <Compile Include="Screens\FAQScreen.cs" />
     <Compile Include="Utilities\HighscoreComponent.cs" />
     <Compile Include="Screens\HighscoreScreen.cs" />
     <Compile Include="MenuItems\BooleanMenuItem.cs" />
@@ -142,7 +143,6 @@
     <Compile Include="Screens\BackgroundScreen.cs" />
     <Compile Include="Screens\CreditsMenuScreen.cs" />
     <Compile Include="Screens\GameplayScreen.cs" />
-    <Compile Include="Screens\LeaderboardMenuScreen.cs" />
     <Compile Include="Screens\LoadingScreen.cs" />
     <Compile Include="Screens\MainMenuScreen.cs" />
     <Compile Include="MenuItems\MenuEntry.cs" />

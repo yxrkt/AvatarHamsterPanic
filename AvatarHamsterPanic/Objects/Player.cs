@@ -530,7 +530,7 @@ namespace AvatarHamsterPanic.Objects
 
       // powerups
       PlayerIndex playerIndex = PlayerIndex;
-      if ( ( playerInput.ButtonXHit || playerInput.ButtonYHit ) &&
+      if ( ( playerInput.ButtonYHit ) &&
            Powerup != null && Powerup.Type != PowerupType.GoldenShake )
       {
         if ( !Screen.GameOver )
@@ -740,9 +740,6 @@ namespace AvatarHamsterPanic.Objects
       LaserBeam rightLaser = LaserBeam.CreateBeam( rightPos, Vector2.Zero, this, false );
       GameCore.Instance.AudioManager.Play3DCue( laserShotSound, rightLaser, 1 );
       Screen.ObjectTable.Add( rightLaser );
-
-      if ( PlayerIndex.IsHuman() )
-        GameCore.Instance.Rumble.RumbleHigh( PlayerIndex, .4f, .3f );
     }
 
     public void TakeLaserUpAss( Collision result )
@@ -951,6 +948,8 @@ namespace AvatarHamsterPanic.Objects
         playerInput.ButtonYHit = input.IsNewButtonPress( Buttons.Y, playerIndex, out playerIndex );
         playerInput.ButtonADown = input.CurrentGamePadStates[(int)playerIndex].IsButtonDown( Buttons.A );
         playerInput.ButtonBDown = input.CurrentGamePadStates[(int)playerIndex].IsButtonDown( Buttons.B );
+        if ( !playerInput.ButtonBDown )
+          playerInput.ButtonBDown = input.CurrentGamePadStates[(int)playerIndex].IsButtonDown( Buttons.X );
         
         GamePadState gamePadState = input.CurrentGamePadStates[(int)playerIndex];
 

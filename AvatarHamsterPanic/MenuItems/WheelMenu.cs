@@ -40,7 +40,7 @@ namespace Menu
 
     // These are the scales for entries when they are idle or active.
     public const float EntryIdleSize = .2f;
-    public const float EntryActiveScale = 1.75f;
+    public static float EntryActiveScale = 1.75f;
 
     // The effect used to render the entries
     Effect entryEffect;

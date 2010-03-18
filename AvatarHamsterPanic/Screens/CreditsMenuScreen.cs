@@ -35,7 +35,7 @@ namespace Menu
       Texture2D image = content.Load<Texture2D>( "Textures/creditsTitleText" );
       StaticImageMenuItem title = new StaticImageMenuItem( this, position, image );
       title.Origin = Vector2.Zero;
-      title.Scale = scale;
+      title.SetImmediateScale( scale );
       title.TransitionOnPosition = position - new Vector2( 0, 100 ) * ss;
       title.TransitionOffPosition = position - new Vector2( 0, 100 ) * ss;
       MenuItems.Add( title );
@@ -94,14 +94,14 @@ namespace Menu
       item.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( item );
 
-      // sound effects
-      position = new Vector2( 100, 900 ) * ss;
-      string text = "Most sound effects from soundsnap.com.\nHigh Score component by Jon Watte.";
-      item = new TextMenuItem( this, position, text, font );
-      item.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
-      item.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
-      item.Scale = .85f * scale;
-      MenuItems.Add( item );
+      //// sound effects
+      //position = new Vector2( 100, 900 ) * ss;
+      //string text = "Most sound effects from soundsnap.com.\nHigh Score component by Jon Watte.";
+      //item = new TextMenuItem( this, position, text, font );
+      //item.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
+      //item.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
+      //item.Scale = .85f * scale;
+      //MenuItems.Add( item );
     }
 
     public override void LoadContent()

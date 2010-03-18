@@ -28,6 +28,8 @@ namespace AvatarHamsterPanic.Objects
     SpringInterpolater spring;
     float totalTime;
 
+    float ss;
+
     public Vector2 PlayerScreenPosition { get; private set; }
     public Vector2 TagScreenPosition { get { return screenPos; } }
 
@@ -35,6 +37,8 @@ namespace AvatarHamsterPanic.Objects
     {
       this.player = player;
       this.font = font;
+
+      ss = GameCore.Instance.GraphicsDevice.Viewport.Height / 1080f;
 
       color = GameCore.Instance.PlayerColors[player.PlayerNumber];
 
@@ -79,8 +83,8 @@ namespace AvatarHamsterPanic.Objects
 
     public void Draw()
     {
-      spriteBatch.DrawString( font, player.HUD.Name, screenPos, color, 
-                              0f, origin, spring.GetSource()[0], SpriteEffects.None, 0f );
+      spriteBatch.DrawString( font, player.HUD.Name, screenPos, color, 0f, origin, 
+                              spring.GetSource()[0] * ss, SpriteEffects.None, 0f );
     }
   }
 }

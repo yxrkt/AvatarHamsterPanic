@@ -275,6 +275,14 @@ namespace Menu
               }
 
               friendScoreList.Sort();
+              List<string> names = new List<string>( 10 );
+              friendScoreList.RemoveAll( ( f ) =>
+              {
+                if ( names.Contains( f.Gamer ) )
+                  return true;
+                names.Add( f.Gamer );
+                return false;
+              } );
               int n = Math.Min( space.Length, friendScoreList.Count );
               for ( int i = 0; i < space.Length; i++ )
               {

@@ -338,7 +338,8 @@ namespace Menu
         listener.Up = Camera.Up;
         listener.Velocity = Vector3.Zero;
 
-        SpawnRows();
+        if ( IsActive ) // prevents random crash going from scoreboard screen to restarting
+          SpawnRows();
 
         if ( GameOver && !addedPodium )
         {

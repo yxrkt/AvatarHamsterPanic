@@ -275,6 +275,11 @@ namespace Menu
         if ( Guide.IsTrialMode && slots.Count( s => s.Slot.Player.IsHuman() ) > 0 )
         {
           nagText.DeathBegin = (float)lastGameTime.TotalGameTime.TotalSeconds;
+
+          MessageBoxScreen messageBox = new MessageBoxScreen( "Full version required for Multiplayer. " +
+                                                              "Buy Avatar Hamster Panic now?" );
+          messageBox.Accepted += GameCore.Instance.ShowBuy;
+          ScreenManager.AddScreen( messageBox, null );
         }
         else
         {

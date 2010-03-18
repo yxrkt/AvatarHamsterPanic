@@ -136,9 +136,15 @@ namespace AvatarHamsterPanic
       TimeRuler.ShowLog = true;
       //FpsCounter.Visible = true;
 
+      /**/
       graphics.PreferredBackBufferWidth  = graphics.GraphicsDevice.DisplayMode.Width;
       graphics.PreferredBackBufferHeight = graphics.GraphicsDevice.DisplayMode.Height;
       graphics.ApplyChanges();
+      /*/
+      graphics.PreferredBackBufferWidth = 1280;
+      graphics.PreferredBackBufferHeight = 1024;
+      graphics.ApplyChanges();
+      /**/
 
       ScreenRects.Initialize( this );
 
@@ -153,6 +159,23 @@ namespace AvatarHamsterPanic
 
       TimeRuler.StartFrame();
       TimeRuler.BeginMark( 2, totalMark, Color.White );
+    }
+
+    public void ShowBuy( object o, PlayerIndexEventArgs args )
+    {
+      SignedInGamer gamer = null;
+      foreach ( SignedInGamer temp in SignedInGamer.SignedInGamers )
+      {
+        if ( temp.IsSignedInToLive )
+        {
+          if ( gamer == null || ( temp.PlayerIndex == args.PlayerIndex ) )
+            gamer = temp;
+        }
+      }
+      if ( gamer != null )
+        Guide.ShowMarketplace( gamer.PlayerIndex );
+      else
+        screenManager.AddScreen( new MessageBoxScreen( "Someone must be signed in to Xbox Live" ), null );
     }
 
 

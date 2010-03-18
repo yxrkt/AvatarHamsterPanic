@@ -48,7 +48,7 @@ namespace Menu
     public bool IsPopup
     {
       get { return isPopup; }
-      protected set { isPopup = value; }
+      set { isPopup = value; }
     }
 
     bool isPopup = false;

@@ -73,6 +73,9 @@ namespace Menu
     bool scoresRecorded;
 
 
+    delegate void UpdateEvent();
+    event UpdateEvent Updated;
+
     static readonly string[] placeStrings = { "st", "nd", "rd", "th" };
 
 
@@ -225,6 +228,8 @@ namespace Menu
       // content during its loading screen. This prevents spikes when transitioning to
       // this screen, which is very important for the swipe transition.
       ScreenManager.MenuTrack.Resume();
+
+      Updated += ShowBuyMe;
     }
 
     public void SetPlayer( int index, int playerNumber, Avatar avatar, SignedInGamer gamer, int score, uint id )
@@ -289,6 +294,9 @@ namespace Menu
     {
       base.Update( gameTime, otherScreenHasFocus, coveredByOtherScreen );
 
+      if ( Updated != null )
+        Updated();
+
       if ( elapsed > swipeOutDuration && elapsed - swipeOutDuration < swipeInDuration )
         AssemblePlayers();
 
@@ -296,6 +304,21 @@ namespace Menu
       {
         if ( players[i].Avatar != null )
           players[i].Avatar.Update( TimeSpan.FromSeconds( animSpeeds[i] * gameTime.ElapsedGameTime.TotalSeconds ) , true );
+      }
+    }
+
+    private void ShowBuyMe()
+    {
+      if ( elapsed < swipeOutDuration + swipeInDuration ) return;
+
+      if ( Guide.IsTrialMode )
+      {
+        MessageBoxScreen messageBox = new MessageBoxScreen( "Thanks for playing! Full version includes " +
+                                                            "Multiplayer and Online Leaderboards." );
+        messageBox.Accepted += GameCore.Instance.ShowBuy;
+        ScreenManager.AddScreen( messageBox, null );
+
+        Updated -= ShowBuyMe;
       }
     }
 
@@ -333,16 +356,15 @@ namespace Menu
           if ( elapsed != swipeOutDuration )
           {
             elapsed = swipeOutDuration;
-          }
-          else
-          {
-            //record scores...in the middle of draw!!
             foreach ( ScoreboardPlayer player in players )
             {
               if ( player.Gamer != null )
                 HighscoreComponent.Global.SetNewScore( player.Gamer.PlayerIndex, (long)player.Score, "" );
-              scoresRecorded = true;
             }
+          }
+          else
+          {
+            scoresRecorded = true;
           }
         }
         else

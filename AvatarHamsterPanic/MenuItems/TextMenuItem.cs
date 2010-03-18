@@ -19,6 +19,15 @@ namespace Menu
     public string Text { get { return text; } set { text = value; } }
     public float MaxWidth { get; set; }
     public float DeathBegin { get; set; }
+    public new Vector2 Dimensions
+    {
+      get
+      {
+        if ( text == null )
+          return Vector2.Zero;
+        return font.MeasureString( text );
+      }
+    }
 
     public TextMenuItem( MenuScreen screen, Vector2 position, string text, SpriteFont font )
       : base( screen, position )

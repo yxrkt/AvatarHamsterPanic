@@ -295,7 +295,12 @@ namespace AvatarHamsterPanic.Objects
         return;
 
       if ( Activate != null )
+      {
         Activate();
+        if ( owner.PlayerIndex.IsHuman() )
+          GameCore.Instance.Rumble.RumbleHigh( owner.PlayerIndex, .5f, .3f );
+      }
+
       UpdateSelf += ShrivelUpAndDie;
       SizeSpring.SetDest( 0 );
       SizeSpring.SetSource( SizeSpring.GetSource()[0] * 1.25f );
@@ -546,11 +551,7 @@ namespace AvatarHamsterPanic.Objects
       }
 
       if ( players.Count > 1 )
-      {
         GameCore.Instance.AudioManager.Play2DCue( "lightning", 1f );
-        if ( owner.PlayerIndex.IsHuman() )
-          GameCore.Instance.Rumble.RumbleHigh( owner.PlayerIndex, .4f, .3f );
-      }
     }
 
     #region IAudioEmitter Members

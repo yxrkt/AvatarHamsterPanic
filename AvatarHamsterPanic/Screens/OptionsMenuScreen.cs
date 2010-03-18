@@ -56,7 +56,7 @@ namespace Menu
       Texture2D titleTexture = content.Load<Texture2D>( "Textures/optionsTitleText" );
       position = new Vector2( 80, 80 ) * ss;
       StaticImageMenuItem title = new StaticImageMenuItem( this, position, titleTexture );
-      title.Scale = ss;
+      title.SetImmediateScale( ss );
       title.Origin = Vector2.Zero;
       title.TransitionOnPosition = position - new Vector2( 0, 200 ) * ss;
       title.TransitionOffPosition = position - new Vector2( 0, 200 ) * ss;
@@ -72,6 +72,7 @@ namespace Menu
       // Sound Effects Volume: [------]
       entry = new MenuEntry( this, position, "Sound Effects Volume: " );
       entry.Focused = true;
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
@@ -79,8 +80,8 @@ namespace Menu
       float soundVolume = GameCore.Instance.SoundEffectsVolume;
       Vector2 sliderPos = new Vector2( leftEdge, position.Y );
       SliderMenuItem soundSlider = new SliderMenuItem( this, sliderPos, soundVolume );
-      soundSlider.TransitionOnPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
-      soundSlider.TransitionOffPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
+      soundSlider.TransitionOnPosition = entry.TransitionOnPosition + new Vector2( leftEdge - position.X, 0 );
+      soundSlider.TransitionOffPosition = entry.TransitionOffPosition + new Vector2( leftEdge - position.X, 0 );
       soundSlider.ValueChanged += ( () =>
       {
         GameCore.Instance.SoundEffectsVolume = soundSlider.Value;
@@ -96,6 +97,7 @@ namespace Menu
 
       // Music Volume: [------]
       entry = new MenuEntry( this, position, "Music Volume: " );
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
@@ -103,12 +105,12 @@ namespace Menu
       float musicVolume = GameCore.Instance.MusicVolume;
       sliderPos = new Vector2( leftEdge, position.Y );
       SliderMenuItem musicSlider = new SliderMenuItem( this, sliderPos, musicVolume );
-      musicSlider.TransitionOnPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
-      musicSlider.TransitionOffPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
+      musicSlider.TransitionOnPosition = entry.TransitionOnPosition + new Vector2( leftEdge - position.X, 0 );
+      musicSlider.TransitionOffPosition = entry.TransitionOffPosition + new Vector2( leftEdge - position.X, 0 );
       musicSlider.ValueChanged += ( () =>
       {
         GameCore.Instance.MusicVolume = musicSlider.Value;
-        GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
+        //GameCore.Instance.AudioManager.Play2DCue( "selectItem", 1f );
       } );
       MenuItems.Add( musicSlider );
 
@@ -119,15 +121,17 @@ namespace Menu
 
       // Display Gamertags: YES/NO
       entry = new MenuEntry( this, position, "Display Gamertags: " );
-      entry.TransitionOnPosition = position - new Vector2( 200, 0 );
-      entry.TransitionOffPosition = position - new Vector2( 200, 0 );
+      entry.Scale = ss;
+      entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
+      entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
 
       bool displayTags = GameCore.Instance.DisplayGamertags;
       Vector2 tagBoolPos = new Vector2( leftEdge, position.Y );
       BooleanMenuItem tagBool = new BooleanMenuItem( this, tagBoolPos, displayTags );
-      tagBool.TransitionOnPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
-      tagBool.TransitionOffPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
+      tagBool.Scale = ss;
+      tagBool.TransitionOnPosition = entry.TransitionOnPosition + new Vector2( leftEdge - position.X, 0 );
+      tagBool.TransitionOffPosition = entry.TransitionOffPosition + new Vector2( leftEdge - position.X, 0 );
       tagBool.ValueChanged += ( () =>
       {
         GameCore.Instance.DisplayGamertags = tagBool.Value;
@@ -148,15 +152,17 @@ namespace Menu
 
       // Enable Controller Rumble: YES/NO
       entry = new MenuEntry( this, position, "Enable Controller Rumble: " );
-      entry.TransitionOnPosition = position - new Vector2( 200, 0 );
-      entry.TransitionOffPosition = position - new Vector2( 200, 0 );
+      entry.Scale = ss;
+      entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
+      entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
 
       bool enableRumble = GameCore.Instance.Rumble.Enabled;
       Vector2 rumbleBoolPos = new Vector2( leftEdge, position.Y );
       BooleanMenuItem rumbleBool = new BooleanMenuItem( this, rumbleBoolPos, enableRumble );
-      rumbleBool.TransitionOnPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
-      rumbleBool.TransitionOffPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
+      rumbleBool.Scale = ss;
+      rumbleBool.TransitionOnPosition = entry.TransitionOnPosition + new Vector2( leftEdge - position.X, 0 );
+      rumbleBool.TransitionOffPosition = entry.TransitionOffPosition + new Vector2( leftEdge - position.X, 0 );
       rumbleBool.ValueChanged += ( () =>
       {
         GameCore.Instance.Rumble.Enabled = rumbleBool.Value;
@@ -177,6 +183,7 @@ namespace Menu
 
       // Share Highscores
       entry = new MenuEntry( this, position, "Share High Scores" );
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
@@ -184,8 +191,9 @@ namespace Menu
       bool shareScores = GameCore.Instance.ShareHighScores;
       Vector2 shareBoolPos = new Vector2( leftEdge, position.Y );
       BooleanMenuItem shareBool = new BooleanMenuItem( this, shareBoolPos, shareScores );
-      shareBool.TransitionOnPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
-      shareBool.TransitionOffPosition = position - new Vector2( 200 - leftEdge, 0 ) * ss;
+      shareBool.Scale = ss;
+      shareBool.TransitionOnPosition = entry.TransitionOnPosition + new Vector2( leftEdge - position.X, 0 );
+      shareBool.TransitionOffPosition = entry.TransitionOffPosition + new Vector2( leftEdge - position.X, 0 );
       shareBool.ValueChanged += ( () =>
       {
         GameCore.Instance.ShareHighScores = shareBool.Value;
@@ -206,6 +214,7 @@ namespace Menu
 
       // Clear Highscores
       entry = new MenuEntry( this, position, "Clear High Scores" );
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
@@ -219,6 +228,7 @@ namespace Menu
 
       // Restore Defaults
       entry = new MenuEntry( this, position, "Restore Defaults" );
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       MenuItems.Add( entry );
@@ -235,6 +245,7 @@ namespace Menu
 
       // Back
       entry = new MenuEntry( this, position, "Back" );
+      entry.Scale = ss;
       entry.TransitionOnPosition = position - new Vector2( 200, 0 ) * ss;
       entry.TransitionOffPosition = position - new Vector2( 200, 0 ) * ss;
       entry.Selected += OnCancel;

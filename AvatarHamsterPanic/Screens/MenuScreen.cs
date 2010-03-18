@@ -146,9 +146,9 @@ namespace Menu
 
       if ( input.IsMenuSelect( ControllingPlayer, out playerIndex ) )
         OnSelectEntry( playerIndex );
-      else if ( input.IsMenuRight( playerIndex, out playerIndex ) )
+      else if ( input.IsMenuRight( ControllingPlayer, out playerIndex ) )
         OnIncrementEntry( playerIndex );
-      else if ( input.IsMenuLeft( playerIndex, out playerIndex ) )
+      else if ( input.IsMenuLeft( ControllingPlayer, out playerIndex ) )
         OnDecrementEntry( playerIndex );
       else if ( input.IsMenuCancel( ControllingPlayer, out playerIndex ) )
         OnCancel( playerIndex );

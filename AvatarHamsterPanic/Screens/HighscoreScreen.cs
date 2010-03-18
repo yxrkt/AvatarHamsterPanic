@@ -28,6 +28,8 @@ namespace Menu
     Texture2D barTexture;
     Texture2D arrowTexture;
 
+    FAQScreen faqScreen;
+
     float ss;
 
     public HighscoreScreen( ScreenManager screenManager )
@@ -70,22 +72,22 @@ namespace Menu
       item = new StaticImageMenuItem( this, Vector2.Zero, background );
       if ( viewport.AspectRatio < 16f / 9f )
       {
-        item.Scale = (float)viewport.Height / (float)background.Height;
+        item.SetImmediateScale( (float)viewport.Height / (float)background.Height );
         item.Origin.Y = 0;
-        item.Origin.X = ( background.Height * viewport.AspectRatio - background.Width ) / 2;
+        item.Origin.X = ( background.Width - background.Height * viewport.AspectRatio ) / 2;
       }
       else
       {
-        item.Scale = (float)viewport.Width / (float)background.Width;
+        item.SetImmediateScale( (float)viewport.Width / (float)background.Width );
         item.Origin.X = 0;
-        item.Origin.Y = ( background.Width / viewport.AspectRatio - background.Height ) / 2;
+        item.Origin.Y = ( background.Height - background.Width / viewport.AspectRatio ) / 2;
       }
       MenuItems.Add( item );
 
       // title
       position = new Vector2( safeArea.Center.X, safeArea.Top );
       item = new StaticImageMenuItem( this, position, titleText );
-      item.Scale = ss;
+      item.SetImmediateScale( ss );
       item.Origin.Y = 0;
       MenuItems.Add( item );
 
@@ -93,15 +95,17 @@ namespace Menu
       position = new Vector2( safeArea.X, safeArea.Bottom - viewFAQText.Height * textScale );
       item = new StaticImageMenuItem( this, position, filterText );
       item.Origin = new Vector2( 0, filterText.Height );
-      item.Scale = textScale;
+      item.SetImmediateScale( textScale );
       MenuItems.Add( item );
 
       // view FAQ
       position = new Vector2( safeArea.X, safeArea.Bottom );
       item = new StaticImageMenuItem( this, position, viewFAQText );
       item.Origin = new Vector2( 0, viewFAQText.Height );
-      item.Scale = textScale;
+      item.SetImmediateScale( textScale );
       MenuItems.Add( item );
+
+      faqScreen = new FAQScreen( screenManager );
     }
 
     public override void Update( GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen )
@@ -138,7 +142,7 @@ namespace Menu
 
       if ( input.IsNewButtonPress( Buttons.Y, null, out pi ) )
       {
-        //ScreenManager.AddScreen( new HighScoreFAQScreen(), null );
+        ScreenManager.AddScreen( faqScreen, null );
       }
 
       //Control which filter type is being used
@@ -190,18 +194,18 @@ namespace Menu
           Vector2 screenMiddle = new Vector2( safeArea.X + safeArea.Width * .5f, safeArea.Y + safeArea.Height * .5f );
 
           //Create the bar and center it on-screen.
-          Vector2 barMiddle = new Vector2( barTexture.Width * .5f, barTexture.Height * .5f );
-          Vector2 barCountYOffset = new Vector2( 0, barTexture.Height * scoresDisplayedPerPage * .5f - 10 );
+          Vector2 barMiddle = new Vector2( barTexture.Width * .5f, barTexture.Height * .5f ) * ss;
+          Vector2 barCountYOffset = new Vector2( 0, barTexture.Height * scoresDisplayedPerPage * .5f - 10 ) * ss;
           Vector2 barPos = screenMiddle - barMiddle - barCountYOffset;
 
-          Vector2 fontSize = scoreFont.MeasureString( " " );
-          Vector2 scorePos = barPos + new Vector2( 27, 9 );
+          Vector2 fontSize = scoreFont.MeasureString( " " ) * ss;
+          Vector2 scorePos = barPos + new Vector2( 27, 9 ) * ss;
           List<Highscore> scoresToDraw = highscores.ToList().GetRange( scoreDisplayStartIndex, scoresDisplayedPerPage );
 
           // Up Arrow
           if ( scoreDisplayStartIndex != 0 )
           {
-            Vector2 offset = -new Vector2( arrowTexture.Width * .5f, arrowTexture.Height * 1.8f + 20 );
+            Vector2 offset = -new Vector2( arrowTexture.Width * .5f, arrowTexture.Height * 1.8f + 20 ) * ss;
             spriteBatch.Draw( arrowTexture, barPos + barMiddle + offset, null,
                               color, 0f, Vector2.Zero, ss, SpriteEffects.None, 0 );
           }
@@ -213,19 +217,23 @@ namespace Menu
             if ( score == null ) break;
 
             Vector2 scoreNumPos = scorePos;
-            Vector2 namePos = scorePos + new Vector2( fontSize.X * 10, 0 );
+            Vector2 namePos = scorePos + new Vector2( fontSize.X * 10, 0 ) * ss;
             Vector2 numberPos = scorePos + new Vector2( fontSize.X * 70, 0 );
             string scoreNumber = ( scoreDisplayStartIndex + i + 1 ).ToString();
             string scoreText = string.Format( "{0}       {1}", score.Score, score.Message );//{0:00000} for zeroes
 
-            spriteBatch.Draw( barTexture, barPos, color );
+            spriteBatch.Draw( barTexture, barPos, null, color, 0f, 
+                              Vector2.Zero, ss, SpriteEffects.None, 0f );
 
-            spriteBatch.DrawString( scoreFont, scoreNumber, scoreNumPos, color );
-            spriteBatch.DrawString( scoreFont, score.Gamer, namePos, color );
-            spriteBatch.DrawString( scoreFont, scoreText, numberPos, color );
+            spriteBatch.DrawString( scoreFont, scoreNumber, scoreNumPos, color, 0f, 
+                                    Vector2.Zero, ss, SpriteEffects.None, 0f );
+            spriteBatch.DrawString( scoreFont, score.Gamer, namePos, color, 0f, 
+                                    Vector2.Zero, ss, SpriteEffects.None, 0f );
+            spriteBatch.DrawString( scoreFont, scoreText, numberPos, color, 0f,
+                                    Vector2.Zero, ss, SpriteEffects.None, 0f );
 
-            scorePos.Y += barTexture.Height;
-            barPos.Y += barTexture.Height;
+            scorePos.Y += barTexture.Height * ss;
+            barPos.Y += barTexture.Height * ss;
           }
 
           // Down Arrow
@@ -233,7 +241,7 @@ namespace Menu
           if ( scoreDisplayStartIndex + scoresDisplayedPerPage < highscores.Count( i => i != null ) )
           {
             // draw down arrow
-            Vector2 offset = new Vector2( -arrowTexture.Width * .5f, -arrowTexture.Height * 1f - 4 );
+            Vector2 offset = new Vector2( -arrowTexture.Width * .5f, -arrowTexture.Height * 1f - 4 ) * ss;
             spriteBatch.Draw( arrowTexture, barPos + barMiddle + offset, null,
                               color, 0, Vector2.Zero, ss, SpriteEffects.FlipVertically, 0 );
           }
@@ -270,20 +278,20 @@ namespace Menu
     private void DrawFilterType()
     {
       Viewport viewport = ScreenManager.GraphicsDevice.Viewport;
-      float ss = viewport.Height / 1080f;
 
       Color color = new Color( 255, 255, 255, TransitionAlpha );
       string filterText = GetLeaderBoardTypeText();
 
       Rectangle safeArea = viewport.TitleSafeArea;
       Vector2 screenMiddle = new Vector2( safeArea.X + safeArea.Width * .5f, safeArea.Y + safeArea.Height * .5f );
-      Vector2 barMiddle = new Vector2( barTexture.Width * .5f, barTexture.Height * .5f );
-      Vector2 barCountYOffset = new Vector2( 0, barTexture.Height * scoresDisplayedPerPage * .5f - 10 );
+      Vector2 barMiddle = new Vector2( barTexture.Width * .5f, barTexture.Height * .5f ) * ss;
+      Vector2 barCountYOffset = new Vector2( 0, barTexture.Height * scoresDisplayedPerPage * .5f - 10 ) * ss;
       Vector2 titlePos = screenMiddle - barMiddle - barCountYOffset;
       titlePos.Y -= 40 * ss;
 
       SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
-      spriteBatch.DrawString( defaultFont, filterText, titlePos, color );
+      spriteBatch.DrawString( defaultFont, filterText, titlePos, color, 0f,
+                              Vector2.Zero, ss, SpriteEffects.None, 0f );
     }
 
     private string GetLeaderBoardTypeText()
@@ -294,11 +302,11 @@ namespace Menu
           if ( ControllingPlayer.HasValue && SignedInGamer.SignedInGamers[ControllingPlayer.Value] != null )
             return SignedInGamer.SignedInGamers[ControllingPlayer.Value].Gamertag;
           else
-            return "Xbox Live Friends";
+            return "Xbox LIVE Friends";
         case LeaderBoardType.Friend:
-          return "Xbox Live Friends";
+          return "Xbox LIVE Friends";
         case LeaderBoardType.Global:
-          return "Xbox Live All";
+          return "Xbox LIVE All";
         default:
           return "Unknown";
       }
@@ -311,7 +319,7 @@ namespace Menu
 
       Color color = new Color( Color.DarkOrange, TransitionAlpha );
 
-      Vector2 textSize = defaultFont.MeasureString( trialModeString );
+      Vector2 textSize = defaultFont.MeasureString( trialModeString ) * ss;
       Vector2 textPos = new Vector2( ( viewport.Width - textSize.X ) * .5f, viewport.Height * .5f );
       spriteBatch.Begin();
       spriteBatch.DrawString( defaultFont, trialModeString, textPos, color );

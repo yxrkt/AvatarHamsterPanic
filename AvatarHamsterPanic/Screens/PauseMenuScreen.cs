@@ -1,12 +1,3 @@
-#region File Description
-//-----------------------------------------------------------------------------
-// PauseMenuScreen.cs
-//
-// Microsoft XNA Community Game Platform
-// Copyright (C) Microsoft Corporation. All rights reserved.
-//-----------------------------------------------------------------------------
-#endregion
-
 #region Using Statements
 using Microsoft.Xna.Framework;
 using System;
@@ -14,14 +5,11 @@ using AvatarHamsterPanic.Objects;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using AvatarHamsterPanic;
+using Microsoft.Xna.Framework.GamerServices;
 #endregion
 
 namespace Menu
 {
-  /// <summary>
-  /// The pause menu comes up over the top of the game,
-  /// giving the player options to resume or quit.
-  /// </summary>
   class PauseMenuScreen : MenuScreen
   {
     #region Fields and Properties
@@ -30,16 +18,13 @@ namespace Menu
     const float entryIdleScale = .55f;
 
     float screenScale;
+    OptionsMenuScreen optionsScreen;
 
     #endregion
-
     
     #region Initialization
 
 
-    /// <summary>
-    /// Constructor.
-    /// </summary>
     public PauseMenuScreen( ScreenManager screenManager )
     {
       IsPopup = true;
@@ -57,7 +42,7 @@ namespace Menu
       StaticImageMenuItem pauseBox = new StaticImageMenuItem( this, pauseBoxPosition, pauseBoxTexture );
       pauseBox.TransitionOffPosition = pauseBoxPosition;
       pauseBox.TransitionOnPosition = pauseBoxPosition;
-      pauseBox.Scale = screenScale;
+      pauseBox.SetImmediateScale( screenScale * 1.25f );
       MenuItems.Add( pauseBox );
 
       Vector2 transOnOffset  = pauseBox.TransitionOnPosition  - pauseBox.Position;
@@ -67,8 +52,10 @@ namespace Menu
       Texture2D entryTexture;
       ImageMenuEntry entry;
 
+      float entrySpacing = 45f;
+
       // Resume entry
-      entryPosition += new Vector2( 0, -5 ) * screenScale;
+      entryPosition += new Vector2( 0, -20 ) * screenScale;
       entryTexture = content.Load<Texture2D>( "Textures/resumeText" );
       entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
       entry.TransitionOffPosition = entryPosition + transOffOffset;
@@ -79,8 +66,35 @@ namespace Menu
       entry.Focused = true;
       MenuItems.Add( entry );
 
+      // Options entry
+      optionsScreen = new OptionsMenuScreen( ScreenManager );
+      //optionsScreen.IsPopup = true;
+      entryPosition += new Vector2( 0, entrySpacing ) * screenScale;
+      entryTexture = content.Load<Texture2D>( "Textures/optionsText" );
+      entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
+      entry.TransitionOffPosition = entryPosition + transOffOffset;
+      entry.TransitionOnPosition = entryPosition + transOnOffset;
+      entry.Selected += OptionsMenuEntrySelected;
+      entry.FocusScale = entryFocusScale * screenScale;
+      entry.IdleScale = entryIdleScale * screenScale;
+      MenuItems.Add( entry );
+
+      // Buy entry
+      if ( Guide.IsTrialMode )
+      {
+        entryPosition += new Vector2( 0, entrySpacing ) * screenScale;
+        entryTexture = content.Load<Texture2D>( "Textures/buyText" );
+        entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
+        entry.TransitionOffPosition = entryPosition + transOffOffset;
+        entry.TransitionOnPosition = entryPosition + transOnOffset;
+        entry.Selected += GameCore.Instance.ShowBuy;
+        entry.FocusScale = entryFocusScale * screenScale;
+        entry.IdleScale = entryIdleScale * screenScale;
+        MenuItems.Add( entry );
+      }
+
       // Restart entry
-      entryPosition += new Vector2( 0, 50 ) * screenScale;
+      entryPosition += new Vector2( 0, entrySpacing ) * screenScale;
       entryTexture = content.Load<Texture2D>( "Textures/restartText" );
       entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
       entry.TransitionOffPosition = entryPosition + transOffOffset;
@@ -91,7 +105,7 @@ namespace Menu
       MenuItems.Add( entry );
 
       // Exit entry
-      entryPosition += new Vector2( 0, 50 ) * screenScale;
+      entryPosition += new Vector2( 0, entrySpacing ) * screenScale;
       entryTexture = content.Load<Texture2D>( "Textures/exitText" );
       entry = new ImageMenuEntry( this, entryPosition, entryTexture, null );
       entry.TransitionOffPosition = entryPosition + transOffOffset;
@@ -152,9 +166,11 @@ namespace Menu
 
     #region Handle Input
 
-    /// <summary>
-    /// Event handler for when the Restart menu entry is selected.
-    /// </summary>
+    void OptionsMenuEntrySelected( object sender, PlayerIndexEventArgs e )
+    {
+      ScreenManager.AddScreen( optionsScreen, null );
+    }
+
     void RestartMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
       const string message = "Ack! Do you really want to quit this game?";
@@ -172,16 +188,12 @@ namespace Menu
       ExitScreen();
     }
 
-
     void ConfirmRestartMessageBoxAccepted( object sender, PlayerIndexEventArgs e )
     {
       Slot[] slots = GameplayScreen.Instance.Slots;
       LoadingScreen.Load( ScreenManager, true, null, new GameplayScreen( slots ) );
     }
 
-    /// <summary>
-    /// Event handler for when the Exit menu entry is selected.
-    /// </summary>
     void ExitMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
       const string message = "Ack! Do you really want to quit this game?";
@@ -195,12 +207,6 @@ namespace Menu
       ScreenManager.MenuTrack.Resume();
     }
 
-
-    /// <summary>
-    /// Event handler for when the user selects ok on the "are you sure
-    /// you want to quit" message box. This uses the loading screen to
-    /// transition from the game back to the main menu screen.
-    /// </summary>
     void ConfirmQuitMessageBoxAccepted( object sender, PlayerIndexEventArgs e )
     {
       LoadingScreen.Load( ScreenManager, false, null, new BackgroundScreen(),

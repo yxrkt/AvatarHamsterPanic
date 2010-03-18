@@ -89,12 +89,24 @@ namespace Menu
       float wheelScale = 2.5f;
       wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
 
+      if ( Guide.IsTrialMode )
+        WheelMenu.EntryActiveScale = 1.4f;
+      else
+        WheelMenu.EntryActiveScale = 1.75f;
+
       WheelMenuEntry entry;
       wheelMenu.AcceptingInput = false;
 
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/playText" ) );
       entry.Selected += PlayMenuEntrySelected;
       wheelMenu.AddEntry( entry );
+
+      if ( Guide.IsTrialMode )
+      {
+        entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/buyText" ) );
+        entry.Selected += GameCore.Instance.ShowBuy;
+        wheelMenu.AddEntry( entry );
+      }
 
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/leaderboardText" ) );
       entry.Selected += LeaderboardMenuEntrySelected;
@@ -275,7 +287,6 @@ namespace Menu
 
     void LeaderboardMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
-      //ScreenManager.AddScreen( new LeaderboardMenuScreen(), e.PlayerIndex );
       ScreenManager.AddScreen( highscoreScreen, e.PlayerIndex );
     }
 
