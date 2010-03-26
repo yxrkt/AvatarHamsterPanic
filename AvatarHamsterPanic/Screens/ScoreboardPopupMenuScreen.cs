@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Audio;
 
 namespace Menu
 {
@@ -74,6 +75,7 @@ namespace Menu
 
     void PlayAgain( object sender, PlayerIndexEventArgs e )
     {
+      //ScreenManager.MenuTrack.Pause();
       LoadingScreen.Load( ScreenManager, true, null, new GameplayScreen( slots ) );
     }
 

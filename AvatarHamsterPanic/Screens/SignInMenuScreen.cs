@@ -318,7 +318,7 @@ namespace Menu
           for ( int i = 0; i < 4; ++i )
             initSlots[i] = slots[i].Slot;
           GameCore.Instance.AudioManager.Play2DCue( "startGame", 1f );
-          ScreenManager.MenuTrack.Pause();
+          //ScreenManager.MenuTrack.Pause();
           LoadingScreen.Load( ScreenManager, true, playerIndex, new GameplayScreen( initSlots ) );
         }
       }

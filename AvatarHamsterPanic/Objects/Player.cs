@@ -823,7 +823,7 @@ namespace AvatarHamsterPanic.Objects
       if ( playerB != null )
       {
         float relVelMag = ( result.BodyA.Velocity - result.BodyB.Velocity ).Length();
-        if ( relVelMag > 2f )
+        if ( relVelMag > 3f )
         {
           float volume = Math.Min( .75f, relVelMag / 100f );
           soundPosition = new Vector3( result.Intersection, 0 );
@@ -1067,8 +1067,8 @@ namespace AvatarHamsterPanic.Objects
       playerInput.ButtonADown = false;
       playerInput.ButtonBHit = false;
       playerInput.ButtonBDown = false;
-      playerInput.ButtonXHit = ShouldUsePowerup;
-      playerInput.ButtonYHit = false;
+      playerInput.ButtonXHit = false;
+      playerInput.ButtonYHit = ShouldUsePowerup;
       playerInput.LeftTrigger = 0;
       playerInput.RightTrigger = 0;
       playerInput.LeftStick = Vector2.Zero;

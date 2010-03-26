@@ -23,12 +23,6 @@ using AvatarHamsterPanic.Utilities;
 
 namespace AvatarHamsterPanic
 {
-  /// <summary>
-  /// Sample showing how to manage different game states, with transitions
-  /// between menu screens, a loading screen, the game itself, and a pause
-  /// menu. This main game class is extremely simple: all the interesting
-  /// stuff happens in the ScreenManager component.
-  /// </summary>
   public class GameCore : Game
   {
     #region Fields and Properties
@@ -46,7 +40,20 @@ namespace AvatarHamsterPanic
       set { HighscoreComponent.Global.Enabled = value; }
     }
     public float SoundEffectsVolume { get; set; }
-    public float MusicVolume { get; set; }
+
+    public delegate void ChangeVolumeEvent( float prev, float cur );
+    public event ChangeVolumeEvent MusicVolumeChanged;
+    float musicVolume = 1f;
+    public float MusicVolume
+    {
+      get { return musicVolume; }
+      set
+      {
+        if ( MusicVolumeChanged != null )
+          MusicVolumeChanged( musicVolume, value );
+        musicVolume = value;
+      }
+    }
 
     public RumbleComponent Rumble { get; private set; }
 
@@ -57,14 +64,12 @@ namespace AvatarHamsterPanic
 
     public static GameCore Instance { get; private set; }
 
+    public int Counter = 0;
+
     #endregion
 
     #region Initialization
 
-
-    /// <summary>
-    /// The main game constructor.
-    /// </summary>
     public GameCore()
     {
       Content.RootDirectory = "Content";
@@ -172,10 +177,10 @@ namespace AvatarHamsterPanic
             gamer = temp;
         }
       }
-      if ( gamer != null )
+      if ( gamer != null && gamer.PlayerIndex == args.PlayerIndex )
         Guide.ShowMarketplace( gamer.PlayerIndex );
       else
-        screenManager.AddScreen( new MessageBoxScreen( "Someone must be signed in to Xbox Live" ), null );
+        screenManager.AddScreen( new MessageBoxScreen( "You must be signed in to Xbox Live" ), null );
     }
 
 
@@ -220,9 +225,6 @@ namespace AvatarHamsterPanic
 
   #region Entry Point
 
-  /// <summary>
-  /// The main entry point for the application.
-  /// </summary>
   static class Program
   {
     static void Main()

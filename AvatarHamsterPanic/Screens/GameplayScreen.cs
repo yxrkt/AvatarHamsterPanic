@@ -249,6 +249,11 @@ namespace Menu
       }
     }
 
+    public void ChangeMusicVolume( float prev, float cur )
+    {
+      BackgroundMusic.SetVariable( AudioManager.VarVolume, XACTHelper.GetLogDecibels( cur ) );
+    }
+
 
     /// <summary>
     /// Unload graphics content used by the game.
@@ -273,6 +278,8 @@ namespace Menu
       {
         BackgroundMusic.Dispose();
         BackgroundMusic = null;
+
+        GameCore.Instance.MusicVolumeChanged -= ChangeMusicVolume;
       }
 
       if ( nextInstance != null )
@@ -307,12 +314,25 @@ namespace Menu
       {
         double elapsed = Math.Min( gameTime.ElapsedGameTime.TotalSeconds, 1.0 / 30.0 );
 
-        if ( BackgroundMusic == null )
-          BackgroundMusic = GameCore.Instance.AudioManager.Play2DCue( "banjoBreakdown", 1f );
-
         Projection = Matrix.CreatePerspectiveFieldOfView( Camera.Fov, Camera.Aspect,
                                                           Camera.Near, Camera.Far );
         View = Matrix.CreateLookAt( Camera.Position, Camera.Target, Camera.Up );
+
+        if ( ScreenState == ScreenState.TransitionOn )
+        {
+          float u = 1 - TransitionPosition;
+          float volume = XACTHelper.GetLogDecibels( GameCore.Instance.MusicVolume * u );
+
+          if ( BackgroundMusic.IsPaused )
+            BackgroundMusic.Resume();
+
+          BackgroundMusic.SetVariable( AudioManager.VarVolume, volume );
+        }
+        else if ( !GameOver )
+        {
+          float volume = XACTHelper.GetLogDecibels( GameCore.Instance.MusicVolume );
+          BackgroundMusic.SetVariable( AudioManager.VarVolume, volume );
+        }
 
         ParticleManager.SetCamera( Camera.Position, View, Projection );
         PixieParticleSystem.SetCamera( View, Projection );
@@ -341,23 +361,25 @@ namespace Menu
         if ( IsActive ) // prevents random crash going from scoreboard screen to restarting
           SpawnRows();
 
-        if ( GameOver && !addedPodium )
+        if ( GameOver )
         {
-          if ( gameEndTime > CelebrationTime )
+          if ( !addedPodium )
           {
-            BackgroundMusic.Dispose();
-            BackgroundMusic = null;
-            TransitionToScoreboard();
-            addedPodium = true;
+            if ( gameEndTime > CelebrationTime )
+            {
+              TransitionToScoreboard();
+              addedPodium = true;
+            }
+            else
+            {
+              gameEndTime += (float)elapsed;
+            }
           }
-          else
-          {
-            gameEndTime += (float)elapsed;
-          }
-        }
-        else if ( GameOver )
-        {
-          BackgroundMusic.SetVariable( "Volume", XACTHelper.GetDecibels( 1 - TransitionPosition ) );
+
+          float u = 1f - gameEndTime / CelebrationTime;
+          float volume = GameCore.Instance.MusicVolume * u;
+          if ( BackgroundMusic != null )
+            BackgroundMusic.SetVariable( AudioManager.VarVolume, XACTHelper.GetLogDecibels( volume ) );
         }
 
         GameCore.Instance.TimeRuler.BeginMark( 0, updateEntityMark, Color.Red );
@@ -372,6 +394,15 @@ namespace Menu
         Pool.CleanUpAll();
 
         AccumulatedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+      }
+      else if ( !GameOver && ScreenState == ScreenState.TransitionOff )
+      {
+        if ( BackgroundMusic != null )
+        {
+          float u = 1 - TransitionPosition;
+          float volume = XACTHelper.GetLogDecibels( GameCore.Instance.MusicVolume * u );
+          BackgroundMusic.SetVariable( AudioManager.VarVolume, volume );
+        }
       }
     }
 

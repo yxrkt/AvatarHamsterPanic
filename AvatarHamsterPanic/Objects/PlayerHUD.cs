@@ -136,8 +136,10 @@ namespace AvatarHamsterPanic.Objects
       //scorePopup = new PopupText( ss, scorePos + new Vector2( -25f, -120f ) * screenScale,
       //                            scorePos + new Vector2( -15f, -15f ) * screenScale, 1f );
       // score popup
-      float yMax = GameCore.Instance.DisplayGamertags ? -50f : -10f;
-      float yMin = GameCore.Instance.DisplayGamertags ? 0f : 40f;
+      //float yMax = GameCore.Instance.DisplayGamertags ? -50f : -10f;
+      //float yMin = GameCore.Instance.DisplayGamertags ? 0f : 40f;
+      float yMax = -50f;
+      float yMin = 0f;
       scorePopup = new PopupText( ss, new Vector2( 0f, yMax ) * screenScale,
                                   new Vector2( 0, yMin ) * screenScale, 1f );
 

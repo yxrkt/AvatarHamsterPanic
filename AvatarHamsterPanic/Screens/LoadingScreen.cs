@@ -151,6 +151,15 @@ namespace Menu
 
           backgroundThreadExit.Set();
           backgroundThread.Join();
+
+          if ( GameplayScreen.Instance.BackgroundMusic == null )
+          {
+            ScreenManager.MenuTrack.Pause();
+            GameplayScreen.Instance.BackgroundMusic = GameCore.Instance.AudioManager.Play2DCue( "banjoBreakdown",
+                                                                        GameCore.Instance.MusicVolume );
+            GameplayScreen.Instance.BackgroundMusic.Pause();
+            GameCore.Instance.MusicVolumeChanged += GameplayScreen.Instance.ChangeMusicVolume;
+          }
         }
 
         ScreenManager.Game.ResetElapsedTime();

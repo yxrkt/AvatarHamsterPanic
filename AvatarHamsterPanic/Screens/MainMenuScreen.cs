@@ -105,6 +105,7 @@ namespace Menu
       {
         entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/buyText" ) );
         entry.Selected += GameCore.Instance.ShowBuy;
+        entry.IsBuyOption = true;
         wheelMenu.AddEntry( entry );
       }
 
@@ -130,8 +131,6 @@ namespace Menu
       optionsMenuScreen = new OptionsMenuScreen( ScreenManager );
       creditsMenuScreen = new CreditsMenuScreen( ScreenManager );
       highscoreScreen = new HighscoreScreen( ScreenManager );
-
-      GameCore.Instance.AudioManager.Listener.Position = new Vector3( 0, 0, 10 );
 
       // pre-load other stuff here
       content.Load<Texture2D>( "Textures/messageBox" );
@@ -221,8 +220,9 @@ namespace Menu
       wheelMenu.ConfigureEntries();
       wheelMenu.AcceptingInput = false;
 
-      // play intro sound effects
-      GameCore.Instance.AudioManager.Play2DCue( "intro", 1f );
+      //// play intro sound effects
+      //if ( contentLoaded )
+      //  GameCore.Instance.AudioManager.Play2DCue( "intro", 1f );
 
       // set wheel to pi over 4
       wheelMenu.Angle = MathHelper.PiOver4;
@@ -325,6 +325,13 @@ namespace Menu
 
     public override void Update( GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen )
     {
+      // check if player bought the game; if so, remove the buy option
+      if ( !Guide.IsTrialMode && wheelMenu.HasBuyOption )
+      {
+        WheelMenu.EntryActiveScale = 1.75f;
+        wheelMenu.RemoveBuyOption();
+      }
+
       // initialize transitions
       if ( ScreenState == ScreenState.TransitionOn && !transitioningOn )
       {
@@ -351,6 +358,12 @@ namespace Menu
         // zoom 'Avatar' in
         if ( IsActive && transitionTime > .0625f && !avatarVertSprings[0].Active )
         {
+          if ( ScreenManager.MenuTrack == null )
+          {
+            float volume = GameCore.Instance.MusicVolume;
+            ScreenManager.MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", volume );
+          }
+          GameCore.Instance.AudioManager.Play2DCue( "intro", 1f );
           foreach ( SpringInterpolater spring in avatarVertSprings )
             spring.Active = true;
         }

@@ -12,6 +12,7 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Input;
 using Utilities;
 using AvatarHamsterPanic;
+using Audio;
 
 namespace Menu
 {
@@ -227,7 +228,8 @@ namespace Menu
       // Content is loaded in the constructor, so the GameplayScreen can load this screen's
       // content during its loading screen. This prevents spikes when transitioning to
       // this screen, which is very important for the swipe transition.
-      ScreenManager.MenuTrack.Resume();
+      ScreenManager.MenuTrack.Dispose();
+      ScreenManager.MenuTrack = null;
 
       Updated += ShowBuyMe;
     }
@@ -300,6 +302,18 @@ namespace Menu
       if ( elapsed > swipeOutDuration && elapsed - swipeOutDuration < swipeInDuration )
         AssemblePlayers();
 
+      // fade in menu track
+      if ( elapsed >= swipeOutDuration )
+      {
+        float u = Math.Min( ( elapsed - swipeOutDuration ) / swipeInDuration, 1 );
+        float volume = XACTHelper.GetLogDecibels( GameCore.Instance.MusicVolume * u );
+
+        if ( ScreenManager.MenuTrack == null )
+          ScreenManager.MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", volume );
+        else
+          ScreenManager.MenuTrack.SetVariable( AudioManager.VarVolume, volume );
+      }
+
       for ( int i = 0; i < 4; ++i )
       {
         if ( players[i].Avatar != null )
@@ -313,8 +327,8 @@ namespace Menu
 
       if ( Guide.IsTrialMode )
       {
-        MessageBoxScreen messageBox = new MessageBoxScreen( "Thanks for playing! Full version includes " +
-                                                            "Multiplayer and Online Leaderboards." );
+        MessageBoxScreen messageBox = new MessageBoxScreen( "Thanks for playing! The full version includes " +
+                                                            "Multiplayer and Online Scoreboards." );
         messageBox.Accepted += GameCore.Instance.ShowBuy;
         ScreenManager.AddScreen( messageBox, null );
 

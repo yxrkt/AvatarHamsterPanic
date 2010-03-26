@@ -16,8 +16,8 @@ Global Settings
     Header File = audio.h;
     Exclude Category Names = 0;
     Exclude Variable Names = 0;
-    Last Modified Low = 2418409743;
-    Last Modified High = 30065600;
+    Last Modified Low = 3539486470;
+    Last Modified High = 30067395;
 
     Category
     {
@@ -238,7 +238,7 @@ Global Settings
 
         RPC Curve
         {
-            Name = Sound::aafa6257-06e1-4dba-adc3-0b6ae9636051;
+            Name = Sound::8fb8a1c6-9b6e-43d4-aedc-c361e9b4d6b6;
             Property = 0;
             Sound = 1;
             Line Color = 4287024805;
@@ -277,12 +277,10 @@ Wave Bank
     Compression Preset Name = <none>;
     Xbox Bank Last Modified Low = 2121651811;
     Xbox Bank Last Modified High = 30064035;
-    PC Bank Last Modified Low = 2418439040;
-    PC Bank Last Modified High = 30065600;
-    Header Last Modified Low = 0;
-    Header Last Modified High = 0;
-    Bank Last Revised Low = 1984132280;
-    Bank Last Revised High = 30064035;
+    PC Bank Last Modified Low = 3398620325;
+    PC Bank Last Modified High = 30067479;
+    Bank Last Revised Low = 3398610559;
+    Bank Last Revised High = 30067479;
 
     Wave
     {
@@ -827,12 +825,12 @@ Wave Bank
             Sampling Rate = 44100;
             Bits Per Sample = 1;
             Play Region Offset = 44;
-            Play Region Length = 5718016;
+            Play Region Length = 5184132;
             Loop Region Offset = 0;
             Loop Region Length = 0;
             File Type = 1;
-            Last Modified Low = 1744829062;
-            Last Modified High = 30063179;
+            Last Modified Low = 1189564834;
+            Last Modified High = 30067418;
         }
     }
 
@@ -1103,12 +1101,12 @@ Wave Bank
             Sampling Rate = 44100;
             Bits Per Sample = 1;
             Play Region Offset = 44;
-            Play Region Length = 654648;
+            Play Region Length = 373668;
             Loop Region Offset = 0;
             Loop Region Length = 0;
             File Type = 1;
-            Last Modified Low = 3686119580;
-            Last Modified High = 30063360;
+            Last Modified Low = 3241716028;
+            Last Modified High = 30067479;
         }
     }
 
@@ -1126,12 +1124,12 @@ Wave Bank
             Sampling Rate = 44100;
             Bits Per Sample = 1;
             Play Region Offset = 44;
-            Play Region Length = 1304488;
+            Play Region Length = 3257932;
             Loop Region Offset = 0;
             Loop Region Length = 0;
             File Type = 1;
-            Last Modified Low = 4227605778;
-            Last Modified High = 30063372;
+            Last Modified Low = 3803972299;
+            Last Modified High = 30067396;
         }
     }
 
@@ -1171,13 +1169,13 @@ Wave Bank
             Channels = 2;
             Sampling Rate = 44100;
             Bits Per Sample = 1;
-            Play Region Offset = 96;
-            Play Region Length = 130948;
+            Play Region Offset = 44;
+            Play Region Length = 145408;
             Loop Region Offset = 0;
             Loop Region Length = 0;
             File Type = 1;
-            Last Modified Low = 4290049315;
-            Last Modified High = 30063986;
+            Last Modified Low = 4129501227;
+            Last Modified High = 30067385;
         }
     }
 
@@ -1194,13 +1192,13 @@ Wave Bank
             Channels = 2;
             Sampling Rate = 44100;
             Bits Per Sample = 1;
-            Play Region Offset = 96;
-            Play Region Length = 94816;
+            Play Region Offset = 44;
+            Play Region Length = 116736;
             Loop Region Offset = 0;
             Loop Region Length = 0;
             File Type = 1;
-            Last Modified Low = 3924339832;
-            Last Modified High = 30063987;
+            Last Modified Low = 98479244;
+            Last Modified High = 30067386;
         }
     }
 
@@ -1235,8 +1233,8 @@ Sound Bank
     Windows File = Win\Sound Bank.xsb;
     Xbox Bank Path Edited = 0;
     Windows Bank Path Edited = 0;
-    Bank Last Modified Low = 3632462933;
-    Bank Last Modified High = 30065603;
+    Bank Last Modified Low = 587638055;
+    Bank Last Modified High = 30067420;
     Header Last Modified High = 0;
     Header Last Modified Low = 0;
 
@@ -2473,7 +2471,7 @@ Sound Bank
     Sound
     {
         Name = banjoBreakdown;
-        Volume = -2500;
+        Volume = -2030;
         Pitch = 0;
         Priority = 0;
 
@@ -3151,7 +3149,7 @@ Sound Bank
     Sound
     {
         Name = menuLoop;
-        Volume = -2320;
+        Volume = -1260;
         Pitch = 0;
         Priority = 0;
 

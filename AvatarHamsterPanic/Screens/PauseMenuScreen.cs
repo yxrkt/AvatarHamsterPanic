@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using AvatarHamsterPanic;
 using Microsoft.Xna.Framework.GamerServices;
+using Audio;
 #endregion
 
 namespace Menu
@@ -129,13 +130,10 @@ namespace Menu
       ImageMenuEntries[0].ScaleSpring.Active = true;
       ImageMenuEntries[0].Focused = true;
       selectedEntry = 0;
-
-      GameplayScreen.Instance.BackgroundMusic.SetVariable( "Volume", XACTHelper.GetDecibels( .8f ) );
     }
 
     public override void UnloadContent()
     {
-      GameplayScreen.Instance.BackgroundMusic.SetVariable( "Volume", XACTHelper.GetDecibels( 1f ) );
     }
 
 
@@ -203,15 +201,16 @@ namespace Menu
       confirmQuitMessageBox.Accepted += ConfirmQuitMessageBoxAccepted;
 
       ScreenManager.AddScreen( confirmQuitMessageBox, ControllingPlayer );
-
-      ScreenManager.MenuTrack.Resume();
     }
 
     void ConfirmQuitMessageBoxAccepted( object sender, PlayerIndexEventArgs e )
     {
       LoadingScreen.Load( ScreenManager, false, null, new BackgroundScreen(),
                                                       new MainMenuScreen() );
-      ScreenManager.MenuTrack.Resume();
+      ScreenManager.MenuTrack.Dispose();
+      ScreenManager.MenuTrack = null;
+      //float volume = GameCore.Instance.MusicVolume;
+      //ScreenManager.MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", volume );
     }
 
 

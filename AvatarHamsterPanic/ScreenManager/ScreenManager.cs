@@ -19,6 +19,7 @@ using AvatarHamsterPanic.Utilities;
 using AvatarHamsterPanic;
 using System.Linq;
 using Microsoft.Xna.Framework.Audio;
+using Audio;
 #endregion
 
 namespace Menu
@@ -107,9 +108,6 @@ namespace Menu
       base.Initialize();
 
       isInitialized = true;
-
-      MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", 1f );
-      MenuTrack.SetVariable( "Volume", XACTHelper.GetDecibels( 0 ) );
     }
 
 
@@ -132,6 +130,12 @@ namespace Menu
       {
         screen.LoadContent();
       }
+
+      MenuTrack = GameCore.Instance.AudioManager.Play2DCue( "menuLoop", 1f );
+      GameCore.Instance.MusicVolumeChanged += ( ( float prev, float cur ) =>
+      {
+        MenuTrack.SetVariable( AudioManager.VarVolume, XACTHelper.GetLogDecibels( cur ) );
+      } );
     }
 
 

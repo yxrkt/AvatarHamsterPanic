@@ -47,6 +47,8 @@ namespace Menu
 
     Texture2D texture;
 
+    public bool IsBuyOption { get; set; }
+
     public event EventHandler<PlayerIndexEventArgs> Selected;
     public void OnSelect( PlayerIndex playerIndex )
     {

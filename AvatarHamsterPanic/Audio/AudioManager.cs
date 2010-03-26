@@ -33,11 +33,12 @@ namespace Audio
     SoundBank soundBank;
 
     // Instance variables
-    static readonly string varVolume = "Volume";
+    public static readonly string VarVolume = "Volume";
     static readonly List<String> songNames = new List<string>( 2 );
 
     static AudioManager()
     {
+      songNames.Add( "menuLoop" );
       songNames.Add( "banjoBreakdown" );
     }
 
@@ -158,7 +159,7 @@ namespace Audio
                        GameCore.Instance.MusicVolume :
                        GameCore.Instance.SoundEffectsVolume;
       //cue.SetVariable( varVolume, MathHelper.Lerp( -96, 6, volume * volScale ) );
-      cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volScale * volume ), -96, 6 ) );
+      cue.SetVariable( VarVolume, XACTHelper.GetLogDecibels( volScale * volume ) );
       cue.Play();
       return cue;
     }
@@ -192,9 +193,9 @@ namespace Audio
       // Set volume of cue
       /**/
       if ( volume <= 0 )
-        cue3D.Cue.SetVariable( varVolume, -96 );
+        cue3D.Cue.SetVariable( VarVolume, -96 );
       else
-        cue3D.Cue.SetVariable( varVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volume * volScale ), -96, 6 ) );
+        cue3D.Cue.SetVariable( VarVolume, MathHelper.Clamp( 10f * (float)Math.Log10( volume * volScale ), -96, 6 ) );
       /*/
       cue3D.Cue.SetVariable( varVolume, XACTHelper.GetDecibels( volume * volScale ) );
       /**/

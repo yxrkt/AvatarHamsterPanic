@@ -105,4 +105,9 @@ public static class XACTHelper
   {
     return MathHelper.Lerp( -96, 6, volume );
   }
+
+  public static float GetLogDecibels( float volume )
+  {
+    return MathHelper.Clamp( 10f * (float)Math.Log10( volume ), -96, 6 );
+  }
 }

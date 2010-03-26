@@ -31,6 +31,18 @@ namespace Menu
     public float Angle { get { return angle; } set { angle = value; } }
 
     public bool AcceptingInput { get; internal set; }
+    public bool HasBuyOption
+    {
+      get
+      {
+        foreach ( WheelMenuEntry entry in entries )
+        {
+          if ( entry.IsBuyOption )
+            return true;
+        }
+        return false;
+      }
+    }
 
     // The wheel entries
     List<WheelMenuEntry> entries = new List<WheelMenuEntry>( 4 );
@@ -95,6 +107,12 @@ namespace Menu
       entries.Add( entry );
     }
 
+    public void RemoveBuyOption()
+    {
+      entries.RemoveAll( e => e.IsBuyOption );
+      ConfigureEntries();
+    }
+
     public void ConfigureEntries()
     {
       angleStep = -MathHelper.TwoPi / entries.Count;
@@ -153,9 +171,7 @@ namespace Menu
       if ( rotateSpring.Active )
       {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] - angleStep );
-        IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
-        //GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
-        GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
+        GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
       }
       for ( int i = 0; i < entries.Count; ++i )
       {
@@ -174,9 +190,7 @@ namespace Menu
       if ( rotateSpring.Active )
       {
         rotateSpring.SetDest( rotateSpring.GetDest()[0] + angleStep );
-        IAudioEmitter emitter = DummyAudioEmitter.ClearInstance;
-        //GameCore.Instance.AudioManager.Play3DCue( "squeek", emitter, 1f );
-        GameCore.Instance.AudioManager.Play3DCue( "whoosh", emitter, 1f );
+        GameCore.Instance.AudioManager.Play2DCue( "whoosh", 1f );
       }
 
       for ( int i = 0; i < entries.Count; ++i )
