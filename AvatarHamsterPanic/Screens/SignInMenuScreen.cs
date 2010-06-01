@@ -40,6 +40,7 @@ namespace Menu
     bool autoSignIn = false;
     bool toggleAutoSignIn = false;
     bool eventSet = false;
+    List<int> activeBots = new List<int>( 4 );
     TextMenuItem nagText;
     GameTime lastGameTime;
 
@@ -67,7 +68,8 @@ namespace Menu
 
       SpriteFont nameFont = content.Load<SpriteFont>( "Fonts/signInNameFont" );
       Texture2D joinTexture = content.Load<Texture2D>( "Textures/aJoinText" );
-      Texture2D cpuTexture = content.Load<Texture2D>( "Textures/xAddCPUText" );
+      Texture2D addCpuTexture = content.Load<Texture2D>( "Textures/xAddCPUText" );
+      Texture2D removeCpuTexture = content.Load<Texture2D>( "Textures/yRemoveCPUText" );
       Texture2D aStartTexture = content.Load<Texture2D>( "Textures/aStartText" );
       Texture2D readyTexture = content.Load<Texture2D>( "Textures/readyText" );
 
@@ -115,9 +117,16 @@ namespace Menu
 
         // X Add CPU
         itemPosition = new Vector2( x, cpuY );
-        item = new StaticImageMenuItem( this, itemPosition, cpuTexture );
+        item = new StaticImageMenuItem( this, itemPosition, addCpuTexture );
         item.SetImmediateScale( textScale );
-        slots[i].CPUItem = item;
+        slots[i].AddCPUItem = item;
+        MenuItems.Add( item );
+
+        // Y Add CPU
+        itemPosition = new Vector2( x, cpuY );
+        item = new StaticImageMenuItem( this, itemPosition, removeCpuTexture );
+        item.SetImmediateScale( textScale );
+        slots[i].RemoveCPUItem = item;
         MenuItems.Add( item );
 
         // A Start
@@ -148,13 +157,12 @@ namespace Menu
         slots[i].Slot.Avatar = null;
         slots[i].Slot.Player = NoPlayer;
         slots[i].Slot.ID = 0;
-        slots[i].CreatedBots = new List<int>( 3 );
         slots[i].Ready = false;
         slots[i].ActivePosition = worldPos;
         slots[i].TransitionOnPosition = worldPos + new Vector3( 0, 4 * ( i + 1 ), 0 );
         slots[i].TransitionOffPosition = worldPos + new Vector3( 0, -2 * ( 4 - i ), 0 );
         slots[i].JoinItem.SetImmediateScale( textScale );
-        slots[i].CPUItem.SetImmediateScale( textScale );
+        slots[i].AddCPUItem.SetImmediateScale( textScale );
         slots[i].StartItem.SetImmediateScale( 0 );
         slots[i].ReadyItem.SetImmediateScale( 0 );
 
@@ -173,6 +181,9 @@ namespace Menu
         SignedInGamer.SignedIn += PlayerSignedIn;
         eventSet = true;
       }
+
+      for ( int i = 0; i < 4; ++i )
+        AddBot();
     }
 
     public override void UnloadContent()
@@ -209,15 +220,23 @@ namespace Menu
         slots[i].NameItem.Text = slots[i].GetName();
 
         // update 'join' and 'add cpu'
-        if ( slots[i].Slot.Player != NoPlayer )
+        if ( slots[i].Slot.Player == NoPlayer )
         {
-          slots[i].JoinItem.Scale = 0;
-          slots[i].CPUItem.Scale = 0;
+          slots[i].JoinItem.Scale = textScale;
+          slots[i].AddCPUItem.Scale = textScale;
+          slots[i].RemoveCPUItem.Scale = 0;
+        }
+        else if ( slots[i].Slot.Player == BotPlayer )
+        {
+          slots[i].JoinItem.Scale = textScale;
+          slots[i].AddCPUItem.Scale = 0;
+          slots[i].RemoveCPUItem.Scale = textScale;
         }
         else
         {
-          slots[i].JoinItem.Scale = textScale;
-          slots[i].CPUItem.Scale = textScale;
+          slots[i].JoinItem.Scale = 0;
+          slots[i].AddCPUItem.Scale = 0;
+          slots[i].RemoveCPUItem.Scale = 0;
         }
 
         // update 'start' and 'ready'
@@ -264,6 +283,8 @@ namespace Menu
             OnButtonBHit( (PlayerIndex)i, ref slots[i] );
           else if ( pad.IsButtonDown( Buttons.X ) && lastPadState.IsButtonUp( Buttons.X ) )
             OnButtonXHit( (PlayerIndex)i, ref slots[i] );
+          else if ( pad.IsButtonDown( Buttons.Y ) && lastPadState.IsButtonUp( Buttons.Y ) )
+            OnButtonYHit( (PlayerIndex)i, ref slots[i] );
         }
       }
     }
@@ -326,25 +347,23 @@ namespace Menu
 
     public void OnButtonBHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
-      int numPlayers = slots.Count( s => s.Slot.Player != NoPlayer );
+      //int numPlayers = slots.Count( s => s.Slot.Player != NoPlayer );
       int numHumans = slots.Count( s => s.Slot.Player.IsHuman() );
 
       if ( slot.Ready )
       {
         slot.Ready = false;
       }
-      else if ( numPlayers <= 1 )
+      //else if ( numPlayers <= 1 )
+      //{
+      //  if ( numHumans == 0 || numPlayers == 0 || numPlayers == 1 && slot.Slot.Player.IsHuman() )
+      //    OnCancel( playerIndex );
+      //}
+      else if ( numHumans == 1 )
       {
-        if ( numHumans == 0 || numPlayers == 0 || numPlayers == 1 && slot.Slot.Player.IsHuman() )
-          OnCancel( playerIndex );
-      }
-      else if ( slot.CreatedBots.Count > 0 )
-      {
-        int botIndex = slot.CreatedBots.Last();
-        slot.CreatedBots.Remove( botIndex );
-        slots[botIndex].Slot.Player = NoPlayer;
-        slots[botIndex].Slot.Avatar = null;
-        GameCore.Instance.AudioManager.Play2DCue( "signOut", 1f );
+        while ( activeBots.Count > 0 )
+          RemoveLastBot();
+        OnCancel( playerIndex );
       }
       else
       {
@@ -356,18 +375,12 @@ namespace Menu
 
     public void OnButtonXHit( PlayerIndex playerIndex, ref SignInSlot slot )
     {
-      for ( int i = 0; i < 4; ++i )
-      {
-        if ( slots[i].Slot.Player == NoPlayer )
-        {
-          slots[i].Slot.Player = BotPlayer;
-          slots[i].Slot.Avatar = new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
-                                             1f, Vector3.UnitZ, Vector3.Zero );
-          slots[(int)playerIndex].CreatedBots.Add( i );
-          GameCore.Instance.AudioManager.Play2DCue( "addCPU", 1f );
-          return;
-        }
-      }
+      AddBot();
+    }
+
+    public void OnButtonYHit( PlayerIndex playerIndex, ref SignInSlot slot )
+    {
+      RemoveLastBot();
     }
 
     private void AddPlayer( ref SignInSlot slot, PlayerIndex playerIndex )
@@ -375,9 +388,37 @@ namespace Menu
       slot.Slot.Player = playerIndex;
       slot.Slot.Avatar = new Avatar( Gamer.SignedInGamers[playerIndex].Avatar, AvatarAnimationPreset.Stand0,
                                      1f, Vector3.UnitZ, Vector3.Zero );
-      foreach ( SignInSlot signInSlot in slots )
-        signInSlot.CreatedBots.Remove( (int)playerIndex );
+      activeBots.Remove( (int)playerIndex );
       GameCore.Instance.AudioManager.Play2DCue( "signIn", 1f );
+    }
+
+    private void AddBot()
+    {
+      for ( int i = 0; i < 4; ++i )
+      {
+        if ( slots[i].Slot.Player == NoPlayer )
+        {
+          slots[i].Slot.Player = BotPlayer;
+          slots[i].Slot.Avatar = new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0,
+                                             1f, Vector3.UnitZ, Vector3.Zero );
+          //slots[(int)playerIndex].CreatedBots.Add( i );
+          activeBots.Add( i );
+          GameCore.Instance.AudioManager.Play2DCue( "addCPU", 1f );
+          return;
+        }
+      }
+    }
+
+    private void RemoveLastBot()
+    {
+      if ( activeBots.Count > 0 )
+      {
+        int botIndex = activeBots.Last();
+        activeBots.Remove( botIndex );
+        slots[botIndex].Slot.Player = NoPlayer;
+        slots[botIndex].Slot.Avatar = null;
+        GameCore.Instance.AudioManager.Play2DCue( "signOut", 1f );
+      }
     }
 
     public override void Draw( GameTime gameTime )
@@ -459,10 +500,10 @@ namespace Menu
     public Vector3 TransitionOnPosition;
     public Vector3 TransitionOffPosition;
     public Vector3 ActivePosition;
-    public List<int> CreatedBots;
     public TextMenuItem NameItem;
     public StaticImageMenuItem JoinItem;
-    public StaticImageMenuItem CPUItem;
+    public StaticImageMenuItem AddCPUItem;
+    public StaticImageMenuItem RemoveCPUItem;
     public StaticImageMenuItem StartItem;
     public StaticImageMenuItem ReadyItem;
 
