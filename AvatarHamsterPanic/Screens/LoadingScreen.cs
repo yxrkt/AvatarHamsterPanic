@@ -41,7 +41,7 @@ namespace Menu
     GameTime loadStartTime;
     TimeSpan loadAnimationTimer;
 
-    Texture2D howToPlay;
+    Texture2D[] howToPlay;
     Texture2D loadingText;
     Texture2D pressStartText;
     CustomModel hamsterBall;
@@ -75,7 +75,11 @@ namespace Menu
         screenScale = graphicsDevice.Viewport.Height / 1080f;
 
         ContentManager content = GameCore.Instance.Content;
-        howToPlay = content.Load<Texture2D>( "Textures/controls" );
+
+        howToPlay = new Texture2D[3];
+        for ( int i = 0; i < 3; ++i )
+          howToPlay[i] = content.Load<Texture2D>( "Textures/howtoplay" + ( i + 1 ).ToString() );
+
         loadingText = content.Load<Texture2D>( "Textures/loadingText" );
         pressStartText = content.Load<Texture2D>( "Textures/pressStartText" );
         hamsterBall = content.Load<CustomModel>( "Models/hamsterBall" );
@@ -90,7 +94,7 @@ namespace Menu
         textPosition = new Vector2( viewportSize.X / 2, .93f * viewportSize.Y );
         howToPlayScale = viewportSize.Y / 1080f;
         howToPlayPosition = viewportSize / 2;
-        howToPlayOrigin = new Vector2( howToPlay.Width, howToPlay.Height ) / 2;
+        howToPlayOrigin = new Vector2( howToPlay[0].Width, howToPlay[0].Height ) / 2;
       }
     }
 
@@ -183,8 +187,39 @@ namespace Menu
         Color color = new Color( Color.White, TransitionAlpha );
 
         spriteBatch.Begin( SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None );
-        spriteBatch.Draw( howToPlay, howToPlayPosition, null, color, 0f,
-                          howToPlayOrigin, howToPlayScale, SpriteEffects.None, 0f );
+
+
+        // how to play
+        float totalTime = (float)loadAnimationTimer.TotalSeconds;
+        int floor = (int)totalTime;
+
+        float mod = totalTime % 4f;
+        if ( mod <= 3.5f )
+        {
+          int screen = (int)( totalTime / 4f ) % 3;
+          spriteBatch.Draw( howToPlay[screen], howToPlayPosition, null, color, 0f,
+                            howToPlayOrigin, howToPlayScale, SpriteEffects.None, 0f );
+        }
+        else
+        {
+          int screen1 = (int)( totalTime / 4f ) % 3;
+          int screen2 = ( screen1 + 1 ) % 3;
+
+          float screen2alpha = 2f * ( mod - 3.5f );
+          float screen1alpha = 1 - screen2alpha;
+
+          Color whiteWithAlpha = Color.White;
+
+          whiteWithAlpha.A = (byte)( screen1alpha * TransitionAlpha );
+          spriteBatch.Draw( howToPlay[screen1], howToPlayPosition, null, whiteWithAlpha, 0f,
+                            howToPlayOrigin, howToPlayScale, SpriteEffects.None, 0f );
+
+          whiteWithAlpha.A = (byte)( screen2alpha * TransitionAlpha );
+          spriteBatch.Draw( howToPlay[screen2], howToPlayPosition, null, whiteWithAlpha, 0f,
+                            howToPlayOrigin, howToPlayScale, SpriteEffects.None, 0f );
+        }
+        // end how to play
+
         if ( !doneLoading )
         {
           Vector2 origin = new Vector2( loadingText.Width, loadingText.Height ) / 2;

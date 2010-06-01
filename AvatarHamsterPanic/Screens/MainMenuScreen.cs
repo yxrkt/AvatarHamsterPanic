@@ -49,6 +49,7 @@ namespace Menu
     float transitionTime;
 
     SignInMenuScreen signInMenuScreen;
+    ControlsMenuScreen controlsMenuScreen;
     OptionsMenuScreen optionsMenuScreen;
     CreditsMenuScreen creditsMenuScreen;
     HighscoreScreen highscoreScreen;
@@ -86,7 +87,7 @@ namespace Menu
       new Avatar( AvatarDescription.CreateRandom(), AvatarAnimationPreset.Stand0, 
                                                   1f, Vector3.UnitZ, Vector3.Zero );
 
-      float wheelScale = 2.5f;
+      float wheelScale = 3f; // 2.5f old
       wheelMenu = new WheelMenu( this, camera, wheelScale, scale, -3, 0, 3, wheelScale / 2 );
 
       if ( Guide.IsTrialMode )
@@ -109,6 +110,10 @@ namespace Menu
         wheelMenu.AddEntry( entry );
       }
 
+      entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/howToPlayText" ) );
+      entry.Selected += HowToPlayMenuEntrySelected;
+      wheelMenu.AddEntry( entry );
+
       entry = new WheelMenuEntry( wheelMenu, content.Load<Texture2D>( "Textures/leaderboardText" ) );
       entry.Selected += LeaderboardMenuEntrySelected;
       wheelMenu.AddEntry( entry );
@@ -128,6 +133,7 @@ namespace Menu
       MenuItems.Add( wheelMenu );
 
       signInMenuScreen = new SignInMenuScreen( ScreenManager );
+      controlsMenuScreen = new ControlsMenuScreen( ScreenManager );
       optionsMenuScreen = new OptionsMenuScreen( ScreenManager );
       creditsMenuScreen = new CreditsMenuScreen( ScreenManager );
       highscoreScreen = new HighscoreScreen( ScreenManager );
@@ -283,6 +289,11 @@ namespace Menu
     void PlayMenuEntrySelected( object sender, PlayerIndexEventArgs e )
     {
       ScreenManager.AddScreen( signInMenuScreen, e.PlayerIndex );
+    }
+
+    void HowToPlayMenuEntrySelected( object sender, PlayerIndexEventArgs e )
+    {
+      ScreenManager.AddScreen( controlsMenuScreen, e.PlayerIndex );
     }
 
     void LeaderboardMenuEntrySelected( object sender, PlayerIndexEventArgs e )

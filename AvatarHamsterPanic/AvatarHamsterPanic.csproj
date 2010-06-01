@@ -79,6 +79,7 @@
     <Compile Include="Debug\StringBuilderExtension.cs" />
     <Compile Include="Debug\TimeRuler.cs" />
     <Compile Include="Graphics\ScreenQuadEffect.cs" />
+    <Compile Include="Screens\ControlsMenuScreen.cs" />
     <Compile Include="Screens\FAQScreen.cs" />
     <Compile Include="Utilities\HighscoreComponent.cs" />
     <Compile Include="Screens\HighscoreScreen.cs" />
